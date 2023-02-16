@@ -6,9 +6,9 @@ using Dates
 function series(model :: Timeseries, u0, tspan, datasize) end
 
 function timeseriesplot!(model :: Timeseries, u0s, tspan, datasize)
-    fig = plot(0, 0, xlabel=xlabel(model), ylabel=ylabel(model), legend=nothing)
+    fig = plot(0, 0, xlabel=xlabel(model), ylabel=ylabel(model), fmt=:png, dpi = 600, legend=nothing)
     for u0 in u0s
-        plot!(fig, series(model, u0, tspan, datasize), fmt=:png, legend=nothing)
+        plot!(fig, series(model, u0, tspan, datasize), legend=nothing)
     end
     folder = "plots/$(typeof(model))"
     Base.Filesystem.mkpath(folder)
