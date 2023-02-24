@@ -1,36 +1,38 @@
 using DifferentialEquations
+using NODEData
+
+export ZeroDEnergyBalanceModel
 
 # From https://github.com/TUM-PIK-ESM/TUM-Dynamics-Lecture/blob/main/lectures/lecture-8/lecture8.ipynb
 
 struct ZeroDEnergyBalanceModel <: Timeseries
-    albedo_0 :: Float64
-    albedo_var :: Float64
-    solarconstant :: Float64
-    radiation :: Float64
-    noise_var :: Float64
+    albedo_0
+    albedo_var
+    solarconstant
+    radiation
+    noise_var
 end
 
 # from the lecture
-# ZeroDEnergyBalanceModel() = ZeroDEnergyBalanceModel(0.5, 0.4, 1363, 0.6 * 5.67e-8, 0)
+ZeroDEnergyBalanceModelNonStochastic() = ZeroDEnergyBalanceModel(0.5, 0.4, 1363, 0.6 * 5.67e-8, 0)
 
 # modified a bit for some nice tipping
 ZeroDEnergyBalanceModel() = ZeroDEnergyBalanceModel(0.425, 0.4, 1363, 0.6 * 5.67e-8, 0.06)
 
 # albedo decreases with increasing temperature
-albedo(t, ebm :: ZeroDEnergyBalanceModel) = ebm.albedo_0 - (ebm.albedo_var / 2) * tanh(t - 273)
+albedo(t, ebm::ZeroDEnergyBalanceModel) = ebm.albedo_0 - (ebm.albedo_var / 2) * tanh(t - 273)
 
-energy_in(t, ebm :: ZeroDEnergyBalanceModel) = (1 - albedo(t, ebm)) * (ebm.solarconstant / 4)
+energy_in(t, ebm::ZeroDEnergyBalanceModel) = (1 - albedo(t, ebm)) * (ebm.solarconstant / 4)
 
-energy_out(t, ebm :: ZeroDEnergyBalanceModel) = ebm.radiation * t^4
+energy_out(t, ebm::ZeroDEnergyBalanceModel) = ebm.radiation * t^4
 
-drift(u, ebm :: ZeroDEnergyBalanceModel, t) = energy_in(u[1], ebm) - energy_out(u[1], ebm)
+drift(u, ebm::ZeroDEnergyBalanceModel, t) = energy_in(u[1], ebm) - energy_out(u[1], ebm)
 
-diffusion(u, ebm :: ZeroDEnergyBalanceModel, t) = ebm.noise_var * u
+diffusion(u, ebm::ZeroDEnergyBalanceModel, t) = ebm.noise_var * u
 
-function series(ebm :: ZeroDEnergyBalanceModel, u0, tspan, datasize)
-    problem = SDEProblem(drift, diffusion, u0, tspan, ebm)
-    t = range(tspan[1],tspan[2],length=datasize)
-    solve(problem, saveat=t)
+function series(ebm::ZeroDEnergyBalanceModel, u0s, tspan, datasize; batchsize=20)
+    t = range(tspan[1], tspan[2], length=datasize)
+    [NODEDataloader(solve(SDEProblem(drift, diffusion, u0, tspan, ebm), saveat=t), batchsize) for u0 in u0s]
 end
 
-ylabel(ebm :: ZeroDEnergyBalanceModel) = "temperature [K]"
+ylabel(ebm::ZeroDEnergyBalanceModel) = "temperature [K]"
