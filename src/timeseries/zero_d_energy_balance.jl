@@ -1,6 +1,3 @@
-using DifferentialEquations
-using NODEData
-
 export ZeroDEnergyBalanceModel
 
 # From https://github.com/TUM-PIK-ESM/TUM-Dynamics-Lecture/blob/main/lectures/lecture-8/lecture8.ipynb
@@ -17,7 +14,7 @@ end
 ZeroDEnergyBalanceModelNonStochastic() = ZeroDEnergyBalanceModel(0.5, 0.4, 1363, 0.6 * 5.67e-8, 0)
 
 # modified a bit for some nice tipping
-ZeroDEnergyBalanceModel() = ZeroDEnergyBalanceModel(0.425, 0.4, 1363, 0.6 * 5.67e-8, 0.06)
+ZeroDEnergyBalanceModel() = ZeroDEnergyBalanceModel(0.425, 0.4, 1363, 0.6 * 5.67e-8, 0.08)
 
 # albedo decreases with increasing temperature
 albedo(t, ebm::ZeroDEnergyBalanceModel) = ebm.albedo_0 - (ebm.albedo_var / 2) * tanh(t - 273)

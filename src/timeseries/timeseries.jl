@@ -1,4 +1,6 @@
 using Dates
+using DifferentialEquations
+using NODEData
 
 export series, timeseriesplot!
 
@@ -21,3 +23,4 @@ xlabel(model :: Timeseries) = "time"
 ylabel(model :: Timeseries) = "value"
 
 include("zero_d_energy_balance.jl")
+include("fitzhugh_nagumo.jl")

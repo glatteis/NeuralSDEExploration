@@ -1,3 +1,9 @@
 # Neural SDE: Exploration
 
-Trying out some stuff
+Access the Pluto notebooks:
+
+```
+julia --project=.
+
+using Pluto; Pluto.run()
+```
