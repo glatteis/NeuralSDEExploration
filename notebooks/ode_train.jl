@@ -155,28 +155,32 @@ end
 
 
 # ╔═╡ a7b7c87c-862a-4896-86c0-092c2f3b9040
-begin
-	global learning_rate
-	learning_rate = 0.05
-	anim = @animate for batch_size in 5:5:20
-		global learning_rate
-		opt_state = Optimisers.setup(Optimisers.Adam(learning_rate), ps)
-		batch = map(x -> NODEDataloader(x, batch_size), timeseries)
-		println("Batch Size $batch_size")
-		# add @gif to generate a gif instead of displaying
-		for step in 1:200
-			minibatch = batch[sample(1:size(batch)[1], 1, replace=false)]
-			data = reduce(vcat, [[x for x in minibatch[i]] for i in 1:size(minibatch)[1]])
+function train(learning_rate, batch_size, num_steps)
+	opt_state = Optimisers.setup(Optimisers.Adam(learning_rate), ps)
+	batch = map(x -> NODEDataloader(x, batch_size), timeseries)
+	println("Batch Size $batch_size")
+	anim = @animate for step in 1:num_steps
+		minibatch = batch[sample(1:size(batch)[1], 10, replace=false)]
+		data = reduce(vcat, [[x for x in minibatch[i]] for i in 1:size(minibatch)[1]])
+		if step % 10 == 0
 			cb(data)
-			loss = loss_neuralsde(ps, data)
-			grads = Zygote.gradient((x -> loss_neuralsde(x, data)), ps)[1]
-			#println("Loss: $loss, Grads: $grads")
-			Optimisers.update!(opt_state, ps, grads)
 		end
-		learning_rate *= 0.5
+		loss = loss_neuralsde(ps, data)
+		grads = Zygote.gradient((x -> loss_neuralsde(x, data)), ps)[1]
+		#println("Loss: $loss, Grads: $grads")
+		Optimisers.update!(opt_state, ps, grads)
 	end
-	gif(anim)
+	return gif(anim)
 end
+
+# ╔═╡ 326a166c-64e6-4dae-bbcc-4471c637f7ed
+train(0.05, 5, 200)
+
+# ╔═╡ 18724b64-1add-4889-93ec-3abbcc91ad78
+train(0.02, 10, 200)
+
+# ╔═╡ ee447d25-6d47-4206-990c-ad70ed0df9ab
+
 
 # ╔═╡ Cell order:
 # ╠═67cb574d-7bd6-40d9-9dc3-d57f4226cc83
@@ -206,3 +210,6 @@ end
 # ╠═8c4ebf80-bc10-4964-904d-1781a848f368
 # ╠═4cf2f415-0e74-4a2d-9611-ae58e4be783f
 # ╠═a7b7c87c-862a-4896-86c0-092c2f3b9040
+# ╠═326a166c-64e6-4dae-bbcc-4471c637f7ed
+# ╠═18724b64-1add-4889-93ec-3abbcc91ad78
+# ╠═ee447d25-6d47-4206-990c-ad70ed0df9ab
