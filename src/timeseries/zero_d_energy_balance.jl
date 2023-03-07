@@ -27,9 +27,9 @@ drift(u, ebm::ZeroDEnergyBalanceModel, t) = energy_in(u[1], ebm) - energy_out(u[
 
 diffusion(u, ebm::ZeroDEnergyBalanceModel, t) = ebm.noise_var * u
 
-function series(ebm::ZeroDEnergyBalanceModel, u0s, tspan, datasize; batchsize=20)
+function series(ebm::ZeroDEnergyBalanceModel, u0s, tspan, datasize)
     t = range(tspan[1], tspan[2], length=datasize)
-    [NODEDataloader(solve(SDEProblem(drift, diffusion, u0, tspan, ebm), saveat=t), batchsize) for u0 in u0s]
+    [solve(SDEProblem(drift, diffusion, u0, tspan, ebm, noise=WienerProcess(0.0, 0.0)), saveat=t) for u0 in u0s]
 end
 
 ylabel(ebm::ZeroDEnergyBalanceModel) = "temperature [K]"

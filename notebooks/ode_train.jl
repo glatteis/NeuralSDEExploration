@@ -41,11 +41,11 @@ begin
 end
 
 # ╔═╡ c00a97bf-5e10-4168-8d58-f4f9270258ac
-timeseries = series(ebm, range(210.0f0, 320.0f0, n), tspan, datasize)
+timeseries = map(x -> NODEDataloader(x, 20), series(ebm, range(210.0f0, 320.0f0, n), tspan, datasize))
 
 # ╔═╡ c58ebda6-4c51-4103-b340-ecac7339e551
 md"""
-The data is already packaged into a `NODEData` container which splits it up into batches. This lets us use multiple "starting points" and smaller trajectories in the data instead of fitting an entire trajectory at once.
+We've packaged the data into a `NODEDataloader` container which splits it up into batches. This lets us use multiple "starting points" and smaller trajectories in the data instead of fitting an entire trajectory at once.
 """
 
 # ╔═╡ 577fc845-95e7-4e5c-969f-4fb07b6d0dc6

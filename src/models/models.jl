@@ -8,6 +8,7 @@ using ForwardDiff
 using StatsBase: sample
 
 include("neural.jl")
+include("latent.jl")
 
 export NeuralSDEProblem, toy_neural_sde, trainkullback!, trainmeansquare!
 

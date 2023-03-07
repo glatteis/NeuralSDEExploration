@@ -76,7 +76,7 @@ function (n::AugmentedNeuralDSDE)(x,p,st)
     diffusion = (u, p, t) -> n.diffusion_dudt(u, p.diffusion, t, n.diffusion, st.diffusion)
 
     # ff = SDEFunction{false}(drift,diffusion,tgrad=DiffEqFlux.basic_tgrad)
-    prob = SDEProblem{false}(drift,diffusion,x,n.tspan,p)
+    prob = SDEProblem{false}(drift,diffusion,x,n.tspan,p,noise=WienerProcess(0.0, 0.0))
     sense = InterpolatingAdjoint(autojacvec=ZygoteVJP())
     return solve(prob,n.args...;sensealg=sense,n.kwargs...), st
 end
