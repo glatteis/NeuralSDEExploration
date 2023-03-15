@@ -48,9 +48,6 @@ md"""
 We've packaged the data into a `NODEDataloader` container which splits it up into batches. This lets us use multiple "starting points" and smaller trajectories in the data instead of fitting an entire trajectory at once.
 """
 
-# ╔═╡ 577fc845-95e7-4e5c-969f-4fb07b6d0dc6
-plot(map(x -> x.data, timeseries), legend=nothing)
-
 # ╔═╡ f4651b27-135e-45f1-8647-64ab08c2e8e8
 md"""
 Let's normalize our data for training:
@@ -150,7 +147,7 @@ function cb(data)
 		plot!(pl, (map(first, t.t), map(y -> rescale(first(y)), t.u)), linewidth=1, label="series (prediction)", color="green", legend=false)
 	end
 
-	plot!(pl, data, linewidth=1, label="series (data)", legend=false, color="blue")
+	plot!(pl, data, linewidth=1, label="series (data)", legend=false, color="blue", dpi=100)
 end
 
 
@@ -162,7 +159,7 @@ function train(learning_rate, batch_size, num_steps)
 	anim = @animate for step in 1:num_steps
 		minibatch = batch[sample(1:size(batch)[1], 10, replace=false)]
 		data = reduce(vcat, [[x for x in minibatch[i]] for i in 1:size(minibatch)[1]])
-		if step % 10 == 0
+		if step % 20 == 1
 			cb(data)
 		end
 		loss = loss_neuralsde(ps, data)
@@ -173,14 +170,14 @@ function train(learning_rate, batch_size, num_steps)
 	return gif(anim)
 end
 
+# ╔═╡ e40c4b61-ac8c-43db-ba7e-4f17fb0f4915
+plot()
+
 # ╔═╡ 326a166c-64e6-4dae-bbcc-4471c637f7ed
 train(0.05, 5, 200)
 
 # ╔═╡ 18724b64-1add-4889-93ec-3abbcc91ad78
 train(0.02, 10, 200)
-
-# ╔═╡ ee447d25-6d47-4206-990c-ad70ed0df9ab
-
 
 # ╔═╡ Cell order:
 # ╠═67cb574d-7bd6-40d9-9dc3-d57f4226cc83
@@ -191,7 +188,6 @@ train(0.02, 10, 200)
 # ╠═dd03f851-2e26-4850-a7d4-a64f154d2872
 # ╠═c00a97bf-5e10-4168-8d58-f4f9270258ac
 # ╟─c58ebda6-4c51-4103-b340-ecac7339e551
-# ╠═577fc845-95e7-4e5c-969f-4fb07b6d0dc6
 # ╟─f4651b27-135e-45f1-8647-64ab08c2e8e8
 # ╠═aff1c9d9-b29b-4b2c-b3f1-1e06a9370f64
 # ╟─c0b55609-4cf8-4c99-8ba8-3e737e2b2807
@@ -210,6 +206,6 @@ train(0.02, 10, 200)
 # ╠═8c4ebf80-bc10-4964-904d-1781a848f368
 # ╠═4cf2f415-0e74-4a2d-9611-ae58e4be783f
 # ╠═a7b7c87c-862a-4896-86c0-092c2f3b9040
+# ╠═e40c4b61-ac8c-43db-ba7e-4f17fb0f4915
 # ╠═326a166c-64e6-4dae-bbcc-4471c637f7ed
 # ╠═18724b64-1add-4889-93ec-3abbcc91ad78
-# ╠═ee447d25-6d47-4206-990c-ad70ed0df9ab

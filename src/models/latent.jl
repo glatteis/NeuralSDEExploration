@@ -1,7 +1,7 @@
-using LuxCore, Distributions, InformationGeometry
+using Flux, Distributions, InformationGeometry, Functors
 export LatentSDE, sample_prior
 
-struct LatentSDE{N1,N2,N3,N4,N5,N6,N7,P,T,A,K} <: LuxCore.AbstractExplicitContainerLayer{(:initial_prior, :initial_posterior, :drift_prior, :drift_posterior, :diffusion, :encoder, :projector,)}
+struct LatentSDE{N1,N2,N3,N4,N5,N6,N7,R1,R2,R3,R4,R5,R6,R7,P1,P2,P3,P4,P5,P6,P7,T,A,K}
     initial_prior::N1
     initial_posterior::N2
     drift_prior::N3
@@ -9,130 +9,169 @@ struct LatentSDE{N1,N2,N3,N4,N5,N6,N7,P,T,A,K} <: LuxCore.AbstractExplicitContai
     diffusion::N5
     encoder::N6
     projector::N7
-    p::P
+    initial_prior_re::R1
+    initial_posterior_re::R2
+    drift_prior_re::R3
+    drift_posterior_re::R4
+    diffusion_re::R5
+    encoder_re::R6
+    projector_re::R7
+    initial_prior_p::P1
+    initial_posterior_p::P2
+    drift_prior_p::P3
+    drift_posterior_p::P4
+    diffusion_p::P5
+    encoder_p::P6
+    projector_p::P7
     tspan::T
     args::A
     kwargs::K
 end
 
-function LatentSDE(initial_prior, initial_posterior, drift_prior, drift_posterior, diffusion, encoder, projector, tspan, args...; p=nothing, kwargs...)
-    LatentSDE{typeof(initial_prior), typeof(initial_posterior), typeof(drift_prior),typeof(drift_posterior),typeof(diffusion),typeof(encoder),typeof(projector),typeof(p),typeof(tspan),typeof(args),typeof(kwargs)}(
-        initial_prior, initial_posterior, drift_prior, drift_posterior, diffusion, encoder, projector, p, tspan, args, kwargs
+function LatentSDE(initial_prior, initial_posterior, drift_prior, drift_posterior, diffusion, encoder, projector, tspan, args...; kwargs...)
+    models = [initial_prior, initial_posterior, drift_prior, drift_posterior, diffusion, encoder, projector]
+    p = []
+    res = []
+    for model in models
+        p_, re_ = Flux.destructure(model)
+        push!(p, ComponentArray(p_))
+        push!(res, re_)
+    end
+    LatentSDE{
+        [typeof(x) for x in models]...,
+        [typeof(x) for x in res]...,
+        [typeof(x) for x in p]...,
+        typeof(tspan),typeof(args),typeof(kwargs)
+    }(
+        models...,
+        res...,
+        p...,
+        tspan, args, kwargs
     )
 end
 
-function encode(n::LatentSDE, timeseries, ps, st)
-    st_ = Lux.update_state(st.encoder, :carry, nothing)
-    result = []
-    for x in timeseries.u
-        y, st_ = Lux.apply(n.encoder, reshape([x], 1, 1), ps.encoder, st_)
-        push!(result, y)
-    end
-    return result
-	# hcat([n.encoder(reshape([u], 1, 1), ps.encoder, st.encoder)[1] for u in timeseries.u]...)
+@functor LatentSDE (initial_prior_p,initial_posterior_p,drift_prior_p,drift_posterior_p,diffusion_p,encoder_p,projector_p,)
+
+function get_distributions(model_re, model_p, context)
+    normsandvars = model_re(model_p)(context)
+    return [Normal{Float32}(norm, exp(0.5f0 * var)) for (norm, var) in collect(Iterators.partition(normsandvars, 2))]
 end
 
-function get_distributions(model, context, ps, st)
-    normsandvars, st_ = model(context, ps, st)
-    return [Normal(norm, exp(0.5 * var)) for (norm, var) in collect(Iterators.partition(normsandvars, 2))]
-end
-
-function sample_prior(n::LatentSDE, ps, st; eps=nothing)
-    if eps === nothing
-        eps = only(rand(Normal(0, 1), 1))
+function sample_prior(n::LatentSDE; seed=nothing)
+    if seed !== nothing
+        Random.seed!(seed)
     end
+    eps = only(rand(Normal{Float32}(0f0, 1f0), 1))
 
-    dudt_prior = function(u, p, t)
-        net, st_ = n.drift_prior(u, ps.drift_prior, st.drift_prior)
-        return net
-    end
-
-    dudw_diffusion = function(u, p, t)
-        net, st_ = n.diffusion(u, ps.diffusion, st.diffusion)
-        return net
-    end
-
-    initialdists = get_distributions(n.initial_prior, [], ps.initial_prior, st.initial_prior)
+    dudt_prior(u, p, t) = n.drift_prior_re(p.drift_prior_p)(u)
+    dudw_diffusion(u, p, t) = n.diffusion_re(p.diffusion_p)(u)
+    
+    initialdists = get_distributions(n.initial_prior_re, n.initial_prior_p, [])
     z0 = [x.μ + eps * x.σ for x in initialdists]
     
-    prob = SDEProblem{false}(dudt_prior,dudw_diffusion,z0,n.tspan,n.p,noise=WienerProcess(0.0, 0.0))
+    if seed !== nothing
+        prob = SDEProblem{false}(dudt_prior,dudw_diffusion,z0,n.tspan,ComponentVector(Functors.functor(n)[1]),seed=seed)
+    else
+        prob = SDEProblem{false}(dudt_prior,dudw_diffusion,z0,n.tspan,ComponentVector(Functors.functor(n)[1]))
+    end
     sense = InterpolatingAdjoint(autojacvec=ZygoteVJP())
-    return solve(prob,n.args...;sensealg=sense,n.kwargs...), st
+    return solve(prob,n.args...;sensealg=sense,n.kwargs...)
 end
 
-function sample_posterior(n::LatentSDE, timeseries, ps, st; eps=nothing)
-    if eps === nothing
-        eps = only(rand(Normal(0, 1), 1))
+function sample_posterior(n::LatentSDE, timeseries; seed=nothing)
+    if seed !== nothing
+        Random.seed!(seed)
     end
+    eps = only(rand(Normal{Float32}(0f0, 1f0), 1))
 
-    context = encode(n, timeseries, ps, st)
-    initialdists = get_distributions(n.initial_posterior, context[1], ps.initial_posterior, st.initial_posterior)
+    Flux.reset!(n.encoder)
+    context = n.encoder_re(n.encoder_p)(reshape(timeseries.u, 1, 1, :))
+    initialdists = get_distributions(n.initial_posterior_re, n.initial_posterior_p, context[:, 1, 1])
     z0 = [x.μ + eps * x.σ for x in initialdists]
 
     dudt_posterior = function(u, p, t)
-        timedctx = context[min(searchsortedfirst(timeseries.t, t), length(context))]
+        timedctx = context[:, 1, min(searchsortedfirst(timeseries.t, t), length(context[1, 1, :]))]
         net_input = vcat(u, vcat(timedctx...))
-        net, st_ = n.drift_posterior(net_input, ps.drift_posterior, st.drift_posterior)
-        return net
+        n.drift_posterior_re(p.drift_posterior_p)(net_input)
     end
+    
+    dudw_diffusion(u, p, t) = n.diffusion_re(p.diffusion_p)(u)
 
-    dudw_diffusion = function(u, p, t)
-        net, st_ = n.diffusion(u, ps.diffusion, st.diffusion)
-        return net
+    if seed !== nothing
+        prob = SDEProblem{false}(dudt_posterior,dudw_diffusion,z0,n.tspan,ComponentVector(Functors.functor(n)[1]),seed=seed)
+    else
+        prob = SDEProblem{false}(dudt_posterior,dudw_diffusion,z0,n.tspan,ComponentVector(Functors.functor(n)[1]))
     end
-
-    prob = SDEProblem{false}(dudt_posterior,dudw_diffusion,z0,n.tspan,n.p,noise=WienerProcess(0.0, 0.0))
     sense = InterpolatingAdjoint(autojacvec=ZygoteVJP())
-    return solve(prob,n.args...;sensealg=sense,n.kwargs...), st
+    return solve(prob,n.args...;sensealg=sense,n.kwargs...)
 end
 
 
-function pass(n::LatentSDE, timeseries, ps, st; eps=nothing)
-    if eps === nothing
-        eps = only(rand(Normal(0, 1), 1))
+function pass(n::LatentSDE, timeseries; seed=nothing)
+    if seed !== nothing
+        Random.seed!(seed)
     end
+    eps = only(rand(Normal{Float32}(0f0, 1f0), 1))
     
-    context = encode(n, timeseries, ps, st)
+    Flux.reset!(n.encoder)
+    context = n.encoder_re(n.encoder_p)(reshape(timeseries.u, 1, 1, :))
 
-    initialdists_prior = get_distributions(n.initial_prior, [], ps.initial_prior, st.initial_prior)
-    initialdists_posterior = get_distributions(n.initial_posterior, context[1], ps.initial_posterior, st.initial_posterior)
+    initialdists_prior = get_distributions(n.initial_prior_re, n.initial_prior_p, [])
+    initialdists_posterior = get_distributions(n.initial_posterior_re, n.initial_posterior_p, context[:, 1, 1])
     initialdists_kl = [KullbackLeibler(a, b) for (a, b) in zip(initialdists_prior, initialdists_posterior)]
 
     z0 = [x.μ + eps * x.σ for x in initialdists_posterior]
 
-    augmented_z0 = hcat(z0, zeros32(length(z0)))
+    augmented_z0 = vcat(z0, zeros32(1))
 
     augmented_drift = function(u, p, t)
-        timedctx = context[min(searchsortedfirst(timeseries.t, t), length(context))]
-        # We are only outputting the augmented term, remove it for input
-        u = u[:, 1]
+        timedctx = context[:, 1, min(searchsortedfirst(timeseries.t, t), length(context[1, 1, :]))]
+        # Remove augmented term from input
+        u = u[1 : end - 1]
 
         posterior_net_input = vcat(u, vcat(timedctx...))
-        
-        prior, st_ = n.drift_prior(u, ps.drift_prior, st.drift_prior)
-        posterior, st_ = n.drift_posterior(posterior_net_input, ps.drift_posterior, st.drift_posterior)
-        diffusion, st_ = n.diffusion(u, ps.diffusion, st.diffusion)
-        
-        u_term = (prior .- posterior) ./ diffusion
-        augmented_term = 0.5 .* (u_term .^2)
-        return hcat(posterior, augmented_term)
+
+        prior = n.drift_prior_re(p.drift_prior_p)(u)
+        posterior = n.drift_posterior_re(p.drift_posterior_p)(posterior_net_input)
+        diffusion = n.diffusion_re(p.diffusion_p)(u)
+
+        # from https://github.com/google-research/torchsde/blob/master/examples/latent_sde.py
+        function stable_divide(a, b, eps=1f-3)
+            b = map(x -> abs(x) <= eps ? eps * sign(x) : x, b)
+            a ./ b
+        end
+
+        u_term = stable_divide(posterior .- prior, diffusion)
+        augmented_term = 0.5f0 * sum(abs2, u_term)
+        return vcat(posterior, augmented_term)
     end
     augmented_diffusion = function(u, p, t)
-        u = u[:, 1]
-        diffusion, st_ = n.diffusion(u, ps.diffusion, st.diffusion)
-        return hcat(diffusion, zeros32(length(diffusion)))
+        u = u[1 : end - 1]
+        diffusion = n.diffusion_re(p.diffusion_p)(u)
+        return vcat(diffusion, zeros32(1))
     end
 
-    prob = SDEProblem{false}(augmented_drift,augmented_diffusion,augmented_z0,n.tspan,nothing,noise=WienerProcess(0.0, 0.0))
+    if seed !== nothing
+        prob = SDEProblem{false}(augmented_drift,augmented_diffusion,augmented_z0,n.tspan,ComponentVector(Functors.functor(n)[1]),seed=seed)
+    else
+        prob = SDEProblem{false}(augmented_drift,augmented_diffusion,augmented_z0,n.tspan,ComponentVector(Functors.functor(n)[1]))
+    end
     sense = InterpolatingAdjoint(autojacvec=ZygoteVJP())
+    # sense = TrackerAdjoint()
     solution = solve(prob,n.args...;sensealg=sense,n.kwargs...)
+    # solution = solve(prob,n.args...;n.kwargs...)
 
-    posterior = [u[:, 1] for u in solution.u]
-    logterm = [u[:, 2] for u in solution.u]
-    kl_divergence = initialdists_kl .+ reduce(.+, logterm)
+    posterior = [u[1 : end - 1] for u in solution.u]
+    logterm = [u[end : end] for u in solution.u]
+    kl_divergence = sum(initialdists_kl) + only(logterm[end])
+
+    projected_ts = [n.projector_re(n.projector_p)(x) for x in posterior]
+    distance = sum(abs2, map(only, projected_ts) .- timeseries.u)
     
-    return posterior, logterm, kl_divergence
+    return posterior, projected_ts, logterm, kl_divergence, distance
 end
 
-function loss(n::LatentSDE, timeseries, ps, st; eps=nothing)
+function loss(n::LatentSDE, timeseries; seed=nothing)
+    posterior, projected_ts, logterm, kl_divergence, distance = pass(n, timeseries, seed=seed)
+    return distance - kl_divergence
 end
