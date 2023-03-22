@@ -22,7 +22,7 @@ begin
 end
 
 # ╔═╡ b6abba94-db07-4095-98c9-443e31832e7d
-using Optimisers, StatsBase, Zygote, ForwardDiff, Enzyme, Flux, DifferentialEquations, Functors, ComponentArrays, Distributions, ParameterSchedulers
+using Optimisers, StatsBase, Zygote, ForwardDiff, Enzyme, Flux, DifferentialEquations, Functors, ComponentArrays, Distributions, ParameterSchedulers, Random
 
 # ╔═╡ d1440209-78f7-4a9a-9101-a06ad2534e5d
 using NeuralSDEExploration, Plots, PlutoUI
@@ -44,7 +44,7 @@ md"Let's generate the data and plot a quick example:"
 # ╔═╡ dd03f851-2e26-4850-a7d4-a64f154d2872
 begin
 	n = 1000
-    datasize = 60
+    datasize = 200
     tspan = (0.0f0, 10f0)
 end
 
@@ -84,10 +84,10 @@ We are going to build a simple latent SDE. Define a few constants...
 """
 
 # ╔═╡ 22453ba0-81a7-43f6-bb80-91d3c991530d
-context_size = 2 # The size of the context given to the posterior SDE.
+context_size = 4 # The size of the context given to the posterior SDE.
 
 # ╔═╡ d81ccb5f-de1c-4a01-93ce-3e7302caedc0
-hidden_size = 8 # The hidden layer size for all ANNs.
+hidden_size = 10 # The hidden layer size for all ANNs.
 
 # ╔═╡ b5721107-7cf5-4da3-b22a-552e3d56bcfa
 latent_dims = 3 # Dimensions of the latent space.
@@ -138,8 +138,9 @@ Drift of prior. This is just an SDE drift in the latent space
 drift_prior = Flux.Chain(
 	Flux.Dense(latent_dims => hidden_size, tanh),
 	Flux.Dense(hidden_size => hidden_size, tanh),
+	Flux.Dense(hidden_size => hidden_size, tanh),
 	Flux.Dense(hidden_size => latent_dims, tanh),
-	#Flux.Scale(latent_dims)
+	Flux.Scale(latent_dims)
 ) |> f64
 
 # ╔═╡ 64dc2da0-48cc-4242-bb17-449a300688c7
@@ -152,7 +153,7 @@ drift_posterior = Flux.Chain(
 	Flux.Dense(latent_dims + context_size => hidden_size, tanh),
 	Flux.Dense(hidden_size => hidden_size, tanh),
 	Flux.Dense(hidden_size => latent_dims, tanh),
-	#Flux.Scale(latent_dims)
+	Flux.Scale(latent_dims)
 ) |> f64
 
 # ╔═╡ 4a97576c-96de-458e-b881-3f5dd140fa6a
@@ -162,7 +163,7 @@ Diffusion. Prior and posterior share the same diffusion (they are not actually e
 
 # ╔═╡ a1cb11fb-ec69-4ba2-9ed1-2d1a6d24ccd9
 
-diffusion = [Flux.Chain(Flux.Dense(1 => hidden_size, softplus), Flux.Dense(hidden_size => 1, sigmoid)) |> f64 for i in 1:latent_dims]
+diffusion = [Flux.Chain(Flux.Dense(1 => 4, softplus), Flux.Dense(4 => 1, sigmoid)) |> f64 for i in 1:latent_dims]
 
 # ╔═╡ bfabcd80-fb62-410f-8710-f577852c77df
 md"""
@@ -200,7 +201,7 @@ Integrate the prior SDE in latent space to see what a run looks like:
 """
 
 # ╔═╡ 9346f569-d5f9-43cd-9302-1ee64ef9a030
-plot(NeuralSDEExploration.sample_prior(latent_sde))
+plot(NeuralSDEExploration.sample_prior(latent_sde, ps))
 
 # ╔═╡ b98200a8-bf73-42a2-a357-af56812d01c3
 md"""
@@ -243,34 +244,66 @@ plot(NeuralSDEExploration.sample_prior(latent_sde, seed=seed))
 # ╔═╡ b5c6d43c-8252-4602-8232-b3d1b0bcee33
 function cb()
 	posteriors = []
+	priors = []
+	posterior_latent = nothing
 	datas = []
 	n = 5
-	for i in 1:n
+	rng = Xoshiro(1235)
+	nums = sample(rng,1:length(timeseries),n;replace=false)
+	for i in nums
 		data = timeseries[i]
 		posterior_latent, posterior_data, logterm_, kl_divergence_, distance_ = NeuralSDEExploration.pass(latent_sde, ps, data, seed=seed+i)
-		push!(posteriors, (data.t, hcat(map(only, posterior_data))))
-		push!(datas, (data.t, data.u))
+		
+
+		push!(posteriors, (t=data.t, u=hcat(map(only, posterior_data))))
+
+		push!(datas, (t=data.t, u=data.u))
 	end
-	p = plot(vcat(posteriors...), label="posterior",linecolor=:blue,linewidth=2,legend=false)
-	plot!(p, vcat(datas...), label="data",linecolor=:green,linewidth=2,legend=false)
+	priorsamples = 100
+	for i in 1:priorsamples
+		prior_latent = NeuralSDEExploration.sample_prior(latent_sde,ps,seed=seed+i)
+		projected_prior = [latent_sde.projector_re(ps.projector_p)(x) for x in prior_latent.u]
+		push!(priors, (t=prior_latent.t, u=hcat(map(only, projected_prior))))
+	end
+	posteriorplot = plot(vcat(posteriors...), label="posterior",linewidth=2,legend=false,title="projected posterior")
+	dataplot = plot(vcat(datas...), label="data",linewidth=2,legend=false,title="data")
+	#posteriorlatentplot = plot(hcat(posterior_latent...)',title="latent posterior (1 sample)",linewidth=2)
+	priorplot = plot(vcat(priors...), label="posterior",linewidth=.2,color=:grey,legend=false,title="projected prior")
+	timeseriesplot = plot(vcat(sample(rng, timeseries, priorsamples)...),linewidth=.2,color=:grey,legend=false,title="data")
+	
+	l = @layout [a b ; c d]
+	p = plot(dataplot, posteriorplot, timeseriesplot, priorplot, layout=l)
+	#posterior_latent
 	p
+end
+
+# ╔═╡ 025b33d9-7473-4a54-a3f1-787a8650f9e7
+begin
+	pl = cb()
+	savefig(pl, "train.pdf")
+	pl
 end
 
 # ╔═╡ f4a16e34-669e-4c93-bd83-e3622a747a3a
 function train(learning_rate, num_steps)
-	sched = CosAnneal(λ0 = 0.0, λ1 = 1.0, period = 100)
+	
+	ar = 20 # annealing rate
+	sched = Loop(Sequence([Loop(x -> (10*x)/ar, ar), Loop(x -> 10.0, ar)], [ar, ar]), ar*2)
+
+	
 	opt_state = Optimisers.setup(Optimisers.Adam(learning_rate), ps)
 	anim = @animate for (step, eta) in zip(1:num_steps, sched)
-		minibatch = timeseries[sample(1:size(timeseries)[1], 5, replace=false)]
-		#if step % 10 == 0
+		minibatch = timeseries[sample(1:size(timeseries)[1], 20, replace=false)]
+		if step % 2 == 0
 		cb()
-		#end
+		end
 		function loss(ps)
-			sum([NeuralSDEExploration.loss(re(ps), ps, ts, eta) for ts in minibatch])
+			mean([NeuralSDEExploration.loss(re(ps), ps, ts, eta) for ts in minibatch])
 		end
 		l = loss(ps)
 		println("Loss: $l")
 		grads = Zygote.gradient(loss, ps)[1]
+		#return Vector(grads)
 		#grads = ForwardDiff.gradient(loss, ps)
 		#println("Grads: $grads")
 		Optimisers.update!(opt_state, ps, grads)
@@ -278,11 +311,15 @@ function train(learning_rate, num_steps)
 	return gif(anim)
 end
 
-# ╔═╡ 7e0cbf5d-ac8e-43ef-aa48-802465695f90
-cb()
+# ╔═╡ 2ada3ddd-b47a-46ff-abba-17cbb94041a2
+md"Enable training $(@bind enabletraining CheckBox())"
 
-# ╔═╡ 660d714d-5cff-4890-b626-b3a6f8d1af9d
-train(0.05, 100)
+# ╔═╡ 1a958c8e-b2eb-4ed2-a7d6-2f1a52c5ac7a
+begin
+	if enabletraining
+		train(0.035, 40)
+	end
+end
 
 # ╔═╡ Cell order:
 # ╠═67cb574d-7bd6-40d9-9dc3-d57f4226cc83
@@ -337,6 +374,7 @@ train(0.05, 100)
 # ╠═92c138d3-05f6-4a57-9b6b-08f41cb4ea55
 # ╠═3d889727-ae6d-4fa0-98ae-d3ae73fb6a3c
 # ╠═b5c6d43c-8252-4602-8232-b3d1b0bcee33
+# ╠═025b33d9-7473-4a54-a3f1-787a8650f9e7
 # ╠═f4a16e34-669e-4c93-bd83-e3622a747a3a
-# ╠═7e0cbf5d-ac8e-43ef-aa48-802465695f90
-# ╠═660d714d-5cff-4890-b626-b3a6f8d1af9d
+# ╟─2ada3ddd-b47a-46ff-abba-17cbb94041a2
+# ╠═1a958c8e-b2eb-4ed2-a7d6-2f1a52c5ac7a

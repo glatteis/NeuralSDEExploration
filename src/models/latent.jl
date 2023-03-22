@@ -57,7 +57,7 @@ function get_distributions(model_re, model_p, context)
     return [Normal{Float64}(normsandvars[2*i-1], exp(0.5e0 * normsandvars[2*i])) for i in 1:Int(length(normsandvars)/2)]
 end
 
-function sample_prior(n::LatentSDE; seed=nothing)
+function sample_prior(n::LatentSDE, ps; seed=nothing)
     if seed !== nothing
         Random.seed!(seed)
     end
@@ -66,13 +66,13 @@ function sample_prior(n::LatentSDE; seed=nothing)
     dudt_prior(u, p, t) = n.drift_prior_re(p.drift_prior_p)(u)
     dudw_diffusion(u, p, t) = vcat([n.diffusion_re(p.diffusion_p)[i]([u[i]]) for i in eachindex(u)]...)
     
-    initialdists = get_distributions(n.initial_prior_re, n.initial_prior_p, [1e0])
+    initialdists = get_distributions(n.initial_prior_re, ps.initial_prior_p, [1e0])
     z0 = [x.μ + eps * x.σ for x in initialdists]
     
     if seed !== nothing
-        prob = SDEProblem{false}(dudt_prior,dudw_diffusion,z0,n.tspan,ComponentArray(Functors.functor(n)[1]),seed=seed)
+        prob = SDEProblem{false}(dudt_prior,dudw_diffusion,z0,n.tspan,ps,seed=seed)
     else
-        prob = SDEProblem{false}(dudt_prior,dudw_diffusion,z0,n.tspan,ComponentArray(Functors.functor(n)[1]))
+        prob = SDEProblem{false}(dudt_prior,dudw_diffusion,z0,n.tspan,ps)
     end
     sense = InterpolatingAdjoint(autojacvec=ZygoteVJP())
     return solve(prob,n.args...;sensealg=sense,n.kwargs...)
