@@ -186,7 +186,8 @@ latent_sde = LatentSDE(
 	EulerHeun();
 	#SOSRA2();
 	saveat=range(tspan[1], tspan[end], datasize),
-	dt=(tspan[end]/datasize),
+	dt=(tspan[end]/1e3),
+	save_noise=true,
 )
 
 # ╔═╡ 05568880-f931-4394-b31e-922850203721
@@ -239,7 +240,7 @@ plot(hcat(posterior_latent...)')
 plot(NeuralSDEExploration.sample_posterior(latent_sde, timeseries[1], seed=seed))
 
 # ╔═╡ 3d889727-ae6d-4fa0-98ae-d3ae73fb6a3c
-plot(NeuralSDEExploration.sample_prior(latent_sde, seed=seed))
+plot(NeuralSDEExploration.sample_prior(latent_sde, ps, seed=seed))
 
 # ╔═╡ b5c6d43c-8252-4602-8232-b3d1b0bcee33
 function cb()
@@ -288,7 +289,7 @@ end
 function train(learning_rate, num_steps)
 	
 	ar = 20 # annealing rate
-	sched = Loop(Sequence([Loop(x -> (10*x)/ar, ar), Loop(x -> 10.0, ar)], [ar, ar]), ar*2)
+	sched = Loop(Sequence([Loop(x -> (50*x)/ar, ar), Loop(x -> 50.0, ar)], [ar, ar]), ar*2)
 
 	
 	opt_state = Optimisers.setup(Optimisers.Adam(learning_rate), ps)
@@ -298,7 +299,7 @@ function train(learning_rate, num_steps)
 		cb()
 		end
 		function loss(ps)
-			mean([NeuralSDEExploration.loss(re(ps), ps, ts, eta) for ts in minibatch])
+			mean([NeuralSDEExploration.loss(re(ps), ps, ts, 30.0) for ts in minibatch])
 		end
 		l = loss(ps)
 		println("Loss: $l")
@@ -317,7 +318,7 @@ md"Enable training $(@bind enabletraining CheckBox())"
 # ╔═╡ 1a958c8e-b2eb-4ed2-a7d6-2f1a52c5ac7a
 begin
 	if enabletraining
-		train(0.035, 40)
+		train(0.035, 80)
 	end
 end
 

@@ -38,7 +38,6 @@ function toy_neural_ode()
             # SOSRA2(),
             # sensealg=SciMLSensitivity.InterpolatingAdjoint(),
             # sensealg=SciMLSensitivity.ForwardDiffSensitivity(),
-            
         ),
     )
 end

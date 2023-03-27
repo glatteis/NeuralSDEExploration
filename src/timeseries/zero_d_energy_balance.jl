@@ -25,7 +25,7 @@ energy_out(t, ebm::ZeroDEnergyBalanceModel) = ebm.radiation * t^4
 
 drift(u, ebm::ZeroDEnergyBalanceModel, t) = energy_in(u[1], ebm) - energy_out(u[1], ebm)
 
-diffusion(u, ebm::ZeroDEnergyBalanceModel, t) = ebm.noise_var * u
+diffusion(u, ebm::ZeroDEnergyBalanceModel, t) = ebm.noise_var * 170.0
 
 function series(ebm::ZeroDEnergyBalanceModel, u0s, tspan, datasize)
     t = range(tspan[1], tspan[2], length=datasize)

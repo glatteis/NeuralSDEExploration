@@ -102,7 +102,8 @@ function sample_posterior(n::LatentSDE, timeseries; seed=nothing)
     else
         prob = SDEProblem{false}(dudt_posterior,dudw_diffusion,z0,n.tspan,ComponentArray(Functors.functor(n)[1]))
     end
-    sense = InterpolatingAdjoint(autojacvec=ZygoteVJP())
+    # sense = InterpolatingAdjoint(autojacvec=ZygoteVJP())
+    sense = BacksolveAdjoint(autojacvec=ZygoteVJP())
     return solve(prob,n.args...;sensealg=sense,n.kwargs...)
 end
 
@@ -123,14 +124,12 @@ function pass(n::LatentSDE, ps, timeseries; seed=nothing)
     
     initialdists_kl = [KullbackLeibler(a, b) for (a, b) in zip(initialdists_prior, initialdists_posterior)]
 
-
     z0 = [x.μ + eps * x.σ for x in initialdists_posterior]
 
     augmented_z0 = vcat(z0, zeros32(1))
 
     augmented_drift = function(u, p, t)
         timedctx = context[:, 1, searchsortedlast(timeseries.t, t)]
-        #timedctx = context[:, 1, 1]
         # Remove augmented term from input
         u = u[1 : end - 1]
 
@@ -171,7 +170,9 @@ function pass(n::LatentSDE, ps, timeseries; seed=nothing)
         prob = SDEProblem{false}(augmented_drift,augmented_diffusion,augmented_z0,n.tspan,ps)
     end
     # sense = ForwardDiffSensitivity()
-    sense = InterpolatingAdjoint(autojacvec=ReverseDiffVJP())
+    # sense = InterpolatingAdjoint(autojacvec=ReverseDiffVJP())
+
+    sense = BacksolveAdjoint(autojacvec=ZygoteVJP())
     solution = solve(prob,n.args...;sensealg=sense,n.kwargs...)
     # solution = solve(prob,n.args...;n.kwargs...)
 
