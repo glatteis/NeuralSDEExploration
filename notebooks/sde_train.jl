@@ -25,10 +25,7 @@ end
 using Optimisers, StatsBase, Zygote, ForwardDiff, Enzyme, Flux, DifferentialEquations, Functors, ComponentArrays, Distributions, ParameterSchedulers, Random
 
 # ╔═╡ d1440209-78f7-4a9a-9101-a06ad2534e5d
-using NeuralSDEExploration, Plots, PlutoUI
-
-# ╔═╡ e0d7d514-ff1e-4446-81ab-8559d65be448
-import CairoMakie
+using NeuralSDEExploration, Plots, PlutoUI, ProfileSVG
 
 # ╔═╡ 32be3e35-a529-4d16-8ba0-ec4e223ae401
 md"""
@@ -202,7 +199,7 @@ Integrate the prior SDE in latent space to see what a run looks like:
 """
 
 # ╔═╡ 9346f569-d5f9-43cd-9302-1ee64ef9a030
-plot(NeuralSDEExploration.sample_prior(latent_sde, ps))
+plot(NeuralSDEExploration.sample_prior(latent_sde, ps, b=5))
 
 # ╔═╡ b98200a8-bf73-42a2-a357-af56812d01c3
 md"""
@@ -210,10 +207,13 @@ Integrate the posterior SDE in latent space given context:
 """
 
 # ╔═╡ ce6a7357-0dd7-4581-b786-92d1eddd114d
-plot(NeuralSDEExploration.sample_posterior(latent_sde, timeseries[1]))
+plot(NeuralSDEExploration.sample_posterior(latent_sde, timeseries[1:1]))
 
 # ╔═╡ 7a3e92cb-51b6-455f-b6dd-ff90896a9ffb
+# ╠═╡ disabled = true
+#=╠═╡
 CairoMakie.streamplot((x, y) -> CairoMakie.Point2(vcat([latent_sde.diffusion[i]([[x,y][i]]) for i in eachindex([x,y])]...)), (-4, 4), (-4, 4))
+  ╠═╡ =#
 
 # ╔═╡ 26885b24-df80-4fbf-9824-e175688f1322
 @bind seed Slider(1:1000)
@@ -221,23 +221,29 @@ CairoMakie.streamplot((x, y) -> CairoMakie.Point2(vcat([latent_sde.diffusion[i](
 # ╔═╡ 5f56cc7c-861e-41a4-b783-848623b94bf9
 @bind ti Slider(1:length(timeseries))
 
+# ╔═╡ c5e2a097-7433-4b06-9549-86ecdb0e5c12
+@code_warntype NeuralSDEExploration.pass(latent_sde, ps, timeseries[ti:ti+10]; seed=seed)
+
 # ╔═╡ 557b968f-b409-4bd9-8460-edef0ee8f2e6
-posterior_latent, posterior_data, logterm_, kl_divergence_, distance_ = NeuralSDEExploration.pass(latent_sde, ps, timeseries[ti], seed=seed)
+@profview posterior_latent, posterior_data, logterm_, kl_divergence_, distance_ = NeuralSDEExploration.pass(latent_sde, ps, timeseries[ti:ti+10]; seed=seed)
+
+# ╔═╡ 2b90fe00-a530-44a2-b70c-0eb6cce156a6
+ProfileSVG.view(maxdepth=400, yflip=true)
+
+# ╔═╡ 722adfda-56a5-495f-80fb-9d0234f9fea0
+eachindex([1 2;3 4])
 
 # ╔═╡ dabf2a1f-ec78-4942-973f-4dbf9037ee7b
-plot(hcat(logterm_...)', label="KL-Divergence")
+plot(logterm_[1, :, :]', label="KL-Divergence")
 
 # ╔═╡ 38324c42-e5c7-4b59-8129-0e4c17ab5bf1
-begin
-	p = plot(hcat(map(only, posterior_data)), label="posterior")
-	plot!(p, timeseries[1].u, label="data")
-end
+plot(posterior_data[1, :, :]', label="posterior")
 
 # ╔═╡ 08021ed6-ac31-4829-9f21-f046af73d5a3
-plot(hcat(posterior_latent...)')
+plot(posterior_latent[:, 1, :]')
 
 # ╔═╡ 92c138d3-05f6-4a57-9b6b-08f41cb4ea55
-plot(NeuralSDEExploration.sample_posterior(latent_sde, timeseries[1], seed=seed))
+plot(NeuralSDEExploration.sample_posterior(latent_sde, timeseries[1:1], seed=seed))
 
 # ╔═╡ 3d889727-ae6d-4fa0-98ae-d3ae73fb6a3c
 plot(NeuralSDEExploration.sample_prior(latent_sde, ps, seed=seed))
@@ -251,29 +257,22 @@ function cb()
 	n = 5
 	rng = Xoshiro(1235)
 	nums = sample(rng,1:length(timeseries),n;replace=false)
-	for i in nums
-		data = timeseries[i]
-		posterior_latent, posterior_data, logterm_, kl_divergence_, distance_ = NeuralSDEExploration.pass(latent_sde, ps, data, seed=seed+i)
-		
 
-		push!(posteriors, (t=data.t, u=hcat(map(only, posterior_data))))
-
-		push!(datas, (t=data.t, u=data.u))
-	end
+	posterior_latent, posterior_data, logterm_, kl_divergence_, distance_ = NeuralSDEExploration.pass(latent_sde, ps, timeseries[nums], seed=seed+i)
+	
 	priorsamples = 100
-	for i in 1:priorsamples
-		prior_latent = NeuralSDEExploration.sample_prior(latent_sde,ps,seed=seed+i)
-		projected_prior = [latent_sde.projector_re(ps.projector_p)(x) for x in prior_latent.u]
-		push!(priors, (t=prior_latent.t, u=hcat(map(only, projected_prior))))
-	end
-	posteriorplot = plot(vcat(posteriors...), label="posterior",linewidth=2,legend=false,title="projected posterior")
-	dataplot = plot(vcat(datas...), label="data",linewidth=2,legend=false,title="data")
-	#posteriorlatentplot = plot(hcat(posterior_latent...)',title="latent posterior (1 sample)",linewidth=2)
-	priorplot = plot(vcat(priors...), label="posterior",linewidth=.2,color=:grey,legend=false,title="projected prior")
-	timeseriesplot = plot(vcat(sample(rng, timeseries, priorsamples)...),linewidth=.2,color=:grey,legend=false,title="data")
+	prior_latent = NeuralSDEExploration.sample_prior(latent_sde,ps,seed=seed+i;b=priorsamples)
+	projected_prior = vcat([latent_sde.projector_re(ps.projector_p)(x) for x in prior_latent.u]...)
+
+	posteriorplot = plot(posterior_data[1, :,:]',linewidth=2,legend=false,title="projected posterior")
+	dataplot = plot(timeseries[nums],linewidth=2,legend=false,title="data")
+	priorplot = plot(projected_prior, linewidth=.2,color=:grey,legend=false,title="projected prior")
+	
+	timeseriesplot = plot(sample(rng, timeseries, priorsamples),linewidth=.2,color=:grey,legend=false,title="data")
 	
 	l = @layout [a b ; c d]
 	p = plot(dataplot, posteriorplot, timeseriesplot, priorplot, layout=l)
+	#p = plot(timeseriesplot)
 	#posterior_latent
 	p
 end
@@ -295,11 +294,11 @@ function train(learning_rate, num_steps)
 	opt_state = Optimisers.setup(Optimisers.Adam(learning_rate), ps)
 	anim = @animate for (step, eta) in zip(1:num_steps, sched)
 		minibatch = timeseries[sample(1:size(timeseries)[1], 20, replace=false)]
-		if step % 2 == 0
-		cb()
+		if step % 10 == 0
+			cb()
 		end
 		function loss(ps)
-			mean([NeuralSDEExploration.loss(re(ps), ps, ts, 30.0) for ts in minibatch])
+			sum(NeuralSDEExploration.loss(latent_sde, ps, minibatch, 30.0))
 		end
 		l = loss(ps)
 		println("Loss: $l")
@@ -318,7 +317,7 @@ md"Enable training $(@bind enabletraining CheckBox())"
 # ╔═╡ 1a958c8e-b2eb-4ed2-a7d6-2f1a52c5ac7a
 begin
 	if enabletraining
-		train(0.035, 80)
+		train(0.035, 1)
 	end
 end
 
@@ -326,7 +325,6 @@ end
 # ╠═67cb574d-7bd6-40d9-9dc3-d57f4226cc83
 # ╠═b6abba94-db07-4095-98c9-443e31832e7d
 # ╠═d1440209-78f7-4a9a-9101-a06ad2534e5d
-# ╠═e0d7d514-ff1e-4446-81ab-8559d65be448
 # ╟─32be3e35-a529-4d16-8ba0-ec4e223ae401
 # ╠═f74dd752-485b-4203-9d72-c56e55a3ef76
 # ╟─cc2418c2-c355-4291-b5d7-d9019787834f
@@ -368,7 +366,10 @@ end
 # ╠═7a3e92cb-51b6-455f-b6dd-ff90896a9ffb
 # ╠═26885b24-df80-4fbf-9824-e175688f1322
 # ╠═5f56cc7c-861e-41a4-b783-848623b94bf9
+# ╠═c5e2a097-7433-4b06-9549-86ecdb0e5c12
 # ╠═557b968f-b409-4bd9-8460-edef0ee8f2e6
+# ╠═2b90fe00-a530-44a2-b70c-0eb6cce156a6
+# ╠═722adfda-56a5-495f-80fb-9d0234f9fea0
 # ╠═dabf2a1f-ec78-4942-973f-4dbf9037ee7b
 # ╠═38324c42-e5c7-4b59-8129-0e4c17ab5bf1
 # ╠═08021ed6-ac31-4829-9f21-f046af73d5a3
