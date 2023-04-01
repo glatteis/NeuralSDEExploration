@@ -1,4 +1,4 @@
-using Flux, Distributions, InformationGeometry, Functors, ChainRulesCore
+using Flux, Distributions, InformationGeometry, Functors, ChainRulesCore, DifferentialEquations
 export LatentSDE, sample_prior
 
 struct LatentSDE{N1,N2,N3,N4,N5,N6,N7,R1,R2,R3,R4,R5,R6,R7,P1,P2,P3,P4,P5,P6,P7,T,A,K}
@@ -83,6 +83,12 @@ function sample_prior(n::LatentSDE, ps; b=1, seed=nothing)
     return solve(prob,n.args...;sensealg=sense,n.kwargs...)
 end
 
+# from https://github.com/google-research/torchsde/blob/master/examples/latent_sde.py
+function stable_divide(a, b, eps=1e-7)
+    b = map(x -> abs(x) <= eps ? eps * sign(x) : x, b)
+    a ./ b
+end
+
 function sample_posterior(n::LatentSDE, timeseries; seed=nothing)
     if seed !== nothing
         Random.seed!(seed)
@@ -126,7 +132,7 @@ function pass(n::LatentSDE, ps, timeseries; seed=nothing)
         reshape([only(rand(Normal{Float64}(0e0, 1e0), 1)) for i in eachindex(timeseries)], 1, :)
     end
     
-    tsmatrix = hcat([reshape(ts.u, 1, 1, :) for ts in timeseries]...)
+    tsmatrix = reduce(hcat, [reshape(ts.u, 1, 1, :) for ts in timeseries])
     
     Flux.reset!(n.encoder)
     context = n.encoder_re(n.encoder_p)(tsmatrix)
@@ -134,56 +140,69 @@ function pass(n::LatentSDE, ps, timeseries; seed=nothing)
     initialdists_prior = get_distributions(n.initial_prior_re, ps.initial_prior_p, [1e0])
     initialdists_posterior = get_distributions(n.initial_posterior_re, n.initial_posterior_p, context[:, :, 1])
     
-    initialdists_kl = hcat([reshape([KullbackLeibler(a, b) for (a, b) in zip(initialdists_prior, initialdists_posterior[:, batch])], :, 1) for batch in eachindex(timeseries)]...)
+    initialdists_kl = reduce(hcat, [reshape([KullbackLeibler(a, b) for (a, b) in zip(initialdists_prior, initialdists_posterior[:, batch])], :, 1) for batch in eachindex(timeseries)])
 
-    z0 = hcat([reshape([x.μ + eps[1, batch] * x.σ for x in initialdists_posterior[:, batch]], :, 1) for batch in eachindex(timeseries)]...)
+    z0 = reduce(hcat, [reshape([x.μ + eps[1, batch] * x.σ for x in initialdists_posterior[:, batch]], :, 1) for batch in eachindex(timeseries)])
 
     augmented_z0 = vcat(z0, zeros(1, length(z0[1, :])))
 
-    augmented_drift = function(u, p, t)
-        timedctx = context[:, :, min(searchsortedfirst(timeseries[1].t, t), length(context[1, 1, :]))]
+    augmented_drift = function(u, params, t)
+        p = params.p
+        batch = params.batch
         # Remove augmented term from input
-        u = u[1:end-1, :]
-
-        posterior_net_input = hcat([vcat(u[:, batch], vcat(timedctx[:, batch]...)) for batch in eachindex(timeseries)]...)
-
+        u = u[1:end-1]
+        
+        # Get the context for the posterior at the current time
+        time_index = min(searchsortedfirst(timeseries[1].t, t), length(context[1, 1, :]))
+        timedctx = context[:, Int(batch), time_index]
+        
+        posterior_net_input = vcat(u, timedctx)
+        
         prior = n.drift_prior_re(p.drift_prior_p)(u)
         posterior = n.drift_posterior_re(p.drift_posterior_p)(posterior_net_input)
-        diffusion = hcat([vcat([n.diffusion_re(p.diffusion_p)[i]([u[i, batch]]) for i in eachindex(u[:, batch])]...) for batch in eachindex(timeseries)]...)
-
-        # from https://github.com/google-research/torchsde/blob/master/examples/latent_sde.py
-        function stable_divide(a, b, eps=1e-7)
-            b = map(x -> abs(x) <= eps ? eps * sign(x) : x, b)
-            a ./ b
-        end
+        diffusion = reduce(vcat, n.diffusion_re(p.diffusion_p)[i](u[i:i]) for i in eachindex(u))
 
         u_term = stable_divide(posterior .- prior, diffusion)
         augmented_term = 0.5e0 * sum(abs2, u_term; dims=[1])
 
-        return vcat(posterior, augmented_term)
+        return_val = vcat(posterior, augmented_term)
+        return return_val
     end
-    augmented_diffusion = function(u, p, t)
-        u = u[1:end-1, :]
-        diffusion = hcat([vcat([n.diffusion_re(p.diffusion_p)[i]([u[i, batch]]) for i in eachindex(u[:, batch])]...) for batch in eachindex(timeseries)]...)
-        return vcat(diffusion, zeros(1, length(u[1, :])))
+    augmented_diffusion = function(u, params, t)
+        p = params.p
+
+        u = u[1:end-1]
+        diffusion = reduce(vcat, n.diffusion_re(p.diffusion_p)[i](u[i:i]) for i in eachindex(u))
+        return_val = vcat(diffusion, zeros(1))
+        return return_val
     end
 
     if seed !== nothing
-        prob = SDEProblem{false}(augmented_drift,augmented_diffusion,augmented_z0,n.tspan,ps,seed=seed)
+        prob = SDEProblem{false}(augmented_drift,augmented_diffusion,augmented_z0[:, 1],n.tspan,ComponentArray(batch=1,p=ps),seed=seed)
     else
-        prob = SDEProblem{false}(augmented_drift,augmented_diffusion,augmented_z0,n.tspan,ps)
+        prob = SDEProblem{false}(augmented_drift,augmented_diffusion,augmented_z0[:, 1],n.tspan,ComponentArray(batch=1,p=ps))
     end
+
+    function prob_func(prob, batch, repeat)
+        # DifferentialEquations.remake(prob; u0 = augmented_z0[:, batch], p = ComponentArray(batch=batch, p=prob.p.p))
+        DifferentialEquations.remake(prob; u0 = augmented_z0[:, batch])
+    end
+    
+    ensemble = EnsembleProblem(prob, output_func=(sol, i) -> (sol, false), prob_func=prob_func)
+
     # sense = ForwardDiffSensitivity()
-    sense = InterpolatingAdjoint(autojacvec=ReverseDiffVJP())
+    sense = InterpolatingAdjoint(autojacvec=ZygoteVJP())
 
     # sense = BacksolveAdjoint(autojacvec=ZygoteVJP())
-    solution = solve(prob,n.args...;sensealg=sense,n.kwargs...)
+    solution = solve(ensemble,n.args...;trajectories=length(timeseries),sensealg=sense,n.kwargs...)
+   
+    batchcat(x, y) = cat(x, y; dims = 3)
 
-    posterior = cat([u[1 : end - 1, :] for u in solution.u]..., dims=3)
-    logterm = cat([u[end : end, :] for u in solution.u]..., dims=3)
+    posterior = reduce(hcat, [reduce(batchcat, [reshape(u[1:end-1], :, 1, 1) for u in batch.u]) for batch in solution.u])
+    logterm = reduce(hcat, [reduce(batchcat, [reshape(u[end:end], :, 1, 1) for u in batch.u]) for batch in solution.u])
     kl_divergence = 10.0 * sum(initialdists_kl, dims=1) .+ logterm[:, :, end]
 
-    projected_ts = cat([n.projector_re(ps.projector_p)(x) for x in eachslice(posterior, dims=3)]..., dims=3)
+    projected_ts = reduce((x, y) -> cat(x, y; dims = 3), [n.projector_re(ps.projector_p)(x) for x in eachslice(posterior, dims=3)])
     
     likelihoods = sum([loglikelihood(Laplace(y, 0.05), x) for (x,y) in zip(tsmatrix, projected_ts)], dims=3)[:, :, 1]
         

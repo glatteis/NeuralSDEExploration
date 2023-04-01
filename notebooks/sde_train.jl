@@ -27,6 +27,12 @@ using Optimisers, StatsBase, Zygote, ForwardDiff, Enzyme, Flux, DifferentialEqua
 # ╔═╡ d1440209-78f7-4a9a-9101-a06ad2534e5d
 using NeuralSDEExploration, Plots, PlutoUI, ProfileSVG
 
+# ╔═╡ 080d6dd1-0aa6-4bee-bf50-20d8ca890145
+begin
+	using SciMLBase
+	methods(SciMLBase.is_diagonal_noise)
+end
+
 # ╔═╡ 32be3e35-a529-4d16-8ba0-ec4e223ae401
 md"""
 Let's train a Neural SDE from a modified form of the simple zero-dimensional energy balance model. First, let's just instantiate the predefined model from the package...
@@ -184,7 +190,6 @@ latent_sde = LatentSDE(
 	#SOSRA2();
 	saveat=range(tspan[1], tspan[end], datasize),
 	dt=(tspan[end]/1e3),
-	save_noise=true,
 )
 
 # ╔═╡ 05568880-f931-4394-b31e-922850203721
@@ -209,29 +214,14 @@ Integrate the posterior SDE in latent space given context:
 # ╔═╡ ce6a7357-0dd7-4581-b786-92d1eddd114d
 plot(NeuralSDEExploration.sample_posterior(latent_sde, timeseries[1:1]))
 
-# ╔═╡ 7a3e92cb-51b6-455f-b6dd-ff90896a9ffb
-# ╠═╡ disabled = true
-#=╠═╡
-CairoMakie.streamplot((x, y) -> CairoMakie.Point2(vcat([latent_sde.diffusion[i]([[x,y][i]]) for i in eachindex([x,y])]...)), (-4, 4), (-4, 4))
-  ╠═╡ =#
-
 # ╔═╡ 26885b24-df80-4fbf-9824-e175688f1322
 @bind seed Slider(1:1000)
 
 # ╔═╡ 5f56cc7c-861e-41a4-b783-848623b94bf9
 @bind ti Slider(1:length(timeseries))
 
-# ╔═╡ c5e2a097-7433-4b06-9549-86ecdb0e5c12
-@code_warntype NeuralSDEExploration.pass(latent_sde, ps, timeseries[ti:ti+10]; seed=seed)
-
-# ╔═╡ 557b968f-b409-4bd9-8460-edef0ee8f2e6
-@profview posterior_latent, posterior_data, logterm_, kl_divergence_, distance_ = NeuralSDEExploration.pass(latent_sde, ps, timeseries[ti:ti+10]; seed=seed)
-
-# ╔═╡ 2b90fe00-a530-44a2-b70c-0eb6cce156a6
-ProfileSVG.view(maxdepth=400, yflip=true)
-
-# ╔═╡ 722adfda-56a5-495f-80fb-9d0234f9fea0
-eachindex([1 2;3 4])
+# ╔═╡ 88fa1b08-f0d4-4fcf-89c2-8a9f33710d4c
+posterior_latent, posterior_data, logterm_, kl_divergence_, distance_ = NeuralSDEExploration.pass(latent_sde, ps, timeseries[ti:ti+10]; seed=seed)
 
 # ╔═╡ dabf2a1f-ec78-4942-973f-4dbf9037ee7b
 plot(logterm_[1, :, :]', label="KL-Divergence")
@@ -366,10 +356,10 @@ end
 # ╠═7a3e92cb-51b6-455f-b6dd-ff90896a9ffb
 # ╠═26885b24-df80-4fbf-9824-e175688f1322
 # ╠═5f56cc7c-861e-41a4-b783-848623b94bf9
-# ╠═c5e2a097-7433-4b06-9549-86ecdb0e5c12
+# ╟─c5e2a097-7433-4b06-9549-86ecdb0e5c12
 # ╠═557b968f-b409-4bd9-8460-edef0ee8f2e6
 # ╠═2b90fe00-a530-44a2-b70c-0eb6cce156a6
-# ╠═722adfda-56a5-495f-80fb-9d0234f9fea0
+# ╠═88fa1b08-f0d4-4fcf-89c2-8a9f33710d4c
 # ╠═dabf2a1f-ec78-4942-973f-4dbf9037ee7b
 # ╠═38324c42-e5c7-4b59-8129-0e4c17ab5bf1
 # ╠═08021ed6-ac31-4829-9f21-f046af73d5a3
@@ -380,3 +370,4 @@ end
 # ╠═f4a16e34-669e-4c93-bd83-e3622a747a3a
 # ╟─2ada3ddd-b47a-46ff-abba-17cbb94041a2
 # ╠═1a958c8e-b2eb-4ed2-a7d6-2f1a52c5ac7a
+# ╠═080d6dd1-0aa6-4bee-bf50-20d8ca890145
