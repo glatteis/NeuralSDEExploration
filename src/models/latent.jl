@@ -89,7 +89,7 @@ function stable_divide(a, b, eps=1e-7)
     a ./ b
 end
 
-function sample_posterior(n::LatentSDE, timeseries; seed=nothing)
+function sample_posterior(n::LatentSDE, ps, timeseries; seed=nothing)
     if seed !== nothing
         Random.seed!(seed)
     end
@@ -110,9 +110,9 @@ function sample_posterior(n::LatentSDE, timeseries; seed=nothing)
     dudw_diffusion(u, p, t) = mapslices(row -> vcat([n.diffusion_re(p.diffusion_p)[i]([row[i]]) for i in eachindex(row)]...), u; dims=[1])
 
     if seed !== nothing
-        prob = SDEProblem{false}(dudt_posterior,dudw_diffusion,z0,n.tspan,ComponentArray(Functors.functor(n)[1]),seed=seed)
+        prob = SDEProblem{false}(dudt_posterior,dudw_diffusion,z0,n.tspan,ps,seed=seed)
     else
-        prob = SDEProblem{false}(dudt_posterior,dudw_diffusion,z0,n.tspan,ComponentArray(Functors.functor(n)[1]))
+        prob = SDEProblem{false}(dudt_posterior,dudw_diffusion,z0,n.tspan,ps)
     end
     sense = InterpolatingAdjoint(autojacvec=ZygoteVJP())
     # sense = BacksolveAdjoint(autojacvec=ZygoteVJP())
@@ -133,9 +133,9 @@ function pass(n::LatentSDE, ps, timeseries; seed=nothing)
     end
     
     tsmatrix = reduce(hcat, [reshape(ts.u, 1, 1, :) for ts in timeseries])
-    
     Flux.reset!(n.encoder)
     context = n.encoder_re(n.encoder_p)(tsmatrix)
+    # println("context: $context")
 
     initialdists_prior = get_distributions(n.initial_prior_re, ps.initial_prior_p, [1e0])
     initialdists_posterior = get_distributions(n.initial_posterior_re, n.initial_posterior_p, context[:, :, 1])
@@ -145,71 +145,79 @@ function pass(n::LatentSDE, ps, timeseries; seed=nothing)
     z0 = reduce(hcat, [reshape([x.μ + eps[1, batch] * x.σ for x in initialdists_posterior[:, batch]], :, 1) for batch in eachindex(timeseries)])
 
     augmented_z0 = vcat(z0, zeros(1, length(z0[1, :])))
+    
+    augmented_drift = function(batch)
+        return function(u, p, t)
+            # Remove augmented term from input
+            u = u[1:end-1]
+            
+            # Get the context for the posterior at the current time
+            time_index = min(searchsortedfirst(timeseries[1].t, t), length(context[1, 1, :]))
+            timedctx = context[:, batch, time_index]
+            
+            posterior_net_input = vcat(u, timedctx)
+            
+            prior = n.drift_prior_re(p.drift_prior_p)(u)
+            posterior = n.drift_posterior_re(p.drift_posterior_p)(posterior_net_input)
+            # println(p.drift_posterior_p)
+            # println("$posterior_net_input => $posterior")
+            diffusion = reduce(vcat, n.diffusion_re(p.diffusion_p)[i](u[i:i]) for i in eachindex(u))
 
-    augmented_drift = function(u, params, t)
-        p = params.p
-        batch = params.batch
-        # Remove augmented term from input
-        u = u[1:end-1]
-        
-        # Get the context for the posterior at the current time
-        time_index = min(searchsortedfirst(timeseries[1].t, t), length(context[1, 1, :]))
-        timedctx = context[:, Int(batch), time_index]
-        
-        posterior_net_input = vcat(u, timedctx)
-        
-        prior = n.drift_prior_re(p.drift_prior_p)(u)
-        posterior = n.drift_posterior_re(p.drift_posterior_p)(posterior_net_input)
-        diffusion = reduce(vcat, n.diffusion_re(p.diffusion_p)[i](u[i:i]) for i in eachindex(u))
+            u_term = stable_divide(posterior .- prior, diffusion)
+            augmented_term = 0.5e0 * sum(abs2, u_term; dims=[1])
 
-        u_term = stable_divide(posterior .- prior, diffusion)
-        augmented_term = 0.5e0 * sum(abs2, u_term; dims=[1])
-
-        return_val = vcat(posterior, augmented_term)
-        return return_val
+            return_val = vcat(posterior, augmented_term)
+            # println("batch $batch, time $t, index $time_index, context $timedctx, u $u, return $return_val")
+            return return_val
+        end
     end
-    augmented_diffusion = function(u, params, t)
-        p = params.p
-
+    augmented_diffusion = function(u, p, t)
         u = u[1:end-1]
         diffusion = reduce(vcat, n.diffusion_re(p.diffusion_p)[i](u[i:i]) for i in eachindex(u))
         return_val = vcat(diffusion, zeros(1))
         return return_val
     end
-
-    if seed !== nothing
-        prob = SDEProblem{false}(augmented_drift,augmented_diffusion,augmented_z0[:, 1],n.tspan,ComponentArray(batch=1,p=ps),seed=seed)
-    else
-        prob = SDEProblem{false}(augmented_drift,augmented_diffusion,augmented_z0[:, 1],n.tspan,ComponentArray(batch=1,p=ps))
-    end
+    
+    # println("augmented_z0: $augmented_z0")
 
     function prob_func(prob, batch, repeat)
-        # DifferentialEquations.remake(prob; u0 = augmented_z0[:, batch], p = ComponentArray(batch=batch, p=prob.p.p))
-        DifferentialEquations.remake(prob; u0 = augmented_z0[:, batch])
+        if seed !== nothing
+            return SDEProblem{false}(augmented_drift(Int(batch)),augmented_diffusion,augmented_z0[:, Int(batch)],n.tspan,ps,seed=seed+Int(batch))
+        else
+            return SDEProblem{false}(augmented_drift(Int(batch)),augmented_diffusion,augmented_z0[:, Int(batch)],n.tspan,ps)
+        end
+        # DifferentialEquations.remake(prob; f = SDEFunction{false}(augmented_drift(Int(batch)),augmented_diffusion), u0 = augmented_z0[:, batch])
     end
-    
-    ensemble = EnsembleProblem(prob, output_func=(sol, i) -> (sol, false), prob_func=prob_func)
+
+    ensemble = EnsembleProblem(nothing, output_func=(sol, i) -> (sol, false), prob_func=prob_func)
 
     # sense = ForwardDiffSensitivity()
     sense = InterpolatingAdjoint(autojacvec=ZygoteVJP())
 
     # sense = BacksolveAdjoint(autojacvec=ZygoteVJP())
-    solution = solve(ensemble,n.args...;trajectories=length(timeseries),sensealg=sense,n.kwargs...)
+    solution = solve(ensemble,n.args...,EnsembleSerial();trajectories=length(timeseries),sensealg=sense,n.kwargs...)
    
     batchcat(x, y) = cat(x, y; dims = 3)
+    
+    # println([u[2] for u in solution.u])
 
     posterior = reduce(hcat, [reduce(batchcat, [reshape(u[1:end-1], :, 1, 1) for u in batch.u]) for batch in solution.u])
     logterm = reduce(hcat, [reduce(batchcat, [reshape(u[end:end], :, 1, 1) for u in batch.u]) for batch in solution.u])
-    kl_divergence = 10.0 * sum(initialdists_kl, dims=1) .+ logterm[:, :, end]
+    kl_divergence = sum(initialdists_kl, dims=1) .+ logterm[:, :, end]
 
-    projected_ts = reduce((x, y) -> cat(x, y; dims = 3), [n.projector_re(ps.projector_p)(x) for x in eachslice(posterior, dims=3)])
-    
-    likelihoods = sum([loglikelihood(Laplace(y, 0.05), x) for (x,y) in zip(tsmatrix, projected_ts)], dims=3)[:, :, 1]
+    projected_z0 = n.projector_re(ps.projector_p)(z0)
+    projected_ts = reduce(batchcat, [n.projector_re(ps.projector_p)(x) for x in eachslice(posterior, dims=3)])
         
+    logp(x, y) = loglikelihood(Normal(y, 0.05), x)
+    likelihoods_initial = [logp(x, y) for (x,y) in zip(tsmatrix[:, :, 1], projected_z0)]
+    likelihoods_time = sum([logp(x, y) for (x,y) in zip(tsmatrix, projected_ts)], dims=3)[:, :, 1]
+    likelihoods = likelihoods_initial .+ likelihoods_time
+    
     return posterior, projected_ts, logterm, kl_divergence, likelihoods
 end
 
 function loss(n::LatentSDE, ps, timeseries, beta; seed=nothing)
     posterior, projected_ts, logterm, kl_divergence, distance = pass(n, ps, timeseries, seed=seed)
     return -distance .+ (beta * kl_divergence)
+    # return -distance
 end

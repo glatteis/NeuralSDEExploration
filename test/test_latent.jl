@@ -11,7 +11,7 @@ using Zygote
     drift_prior = Flux.Scale([1.0, 1.0], false) |> f64
     drift_posterior = Flux.Dense(ones(2, 3), false) |> f64
     diffusion = [Flux.Dense(1 => 1, bias=[0.01], init=zeros) |> f64 for i in 1:2]
-    encoder = Flux.RNN(1 => 1, (x) -> 1.0; init=ones) |> f64
+    encoder = Flux.RNN(1 => 1, (x) -> x; init=ones) |> f64
     projector = Flux.Dense(2 => 1; bias=false, init=ones) |> f64
 
     tspan = (0.0, 5.0)
@@ -33,11 +33,12 @@ using Zygote
     ps_, re = Functors.functor(latent_sde)
     ps = ComponentArray(ps_)
 
-    input = (t=range(tspan[1],tspan[end],datasize),u=repeat([1.0], datasize))
+    input1 = (t=range(tspan[1],tspan[end],datasize),u=repeat([1.0], datasize))
+    input2 = (t=range(tspan[1],tspan[end],datasize),u=repeat([0.5], datasize))
     
     seed = 0
 
-    posterior_latent, posterior_data, logterm_, kl_divergence_, distance_ = NeuralSDEExploration.pass(latent_sde, ps, [input, input], seed=seed)
+    posterior_latent, posterior_data, logterm_, kl_divergence_, distance_ = NeuralSDEExploration.pass(latent_sde, ps, [input1, input2], seed=seed)
     
     # p = plot(posterior_latent)
     # savefig(p, "posterior_latent.pdf")
