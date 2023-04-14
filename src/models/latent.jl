@@ -140,7 +140,7 @@ function pass(n::LatentSDE, ps, timeseries; seed=nothing)
     initialdists_prior = get_distributions(n.initial_prior_re, ps.initial_prior_p, [1e0])
     initialdists_posterior = get_distributions(n.initial_posterior_re, n.initial_posterior_p, context[:, :, 1])
     
-    initialdists_kl = reduce(hcat, [reshape([KullbackLeibler(a, b) for (a, b) in zip(initialdists_prior, initialdists_posterior[:, batch])], :, 1) for batch in eachindex(timeseries)])
+    initialdists_kl = reduce(hcat, [reshape([KullbackLeibler(a, b) for (a, b) in zip(initialdists_posterior[:, batch], initialdists_prior)], :, 1) for batch in eachindex(timeseries)])
 
     z0 = reduce(hcat, [reshape([x.μ + eps[1, batch] * x.σ for x in initialdists_posterior[:, batch]], :, 1) for batch in eachindex(timeseries)])
 
@@ -177,7 +177,7 @@ function pass(n::LatentSDE, ps, timeseries; seed=nothing)
         return_val = vcat(diffusion, zeros(1))
         return return_val
     end
-    
+
     # println("augmented_z0: $augmented_z0")
 
     function prob_func(prob, batch, repeat)
