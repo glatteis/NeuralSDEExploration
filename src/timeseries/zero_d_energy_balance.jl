@@ -14,7 +14,7 @@ end
 ZeroDEnergyBalanceModelNonStochastic() = ZeroDEnergyBalanceModel(0.5, 0.4, 1363, 0.6 * 5.67e-8, 0)
 
 # modified a bit for some nice tipping
-ZeroDEnergyBalanceModel() = ZeroDEnergyBalanceModel(0.425, 0.4, 1363, 0.6 * 5.67e-8, 0.08)
+ZeroDEnergyBalanceModel() = ZeroDEnergyBalanceModel(0.425, 0.4, 1363, 0.6 * 5.67e-8, 0.1)
 
 # albedo decreases with increasing temperature
 albedo(t, ebm::ZeroDEnergyBalanceModel) = ebm.albedo_0 - (ebm.albedo_var / 2) * tanh(t - 273)
