@@ -119,7 +119,7 @@ function sample_posterior(n::LatentSDE, timeseries; seed=nothing)
     return solve(prob,n.args...;sensealg=sense,n.kwargs...)
 end
 
-function pass(n::LatentSDE, ps, timeseries; seed=nothing)
+function pass(n::LatentSDE, ps, timeseries; sense=InterpolatingAdjoint(autojacvec=ZygoteVJP()), seed=nothing)
     # We have a lot of hcats and vcats and reshapes in here. This is because we
     # are using matrices with the following dimensions:
     # 1 = latent space dimension
@@ -191,7 +191,6 @@ function pass(n::LatentSDE, ps, timeseries; seed=nothing)
     ensemble = EnsembleProblem(prob, output_func=(sol, i) -> (sol, false), prob_func=prob_func)
 
     # sense = ForwardDiffSensitivity()
-    sense = InterpolatingAdjoint(autojacvec=ZygoteVJP())
 
     # sense = BacksolveAdjoint(autojacvec=ZygoteVJP())
     solution = solve(ensemble,n.args...;trajectories=length(timeseries),sensealg=sense,n.kwargs...)
@@ -209,7 +208,7 @@ function pass(n::LatentSDE, ps, timeseries; seed=nothing)
     return posterior, projected_ts, logterm, kl_divergence, likelihoods
 end
 
-function loss(n::LatentSDE, ps, timeseries, beta; seed=nothing)
-    posterior, projected_ts, logterm, kl_divergence, distance = pass(n, ps, timeseries, seed=seed)
+function loss(n::LatentSDE, ps, timeseries, beta; sense=InterpolatingAdjoint(autojacvec=ZygoteVJP()), seed=nothing)
+    posterior, projected_ts, logterm, kl_divergence, distance = pass(n, ps, timeseries, sense=sense, seed=seed)
     return -distance .+ (beta * kl_divergence)
 end
