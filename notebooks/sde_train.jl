@@ -209,6 +209,9 @@ latent_sde = LatentSDE(
 # ╔═╡ 05568880-f931-4394-b31e-922850203721
 ps_, re = Functors.functor(latent_sde)
 
+# ╔═╡ 0af50917-abf4-4d73-b2d6-3873b73b2347
+ps = ComponentArray(ps_)
+
 # ╔═╡ 9ea12ddb-ff8a-4c16-b2a5-8b7603f262a3
 md"""
 Integrate the prior SDE in latent space to see what a run looks like:
@@ -566,6 +569,7 @@ show(IOContext(stdout, :limit=>false), MIME"text/plain"(), ps)
 # ╠═f0486891-b8b3-4a39-91df-1389d6f799e1
 # ╠═001c318e-b7a6-48a5-bfd5-6dd0368873ac
 # ╠═05568880-f931-4394-b31e-922850203721
+# ╠═0af50917-abf4-4d73-b2d6-3873b73b2347
 # ╟─9ea12ddb-ff8a-4c16-b2a5-8b7603f262a3
 # ╠═9346f569-d5f9-43cd-9302-1ee64ef9a030
 # ╟─b98200a8-bf73-42a2-a357-af56812d01c3
