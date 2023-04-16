@@ -16,9 +16,11 @@ end
 
 # ╔═╡ 67cb574d-7bd6-40d9-9dc3-d57f4226cc83
 begin
-	import Pkg
-	Pkg.activate("..")
-	using Revise
+	if @isdefined PlutoRunner  # running inside Pluto
+		import Pkg
+		Pkg.activate("..")
+		using Revise
+	end
 end
 
 # ╔═╡ b6abba94-db07-4095-98c9-443e31832e7d
@@ -28,7 +30,11 @@ using Optimisers, StatsBase, Zygote, ForwardDiff, Enzyme, Flux, DifferentialEqua
 using NeuralSDEExploration, Plots, PlutoUI, ProfileSVG
 
 # ╔═╡ db557c9a-24d6-4008-8225-4b8867ee93db
-Revise.retry()
+begin
+	if @isdefined PlutoRunner  # running inside Pluto
+		Revise.retry()
+	end
+end
 
 # ╔═╡ 32be3e35-a529-4d16-8ba0-ec4e223ae401
 md"""
@@ -288,7 +294,6 @@ loss(ps, timeseries[sample(1:size(timeseries)[1], 5, replace=false)])
 
 # ╔═╡ f4a16e34-669e-4c93-bd83-e3622a747a3a
 function train(learning_rate, num_steps)
-	
 	ar = 20 # annealing rate
 	sched = Loop(Sequence([Loop(x -> (50*x)/ar, ar), Loop(x -> 50.0, ar)], [ar, ar]), ar*2)
 
@@ -310,6 +315,9 @@ function train(learning_rate, num_steps)
 
 		Optimisers.update!(opt_state, ps, dps)
 	end
+	show(IOContext(stdout, :limit=>false), MIME"text/plain"(), ps)
+	pl = cb()
+	savefig(pl, "currtrain.pdf")
 end
 
 # ╔═╡ 2ada3ddd-b47a-46ff-abba-17cbb94041a2
