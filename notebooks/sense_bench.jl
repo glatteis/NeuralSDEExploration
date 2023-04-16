@@ -275,7 +275,7 @@ function train(learning_rate, num_steps)
 end
 
 # ╔═╡ 07019365-5654-4090-817d-6f144eea96ff
-minibatch = timeseries[sample(1:size(timeseries)[1], 5, replace=false)]
+minibatch = timeseries[sample(1:size(timeseries)[1], 20, replace=false)]
 
 # ╔═╡ be860db5-3a0a-440e-90b4-4e7b454cd1ea
 senses = [
@@ -290,7 +290,10 @@ noises = vec([
 ])
 
 # ╔═╡ 72d33888-910d-40c5-9dd7-abf3f7cc6cf3
-NeuralSDEExploration.pass(latent_sde, ps, minibatch)
+plot(NeuralSDEExploration.pass(latent_sde, ps, minibatch, ensemblemode=EnsembleThreads(), seed=0)[1][:, 1, :]')
+
+# ╔═╡ ff37e086-e58d-49db-945c-9c3e689ef972
+plot(NeuralSDEExploration.pass(latent_sde, ps, minibatch, ensemblemode=EnsembleSerial(), seed=0)[1][:, 1, :]')
 
 # ╔═╡ bc07b911-d69d-4293-bbe6-9a71070ff3d2
 begin
@@ -369,6 +372,7 @@ pprof()
 # ╠═be860db5-3a0a-440e-90b4-4e7b454cd1ea
 # ╠═a7998884-3f61-4c3f-86b6-d65de77b7638
 # ╠═72d33888-910d-40c5-9dd7-abf3f7cc6cf3
+# ╠═ff37e086-e58d-49db-945c-9c3e689ef972
 # ╠═bc07b911-d69d-4293-bbe6-9a71070ff3d2
 # ╠═a393e39d-c591-4ed9-908f-95fb43693dfd
 # ╠═5ac8b1c9-82dd-425f-869a-db8fe43ed08c

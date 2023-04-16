@@ -119,7 +119,7 @@ function sample_posterior(n::LatentSDE, ps, timeseries; seed=nothing)
     return solve(prob,n.args...;sensealg=sense,n.kwargs...)
 end
 
-function pass(n::LatentSDE, ps::ComponentVector, timeseries; sense=InterpolatingAdjoint(autojacvec=ZygoteVJP()), seed=nothing, noise=nothing)
+function pass(n::LatentSDE, ps::ComponentVector, timeseries; sense=InterpolatingAdjoint(autojacvec=ZygoteVJP()), ensemblemode=EnsembleSerial(), seed=nothing, noise=nothing)
     # We are using matrices with the following dimensions:
     # 1 = latent space dimension
     # 2 = batch number
@@ -191,7 +191,7 @@ function pass(n::LatentSDE, ps::ComponentVector, timeseries; sense=Interpolating
     # sense = ForwardDiffSensitivity()
 
     # sense = BacksolveAdjoint(autojacvec=ZygoteVJP())
-    solution = solve(ensemble,n.args...,EnsembleSerial();trajectories=length(timeseries),sensealg=sense,n.kwargs...)
+    solution = solve(ensemble,n.args...,ensemblemode;trajectories=length(timeseries),sensealg=sense,n.kwargs...)
    
     batchcat(x, y) = cat(x, y; dims = 3)
     
