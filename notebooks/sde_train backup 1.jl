@@ -36,16 +36,6 @@ begin
 	end
 end
 
-# ╔═╡ 13ef3cd9-7f58-459e-a659-abc35b550326
-begin
-	if @isdefined PlutoRunner  # running inside Pluto
-		md"Enable training $(@bind enabletraining CheckBox())"		
-	else
-		enabletraining = true
-	end
-end
-
-
 # ╔═╡ 32be3e35-a529-4d16-8ba0-ec4e223ae401
 md"""
 Let's train a Neural SDE from a modified form of the simple zero-dimensional energy balance model. First, let's just instantiate the predefined model from the package...
@@ -324,14 +314,10 @@ function train(learning_rate, num_steps)
 	savefig(pl, "currtrain.pdf")
 end
 
-# ╔═╡ 5a17f6c0-ead1-448f-8df8-60e68a96e0db
-begin
-	if enabletraining
-		train(0.1, 1)
-	end
-end
+# ╔═╡ 2ada3ddd-b47a-46ff-abba-17cbb94041a2
+md"Enable training $(@bind enabletraining CheckBox())"
 
-# ╔═╡ dbaab69d-8e0a-474b-892a-e869afc55681
+# ╔═╡ 5a17f6c0-ead1-448f-8df8-60e68a96e0db
 begin
 	if enabletraining
 		train(0.1, 1)
@@ -535,7 +521,6 @@ show(IOContext(stdout, :limit=>false), MIME"text/plain"(), ps)
 # ╠═db557c9a-24d6-4008-8225-4b8867ee93db
 # ╠═b6abba94-db07-4095-98c9-443e31832e7d
 # ╠═d1440209-78f7-4a9a-9101-a06ad2534e5d
-# ╠═13ef3cd9-7f58-459e-a659-abc35b550326
 # ╟─32be3e35-a529-4d16-8ba0-ec4e223ae401
 # ╠═f74dd752-485b-4203-9d72-c56e55a3ef76
 # ╟─cc2418c2-c355-4291-b5d7-d9019787834f
@@ -570,7 +555,8 @@ show(IOContext(stdout, :limit=>false), MIME"text/plain"(), ps)
 # ╠═f0486891-b8b3-4a39-91df-1389d6f799e1
 # ╠═001c318e-b7a6-48a5-bfd5-6dd0368873ac
 # ╠═05568880-f931-4394-b31e-922850203721
-# ╟─bd8fbd96-d945-4ba0-a389-d75d382438c5
+# ╠═5b073f11-08bd-4128-85c6-7f043b60bdb8
+# ╠═bd8fbd96-d945-4ba0-a389-d75d382438c5
 # ╟─9ea12ddb-ff8a-4c16-b2a5-8b7603f262a3
 # ╠═9346f569-d5f9-43cd-9302-1ee64ef9a030
 # ╟─b98200a8-bf73-42a2-a357-af56812d01c3
@@ -589,8 +575,9 @@ show(IOContext(stdout, :limit=>false), MIME"text/plain"(), ps)
 # ╠═f0a34be1-6aa2-4563-abc2-ea163a778752
 # ╠═ef59f249-64c5-4262-b987-327d67b70422
 # ╠═f4a16e34-669e-4c93-bd83-e3622a747a3a
+# ╠═2ada3ddd-b47a-46ff-abba-17cbb94041a2
+# ╠═85ae27b1-985e-4bed-b8a2-b7b5281f432b
 # ╠═5a17f6c0-ead1-448f-8df8-60e68a96e0db
-# ╠═dbaab69d-8e0a-474b-892a-e869afc55681
 # ╠═a528a99c-5f9e-4d04-abd2-6b9264fb775d
 # ╠═0fc3eae9-467a-4305-b126-327bb3d7892c
 # ╠═099466a0-f47d-4aca-9520-63fdc2915332
