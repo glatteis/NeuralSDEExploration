@@ -45,7 +45,7 @@ md"Let's generate the data and plot a quick example:"
 begin
 	n = 1000
     datasize = 200
-    tspan = (0.0f0, 10f0)
+    tspan = (0.0e0, 10e0)
 end
 
 # ╔═╡ c00a97bf-5e10-4168-8d58-f4f9270258ac

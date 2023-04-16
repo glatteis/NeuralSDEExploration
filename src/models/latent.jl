@@ -119,9 +119,8 @@ function sample_posterior(n::LatentSDE, ps, timeseries; seed=nothing)
     return solve(prob,n.args...;sensealg=sense,n.kwargs...)
 end
 
-function pass(n::LatentSDE, ps, timeseries; sense=InterpolatingAdjoint(autojacvec=ZygoteVJP()), seed=nothing)
-    # We have a lot of hcats and vcats and reshapes in here. This is because we
-    # are using matrices with the following dimensions:
+function pass(n::LatentSDE, ps::ComponentVector, timeseries; sense=InterpolatingAdjoint(autojacvec=ZygoteVJP()), seed=nothing, noise=nothing)
+    # We are using matrices with the following dimensions:
     # 1 = latent space dimension
     # 2 = batch number
     # 3 = time step
@@ -147,9 +146,9 @@ function pass(n::LatentSDE, ps, timeseries; sense=InterpolatingAdjoint(autojacve
     augmented_z0 = vcat(z0, zeros(1, length(z0[1, :])))
     
     augmented_drift = function(batch)
-        return function(u, p, t)
+        return function(u_in::Vector{Float64}, p::ComponentVector, t::Float64)
             # Remove augmented term from input
-            u = u[1:end-1]
+            u = u_in[1:end-1]
             
             # Get the context for the posterior at the current time
             time_index = min(searchsortedfirst(timeseries[1].t, t), length(context[1, 1, :]))
@@ -159,22 +158,20 @@ function pass(n::LatentSDE, ps, timeseries; sense=InterpolatingAdjoint(autojacve
             
             prior = n.drift_prior_re(p.drift_prior_p)(u)
             posterior = n.drift_posterior_re(p.drift_posterior_p)(posterior_net_input)
-            # println(p.drift_posterior_p)
-            # println("$posterior_net_input => $posterior")
             diffusion = reduce(vcat, n.diffusion_re(p.diffusion_p)[i](u[i:i]) for i in eachindex(u))
 
             u_term = stable_divide(posterior .- prior, diffusion)
             augmented_term = 0.5e0 * sum(abs2, u_term; dims=[1])
 
             return_val = vcat(posterior, augmented_term)
-            # println("batch $batch, time $t, index $time_index, context $timedctx, u $u, return $return_val")
+            # println("batch $(typeof(batch)), time $(typeof(t)), index $(typeof(time_index)), context $(typeof(timedctx)), p $(typeof(p)) u $(typeof(u)), return $(typeof(return_val))")
             return return_val
         end
     end
-    augmented_diffusion = function(u, p, t)
-        u = u[1:end-1]
+    augmented_diffusion = function(u_in::Vector{Float64}, p::ComponentVector, t::Float64)
+        u = u_in[1:end-1]
         diffusion = reduce(vcat, n.diffusion_re(p.diffusion_p)[i](u[i:i]) for i in eachindex(u))
-        return_val = vcat(diffusion, zeros(1))
+        return_val = vcat(diffusion, zeros(Float64, 1))
         return return_val
     end
 
@@ -182,9 +179,9 @@ function pass(n::LatentSDE, ps, timeseries; sense=InterpolatingAdjoint(autojacve
 
     function prob_func(prob, batch, repeat)
         if seed !== nothing
-            return SDEProblem{false}(augmented_drift(Int(batch)),augmented_diffusion,augmented_z0[:, Int(batch)],n.tspan,ps,seed=seed+Int(batch))
+            return SDEProblem{false}(augmented_drift(Int(batch)),augmented_diffusion,augmented_z0[:, Int(batch)],n.tspan,ps,seed=seed+Int(batch),noise=noise)
         else
-            return SDEProblem{false}(augmented_drift(Int(batch)),augmented_diffusion,augmented_z0[:, Int(batch)],n.tspan,ps)
+            return SDEProblem{false}(augmented_drift(Int(batch)),augmented_diffusion,augmented_z0[:, Int(batch)],n.tspan,ps,noise=noise)
         end
         # DifferentialEquations.remake(prob; f = SDEFunction{false}(augmented_drift(Int(batch)),augmented_diffusion), u0 = augmented_z0[:, batch])
     end
@@ -206,7 +203,7 @@ function pass(n::LatentSDE, ps, timeseries; sense=InterpolatingAdjoint(autojacve
 
     projected_z0 = n.projector_re(ps.projector_p)(z0)
     projected_ts = reduce(batchcat, [n.projector_re(ps.projector_p)(x) for x in eachslice(posterior, dims=3)])
-        
+
     logp(x, y) = loglikelihood(Normal(y, 0.05), x)
     likelihoods_initial = [logp(x, y) for (x,y) in zip(tsmatrix[:, :, 1], projected_z0)]
     likelihoods_time = sum([logp(x, y) for (x,y) in zip(tsmatrix, projected_ts)], dims=3)[:, :, 1]
@@ -215,8 +212,8 @@ function pass(n::LatentSDE, ps, timeseries; sense=InterpolatingAdjoint(autojacve
     return posterior, projected_ts, logterm, kl_divergence, likelihoods
 end
 
-function loss(n::LatentSDE, ps, timeseries, beta; sense=InterpolatingAdjoint(autojacvec=ZygoteVJP()), seed=nothing)
-    posterior, projected_ts, logterm, kl_divergence, distance = pass(n, ps, timeseries, sense=sense, seed=seed)
+function loss(n::LatentSDE, ps, timeseries, beta; kwargs...)
+    posterior, projected_ts, logterm, kl_divergence, distance = pass(n, ps, timeseries; kwargs...)
     return -distance .+ (beta * kl_divergence)
     # return -distance
 end
