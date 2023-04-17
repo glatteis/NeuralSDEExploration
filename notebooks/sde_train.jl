@@ -301,7 +301,7 @@ function train(learning_rate, num_steps)
 
 	opt_state = Optimisers.setup(Optimisers.Adam(), ps)
 	for (step, eta) in zip(1:num_steps, sched)
-		minibatch = timeseries[sample(1:size(timeseries)[1], 10, replace=false)]
+		minibatch = timeseries[sample(1:size(timeseries)[1], 16, replace=false)]
 
 		seed = abs(rand(Int))
 		l = loss(ps, minibatch, seed)
@@ -323,14 +323,14 @@ function exportresults(epoch)
 end
 
 # ╔═╡ 273e3b89-3c48-4828-8378-30232170bc2c
-Profile.clear()
+# Profile.clear()
 
 
 # ╔═╡ 4a9b63a7-b588-4c83-81c3-11cd954703c7
-@profile train(0.1, 1)
+# @profile train(0.1, 1)
 
 # ╔═╡ fb3db721-96b3-40e3-adc9-307137a05bf4
-pprof()
+# pprof()
 
 # ╔═╡ dbaab69d-8e0a-474b-892a-e869afc55681
 begin

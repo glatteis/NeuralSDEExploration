@@ -187,5 +187,4 @@ end
 function loss(n::LatentSDE, ps, timeseries, st, beta; kwargs...)
     posterior, projected_ts, logterm, kl_divergence, distance = pass(n, ps, timeseries, st; kwargs...)
     return -distance .+ (beta * kl_divergence)
-    # return -distance
 end
