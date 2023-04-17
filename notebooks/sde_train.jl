@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.19.22
+# v0.19.24
 
 using Markdown
 using InteractiveUtils
@@ -24,7 +24,7 @@ begin
 end
 
 # ╔═╡ b6abba94-db07-4095-98c9-443e31832e7d
-using Optimisers, StatsBase, Zygote, ForwardDiff, Enzyme, Flux, DifferentialEquations, Functors, ComponentArrays, Distributions, ParameterSchedulers, Random
+using Optimisers, StatsBase, Zygote, ForwardDiff, Enzyme, Lux, DifferentialEquations, Functors, ComponentArrays, Distributions, ParameterSchedulers, Random
 
 # ╔═╡ d1440209-78f7-4a9a-9101-a06ad2534e5d
 using NeuralSDEExploration, Plots, PlutoUI, ProfileSVG
@@ -70,7 +70,7 @@ begin
 end
 
 # ╔═╡ c00a97bf-5e10-4168-8d58-f4f9270258ac
-solution = NeuralSDEExploration.series(ebm, range(210.0f0, 320.0f0, n), tspan, datasize; seed=10)
+solution = NeuralSDEExploration.series(ebm, range(210.0e0, 320.0e0, n), tspan, datasize; seed=10)
 
 # ╔═╡ 1502612c-1489-4abf-8a8b-5b2d03a68cb1
 md"""
@@ -84,6 +84,9 @@ plot(reduce(hcat, [solution[i].u for i in 1:10]))
 md"""
 Let's normalize our data for training:
 """
+
+# ╔═╡ effceddc-c50b-4578-8e58-8d25ae34f60c
+Tuple([1,2,3])
 
 # ╔═╡ aff1c9d9-b29b-4b2c-b3f1-1e06a9370f64
 begin
@@ -125,22 +128,7 @@ The encoder takes a timeseries and outputs context that can be passed to the pos
 """
 
 # ╔═╡ 847587ec-9297-471e-b788-7b776c05851e
-encoder = Flux.Chain(Flux.LSTM(data_dims => 6), Flux.Dense(6 => context_size)) |> f64
-
-# ╔═╡ 95f42c13-4a06-487c-bd35-a8d6bac9e02e
-@bind i Slider(1:length(timeseries))
-
-# ╔═╡ 63632673-4374-450c-a48d-493ae7a6b1ce
-begin
-	Flux.reset!(encoder)
-	example_context = encoder(reshape(timeseries[i].u, 1, 1, :))[:, 1, :]
-end
-
-# ╔═╡ 016ab596-424b-4c50-b5c0-46d08aa47909
-plot(example_context')
-
-# ╔═╡ bdf4c32c-9a2b-4814-8513-c6e16ebee69c
-plot(timeseries[i].u, legend=nothing)
+encoder = Lux.Recurrence(Lux.LSTMCell(data_dims => context_size); return_sequence=true)
 
 # ╔═╡ 0d09a662-78d3-4202-b2be-843a0669fc9f
 md"""
@@ -148,10 +136,10 @@ The `initial_posterior` net is the posterior for the initial state. It takes the
 """
 
 # ╔═╡ cdebb87f-9759-4e6b-a00a-d764b3c7fbf8
-initial_posterior = Flux.Dense(context_size => latent_dims + latent_dims) |> f64
+initial_posterior = Lux.Dense(context_size => latent_dims + latent_dims)
 
 # ╔═╡ 3ec28482-2d6c-4125-8d85-4fb46b130677
-initial_prior = Flux.Dense(1 => latent_dims + latent_dims, init=Flux.glorot_uniform) |> f64
+initial_prior = Lux.Dense(1 => latent_dims + latent_dims) 
 
 # ╔═╡ 8b283d5e-1ce7-4deb-b382-6fa8e5612ef1
 md"""
@@ -159,11 +147,11 @@ Drift of prior. This is just an SDE drift in the latent space
 """
 
 # ╔═╡ c14806bd-42cf-480b-b618-bfe72183feb3
-drift_prior = Flux.Chain(
-	Flux.Dense(latent_dims => hidden_size, tanh),
-	Flux.Dense(hidden_size => latent_dims, tanh),
-	Flux.Scale(latent_dims)
-) |> f64
+drift_prior = Lux.Chain(
+	Lux.Dense(latent_dims => hidden_size, tanh),
+	Lux.Dense(hidden_size => latent_dims, tanh),
+	Lux.Scale(latent_dims)
+)
 
 # ╔═╡ 64dc2da0-48cc-4242-bb17-449a300688c7
 md"""
@@ -171,11 +159,11 @@ Drift of posterior. This is the term of an SDE when fed with the context.
 """
 
 # ╔═╡ df2034fd-560d-4529-836a-13745f976c1f
-drift_posterior = Flux.Chain(
-	Flux.Dense(latent_dims + context_size => hidden_size, tanh),
-	Flux.Dense(hidden_size => latent_dims, tanh),
-	Flux.Scale(latent_dims)
-) |> f64
+drift_posterior = Lux.Chain(
+	Lux.Dense(latent_dims + context_size => hidden_size, tanh),
+	Lux.Dense(hidden_size => latent_dims, tanh),
+	Lux.Scale(latent_dims)
+)
 
 # ╔═╡ 4a97576c-96de-458e-b881-3f5dd140fa6a
 md"""
@@ -183,7 +171,7 @@ Diffusion. Prior and posterior share the same diffusion (they are not actually e
 """
 
 # ╔═╡ a1cb11fb-ec69-4ba2-9ed1-2d1a6d24ccd9
-diffusion = [Flux.Chain(Flux.Dense(1 => 32, softplus), Flux.Dense(32 => 1, sigmoid), Flux.Scale(1)) |> f64 for i in 1:latent_dims]
+diffusion = Lux.Parallel(nothing, [Lux.Chain(Lux.Dense(1 => 32, tanh), Lux.Dense(32 => 1, tanh, init_bias=ones), Lux.Scale(1)) for i in 1:latent_dims]...)
 
 # ╔═╡ bfabcd80-fb62-410f-8710-f577852c77df
 md"""
@@ -191,7 +179,7 @@ The projector will transform the latent space back into data space.
 """
 
 # ╔═╡ f0486891-b8b3-4a39-91df-1389d6f799e1
-projector = Flux.Dense(latent_dims => data_dims) |> f64
+projector = Lux.Dense(latent_dims => data_dims)
 
 # ╔═╡ 001c318e-b7a6-48a5-bfd5-6dd0368873ac
 latent_sde = LatentSDE(
@@ -202,20 +190,35 @@ latent_sde = LatentSDE(
 	diffusion,
 	encoder,
 	projector,
-    tspan,
-	EulerHeun();
+	EulerHeun(),
+	tspan;
 	saveat=range(tspan[1], tspan[end], datasize),
-	dt=(tspan[end]/(datasize*5))
+	dt=(tspan[end]/(datasize*2))
 )
 
+# ╔═╡ 0f6f4520-576f-42d3-9126-2076a51a6e22
+rng = Xoshiro()
+
 # ╔═╡ 05568880-f931-4394-b31e-922850203721
-ps_, re = Functors.functor(latent_sde)
+ps_, st = Lux.setup(rng, latent_sde)
 
-# ╔═╡ 2873fa22-0e8b-44ca-b5bf-3f2b966c5eee
-Flux.destructure(latent_sde)
-
-# ╔═╡ 0af50917-abf4-4d73-b2d6-3873b73b2347
+# ╔═╡ e5c9f00f-849b-4523-85da-4dab567b2ca8
 ps = ComponentArray(ps_)
+
+# ╔═╡ 0667038f-4187-4044-9bec-941800fdba22
+@bind i Slider(1:length(timeseries))
+
+# ╔═╡ bdf4c32c-9a2b-4814-8513-c6e16ebee69c
+plot(timeseries[i].u, legend=nothing)
+
+# ╔═╡ f08369b8-6eb9-4bb2-a389-f054fbe72645
+reshape(timeseries[i].u, 1, :, 1)
+
+# ╔═╡ 0c339b92-664d-4fef-a57d-af6c69c65597
+example_context, st_ = encoder(reshape(timeseries[i].u, 1, :, 1), ps.encoder, st.encoder)
+
+# ╔═╡ 2ea4c343-f561-44cd-93ef-ebd462804b54
+plot(reduce(hcat, example_context)')
 
 # ╔═╡ 9ea12ddb-ff8a-4c16-b2a5-8b7603f262a3
 md"""
@@ -223,7 +226,7 @@ Integrate the prior SDE in latent space to see what a run looks like:
 """
 
 # ╔═╡ 9346f569-d5f9-43cd-9302-1ee64ef9a030
-plot(NeuralSDEExploration.sample_prior(latent_sde, ps, b=5))
+plot(NeuralSDEExploration.sample_prior(latent_sde, ps, st; b=5))
 
 # ╔═╡ b98200a8-bf73-42a2-a357-af56812d01c3
 md"""
@@ -237,10 +240,7 @@ Integrate the posterior SDE in latent space given context:
 @bind ti Slider(1:length(timeseries))
 
 # ╔═╡ 88fa1b08-f0d4-4fcf-89c2-8a9f33710d4c
-posterior_latent, posterior_data, logterm_, kl_divergence_, distance_ = NeuralSDEExploration.pass(latent_sde, ps, timeseries[ti:ti+4]; seed=seed)
-
-# ╔═╡ f4f2c0ac-06f3-4632-b314-aa6e91bc84db
-plot(timeseries[ti:ti+2])
+posterior_latent, posterior_data, logterm_, kl_divergence_, distance_ = NeuralSDEExploration.pass(latent_sde, ps, timeseries[ti:ti+10], st; seed=seed, ensemblemode=EnsembleThreads())
 
 # ╔═╡ dabf2a1f-ec78-4942-973f-4dbf9037ee7b
 plot(logterm_[1, :, :]', label="KL-Divergence")
@@ -251,14 +251,8 @@ plot(posterior_data[1, :, :]', label="posterior")
 # ╔═╡ 08021ed6-ac31-4829-9f21-f046af73d5a3
 plot(posterior_latent[:, 1, :]')
 
-# ╔═╡ 92c138d3-05f6-4a57-9b6b-08f41cb4ea55
-plot(NeuralSDEExploration.sample_posterior(latent_sde, ps, timeseries[1:1], seed=seed+1))
-
-# ╔═╡ 18acf95a-4fa2-452d-875d-01dfc7f18bac
-plot(NeuralSDEExploration.pass(latent_sde,  ps, timeseries[2:2], seed=seed+3)[1][:, 1, :]')
-
 # ╔═╡ 3d889727-ae6d-4fa0-98ae-d3ae73fb6a3c
-plot(NeuralSDEExploration.sample_prior(latent_sde, ps, seed=seed+1))
+plot(NeuralSDEExploration.sample_prior(latent_sde, ps, st; seed=seed+1))
 
 # ╔═╡ b5c6d43c-8252-4602-8232-b3d1b0bcee33
 function cb()
@@ -270,11 +264,11 @@ function cb()
 	rng = Xoshiro(294)
 	nums = sample(rng,1:length(timeseries),n;replace=false)
 
-	posterior_latent, posterior_data, logterm_, kl_divergence_, distance_ = NeuralSDEExploration.pass(latent_sde, ps, timeseries[nums], seed=seed+i)
+	posterior_latent, posterior_data, logterm_, kl_divergence_, distance_ = NeuralSDEExploration.pass(latent_sde, ps, timeseries[nums], st, seed=seed+i)
 	
 	priorsamples = 20
-	prior_latent = NeuralSDEExploration.sample_prior(latent_sde,ps,seed=abs(rand(rng, Int));b=priorsamples)
-	projected_prior = vcat([latent_sde.projector_re(ps.projector_p)(x) for x in prior_latent.u]...)
+	prior_latent = NeuralSDEExploration.sample_prior(latent_sde,ps,st;seed=abs(rand(rng, Int)),b=priorsamples)
+	projected_prior = vcat([latent_sde.projector(x, ps.projector, st.projector)[1] for x in prior_latent.u]...)
 
 	posteriorplot = plot(posterior_data[1, :,:]',linewidth=2,legend=false,title="projected posterior")
 	dataplot = plot(timeseries[nums],linewidth=2,legend=false,title="data")
@@ -294,7 +288,7 @@ cb()
 
 # ╔═╡ f0a34be1-6aa2-4563-abc2-ea163a778752
 function loss(ps, minibatch, seed)
-	mean(NeuralSDEExploration.loss(latent_sde, ps, minibatch, 1.0; seed=seed))
+	mean(NeuralSDEExploration.loss(latent_sde, ps, minibatch, st, 1.0; seed=seed, ensemblemode=EnsembleThreads()))
 end
 
 # ╔═╡ ef59f249-64c5-4262-b987-327d67b70422
@@ -328,21 +322,15 @@ function exportresults(epoch)
 	savefig(pl, "~/currtrain_$epoch.pdf")
 end
 
-# ╔═╡ 09ec7a24-6c1c-4767-b22e-f1aa68d32ea3
-train(0.1, 1)
-
 # ╔═╡ 273e3b89-3c48-4828-8378-30232170bc2c
 Profile.clear()
 
 
 # ╔═╡ 4a9b63a7-b588-4c83-81c3-11cd954703c7
-@profile loss(ps, timeseries[1:5], 100)
+@profile train(0.1, 1)
 
 # ╔═╡ fb3db721-96b3-40e3-adc9-307137a05bf4
 pprof()
-
-# ╔═╡ 913cdb45-55ea-4a04-9434-8336e66144ad
-train(0.1, 1)
 
 # ╔═╡ dbaab69d-8e0a-474b-892a-e869afc55681
 begin
@@ -371,6 +359,7 @@ show(IOContext(stdout, :limit=>false), MIME"text/plain"(), ps)
 # ╟─1502612c-1489-4abf-8a8b-5b2d03a68cb1
 # ╠═455263ef-2f94-4f3e-8401-f0da7fb3e493
 # ╟─f4651b27-135e-45f1-8647-64ab08c2e8e8
+# ╠═effceddc-c50b-4578-8e58-8d25ae34f60c
 # ╠═aff1c9d9-b29b-4b2c-b3f1-1e06a9370f64
 # ╠═9a5c942f-9e2d-4c6c-9cb1-b0dffd8050a0
 # ╟─da11fb69-a8a1-456d-9ce7-63180ef27a83
@@ -380,9 +369,6 @@ show(IOContext(stdout, :limit=>false), MIME"text/plain"(), ps)
 # ╠═9767a8ea-bdda-43fc-b636-8681d150d29f
 # ╟─39154e76-01f7-4710-8f21-6f3a7d3fcfcd
 # ╠═847587ec-9297-471e-b788-7b776c05851e
-# ╠═95f42c13-4a06-487c-bd35-a8d6bac9e02e
-# ╠═63632673-4374-450c-a48d-493ae7a6b1ce
-# ╠═016ab596-424b-4c50-b5c0-46d08aa47909
 # ╠═bdf4c32c-9a2b-4814-8513-c6e16ebee69c
 # ╟─0d09a662-78d3-4202-b2be-843a0669fc9f
 # ╠═cdebb87f-9759-4e6b-a00a-d764b3c7fbf8
@@ -396,21 +382,22 @@ show(IOContext(stdout, :limit=>false), MIME"text/plain"(), ps)
 # ╟─bfabcd80-fb62-410f-8710-f577852c77df
 # ╠═f0486891-b8b3-4a39-91df-1389d6f799e1
 # ╠═001c318e-b7a6-48a5-bfd5-6dd0368873ac
+# ╠═0f6f4520-576f-42d3-9126-2076a51a6e22
 # ╠═05568880-f931-4394-b31e-922850203721
-# ╠═2873fa22-0e8b-44ca-b5bf-3f2b966c5eee
-# ╠═0af50917-abf4-4d73-b2d6-3873b73b2347
+# ╠═e5c9f00f-849b-4523-85da-4dab567b2ca8
+# ╠═0667038f-4187-4044-9bec-941800fdba22
+# ╠═f08369b8-6eb9-4bb2-a389-f054fbe72645
+# ╠═0c339b92-664d-4fef-a57d-af6c69c65597
+# ╠═2ea4c343-f561-44cd-93ef-ebd462804b54
 # ╟─9ea12ddb-ff8a-4c16-b2a5-8b7603f262a3
 # ╠═9346f569-d5f9-43cd-9302-1ee64ef9a030
 # ╟─b98200a8-bf73-42a2-a357-af56812d01c3
 # ╠═26885b24-df80-4fbf-9824-e175688f1322
 # ╠═5f56cc7c-861e-41a4-b783-848623b94bf9
 # ╠═88fa1b08-f0d4-4fcf-89c2-8a9f33710d4c
-# ╠═f4f2c0ac-06f3-4632-b314-aa6e91bc84db
 # ╠═dabf2a1f-ec78-4942-973f-4dbf9037ee7b
 # ╠═38324c42-e5c7-4b59-8129-0e4c17ab5bf1
 # ╠═08021ed6-ac31-4829-9f21-f046af73d5a3
-# ╠═92c138d3-05f6-4a57-9b6b-08f41cb4ea55
-# ╠═18acf95a-4fa2-452d-875d-01dfc7f18bac
 # ╠═3d889727-ae6d-4fa0-98ae-d3ae73fb6a3c
 # ╠═b5c6d43c-8252-4602-8232-b3d1b0bcee33
 # ╠═025b33d9-7473-4a54-a3f1-787a8650f9e7
@@ -418,11 +405,9 @@ show(IOContext(stdout, :limit=>false), MIME"text/plain"(), ps)
 # ╠═ef59f249-64c5-4262-b987-327d67b70422
 # ╠═f4a16e34-669e-4c93-bd83-e3622a747a3a
 # ╠═9789decf-c384-42df-b7aa-3c2137a69a41
-# ╠═09ec7a24-6c1c-4767-b22e-f1aa68d32ea3
 # ╠═1a6d21fd-d79e-4463-a387-235db1411b8f
 # ╠═273e3b89-3c48-4828-8378-30232170bc2c
 # ╠═4a9b63a7-b588-4c83-81c3-11cd954703c7
 # ╠═fb3db721-96b3-40e3-adc9-307137a05bf4
-# ╠═913cdb45-55ea-4a04-9434-8336e66144ad
 # ╠═dbaab69d-8e0a-474b-892a-e869afc55681
 # ╠═7ce64e25-e5a5-4ace-ba6b-844ef6e4ef82
