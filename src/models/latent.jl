@@ -151,7 +151,7 @@ function pass(n::LatentSDE, ps::ComponentVector, timeseries; sense=Interpolating
             u = u_in[1:end-1]
             
             # Get the context for the posterior at the current time
-            time_index = min(searchsortedfirst(timeseries[1].t, t), length(context[1, 1, :]))
+            time_index = searchsortedlast(timeseries[1].t, max(0.0, t))
             timedctx = context[:, batch, time_index]
             
             posterior_net_input = vcat(u, timedctx)
@@ -164,7 +164,6 @@ function pass(n::LatentSDE, ps::ComponentVector, timeseries; sense=Interpolating
             augmented_term = 0.5e0 * sum(abs2, u_term; dims=[1])
 
             return_val = vcat(posterior, augmented_term)
-            # println("batch $(typeof(batch)), time $(typeof(t)), index $(typeof(time_index)), context $(typeof(timedctx)), p $(typeof(p)) u $(typeof(u)), return $(typeof(return_val))")
             return return_val
         end
     end
@@ -188,21 +187,16 @@ function pass(n::LatentSDE, ps::ComponentVector, timeseries; sense=Interpolating
 
     ensemble = EnsembleProblem(nothing, output_func=(sol, i) -> (sol, false), prob_func=prob_func)
 
-    # sense = ForwardDiffSensitivity()
-
-    # sense = BacksolveAdjoint(autojacvec=ZygoteVJP())
     solution = solve(ensemble,n.args...,ensemblemode;trajectories=length(timeseries),sensealg=sense,n.kwargs...)
    
-    batchcat(x, y) = cat(x, y; dims = 3)
-    
-    # println([u[2] for u in solution.u])
+    timecat(x, y) = cat(x, y; dims = 3)
 
-    posterior = reduce(hcat, [reduce(batchcat, [reshape(u[1:end-1], :, 1, 1) for u in batch.u]) for batch in solution.u])
-    logterm = reduce(hcat, [reduce(batchcat, [reshape(u[end:end], :, 1, 1) for u in batch.u]) for batch in solution.u])
+    posterior = reduce(hcat, [reduce(timecat, [reshape(u[1:end-1], :, 1, 1) for u in batch.u]) for batch in solution.u])
+    logterm = reduce(hcat, [reduce(timecat, [reshape(u[end:end], :, 1, 1) for u in batch.u]) for batch in solution.u])
     kl_divergence = sum(initialdists_kl, dims=1) .+ logterm[:, :, end]
 
     projected_z0 = n.projector_re(ps.projector_p)(z0)
-    projected_ts = reduce(batchcat, [n.projector_re(ps.projector_p)(x) for x in eachslice(posterior, dims=3)])
+    projected_ts = reduce(timecat, [n.projector_re(ps.projector_p)(x) for x in eachslice(posterior, dims=3)])
 
     logp(x, y) = loglikelihood(Normal(y, 0.05), x)
     likelihoods_initial = [logp(x, y) for (x,y) in zip(tsmatrix[:, :, 1], projected_z0)]

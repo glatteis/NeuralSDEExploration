@@ -27,6 +27,9 @@ using Optimisers, StatsBase, Zygote, ForwardDiff, Enzyme, Flux, DifferentialEqua
 # ╔═╡ 682a8844-d1a8-4919-8a57-41b942b7da25
 using NeuralSDEExploration, Plots, PlutoUI, ProfileSVG
 
+# ╔═╡ b94d5f36-b7fe-493d-a774-f03062ee5afa
+using Profile, PProf
+
 # ╔═╡ d86a3b4e-6735-4de2-85d3-b6106ae48444
 Revise.retry()
 
@@ -36,7 +39,7 @@ begin
     initial_posterior = Flux.Dense(reshape([1.0, 0.01, 1.0, 0.01], :, 1), false) |> f64
     drift_prior = Flux.Scale([1.0, 1.0], false) |> f64
     drift_posterior = Flux.Dense(ones(2, 3), false) |> f64
-    diffusion = [Flux.Dense(1 => 1, bias=[0.000001], init=zeros) |> f64 for i in 1:2]
+    diffusion = [Flux.Dense(1 => 1, bias=[0.1], init=zeros) |> f64 for i in 1:2]
     encoder = Flux.RNN(1 => 1, (x) -> x; init=ones) |> f64
     projector = Flux.Dense(2 => 1; bias=false, init=ones) |> f64
 
@@ -51,9 +54,7 @@ begin
         diffusion,
         encoder,
         projector,
-        tspan,
-        EulerHeun(),
-		EnsembleSerial();
+        tspan;
         saveat=range(tspan[1], tspan[end], datasize),
         dt=(tspan[end]/datasize),
     )
@@ -69,6 +70,15 @@ inputs = [(t=range(tspan[1],tspan[end],datasize),u=[f(x) for x in range(tspan[1]
 
 # ╔═╡ e8ef1773-8087-4f47-abfe-11e73f28a269
 posterior_latent, posterior_data, logterm_, kl_divergence_, distance_ = NeuralSDEExploration.pass(latent_sde, ps, inputs, seed=seed)
+
+# ╔═╡ 3eb43be1-1ae9-499d-a350-d34d8daa30ca
+Profile.clear()
+
+# ╔═╡ fd6d9e72-edc6-4ed1-9956-0b2164bc8b97
+@profile posterior_latent, posterior_data, logterm_, kl_divergence_, distance_ = NeuralSDEExploration.pass(latent_sde, ps, inputs, seed=seed)
+
+# ╔═╡ 4b555ed0-0f4e-4619-9358-9bdc5e09fa76
+pprof()
 
 # ╔═╡ bfa3098d-1a8a-496b-89b4-5970d426d8c6
 posterior_latent[1, :, 1]
@@ -94,6 +104,10 @@ plot(posterior_data[1, :, :]')
 # ╠═af673c70-c7bf-4fe6-92c0-b5e09fd99195
 # ╠═7b81e46b-c55a-42e4-af34-9d1101de4b9c
 # ╠═e8ef1773-8087-4f47-abfe-11e73f28a269
+# ╠═b94d5f36-b7fe-493d-a774-f03062ee5afa
+# ╠═3eb43be1-1ae9-499d-a350-d34d8daa30ca
+# ╠═fd6d9e72-edc6-4ed1-9956-0b2164bc8b97
+# ╠═4b555ed0-0f4e-4619-9358-9bdc5e09fa76
 # ╠═bfa3098d-1a8a-496b-89b4-5970d426d8c6
 # ╠═f715c673-d017-4154-92be-cf8222cc22e6
 # ╠═a8a635b8-41a6-4c96-8351-0e06595da0a5

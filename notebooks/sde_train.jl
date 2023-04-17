@@ -29,10 +29,15 @@ using Optimisers, StatsBase, Zygote, ForwardDiff, Enzyme, Flux, DifferentialEqua
 # ╔═╡ d1440209-78f7-4a9a-9101-a06ad2534e5d
 using NeuralSDEExploration, Plots, PlutoUI, ProfileSVG
 
+# ╔═╡ 1a6d21fd-d79e-4463-a387-235db1411b8f
+using Profile, PProf
+
 # ╔═╡ db557c9a-24d6-4008-8225-4b8867ee93db
 begin
 	if @isdefined PlutoRunner  # running inside Pluto
 		Revise.retry()
+	else
+		ENV["GKSwstype"]="nul" # no GTK for plots
 	end
 end
 
@@ -59,13 +64,13 @@ md"Let's generate the data and plot a quick example:"
 
 # ╔═╡ dd03f851-2e26-4850-a7d4-a64f154d2872
 begin
-	n = 1000
+	n = 10000
     datasize = 200
     tspan = (0.0e0, 10e0)
 end
 
 # ╔═╡ c00a97bf-5e10-4168-8d58-f4f9270258ac
-solution = NeuralSDEExploration.series(ebm, shuffle(range(210.0f0, 320.0f0, n)), tspan, datasize)
+solution = NeuralSDEExploration.series(ebm, range(210.0f0, 320.0f0, n), tspan, datasize; seed=10)
 
 # ╔═╡ 1502612c-1489-4abf-8a8b-5b2d03a68cb1
 md"""
@@ -103,13 +108,13 @@ We are going to build a simple latent SDE. Define a few constants...
 """
 
 # ╔═╡ 22453ba0-81a7-43f6-bb80-91d3c991530d
-context_size = 4 # The size of the context given to the posterior SDE.
+context_size = 8 # The size of the context given to the posterior SDE.
 
 # ╔═╡ d81ccb5f-de1c-4a01-93ce-3e7302caedc0
-hidden_size = 20 # The hidden layer size for all ANNs.
+hidden_size = 256 # The hidden layer size for all ANNs.
 
 # ╔═╡ b5721107-7cf5-4da3-b22a-552e3d56bcfa
-latent_dims = 3 # Dimensions of the latent space.
+latent_dims = 2 # Dimensions of the latent space.
 
 # ╔═╡ 9767a8ea-bdda-43fc-b636-8681d150d29f
 data_dims = 1 # Dimensions of our input data.
@@ -156,8 +161,6 @@ Drift of prior. This is just an SDE drift in the latent space
 # ╔═╡ c14806bd-42cf-480b-b618-bfe72183feb3
 drift_prior = Flux.Chain(
 	Flux.Dense(latent_dims => hidden_size, tanh),
-	Flux.Dense(hidden_size => hidden_size, tanh),
-	Flux.Dense(hidden_size => hidden_size, tanh),
 	Flux.Dense(hidden_size => latent_dims, tanh),
 	Flux.Scale(latent_dims)
 ) |> f64
@@ -170,7 +173,6 @@ Drift of posterior. This is the term of an SDE when fed with the context.
 # ╔═╡ df2034fd-560d-4529-836a-13745f976c1f
 drift_posterior = Flux.Chain(
 	Flux.Dense(latent_dims + context_size => hidden_size, tanh),
-	Flux.Dense(hidden_size => hidden_size, tanh),
 	Flux.Dense(hidden_size => latent_dims, tanh),
 	Flux.Scale(latent_dims)
 ) |> f64
@@ -181,7 +183,7 @@ Diffusion. Prior and posterior share the same diffusion (they are not actually e
 """
 
 # ╔═╡ a1cb11fb-ec69-4ba2-9ed1-2d1a6d24ccd9
-diffusion = [Flux.Chain(Flux.Dense(1 => 4, softplus), Flux.Dense(4 => 1, sigmoid)) |> f64 for i in 1:latent_dims]
+diffusion = [Flux.Chain(Flux.Dense(1 => 32, softplus), Flux.Dense(32 => 1, sigmoid), Flux.Scale(1)) |> f64 for i in 1:latent_dims]
 
 # ╔═╡ bfabcd80-fb62-410f-8710-f577852c77df
 md"""
@@ -203,11 +205,14 @@ latent_sde = LatentSDE(
     tspan,
 	EulerHeun();
 	saveat=range(tspan[1], tspan[end], datasize),
-	dt=(tspan[end]/datasize)
+	dt=(tspan[end]/(datasize*5))
 )
 
 # ╔═╡ 05568880-f931-4394-b31e-922850203721
 ps_, re = Functors.functor(latent_sde)
+
+# ╔═╡ 2873fa22-0e8b-44ca-b5bf-3f2b966c5eee
+Flux.destructure(latent_sde)
 
 # ╔═╡ 0af50917-abf4-4d73-b2d6-3873b73b2347
 ps = ComponentArray(ps_)
@@ -253,7 +258,7 @@ plot(NeuralSDEExploration.sample_posterior(latent_sde, ps, timeseries[1:1], seed
 plot(NeuralSDEExploration.pass(latent_sde,  ps, timeseries[2:2], seed=seed+3)[1][:, 1, :]')
 
 # ╔═╡ 3d889727-ae6d-4fa0-98ae-d3ae73fb6a3c
-plot(NeuralSDEExploration.sample_prior(latent_sde, ps, seed=seed))
+plot(NeuralSDEExploration.sample_prior(latent_sde, ps, seed=seed+1))
 
 # ╔═╡ b5c6d43c-8252-4602-8232-b3d1b0bcee33
 function cb()
@@ -262,13 +267,13 @@ function cb()
 	posterior_latent = nothing
 	datas = []
 	n = 5
-	rng = Xoshiro(1230)
+	rng = Xoshiro(294)
 	nums = sample(rng,1:length(timeseries),n;replace=false)
 
 	posterior_latent, posterior_data, logterm_, kl_divergence_, distance_ = NeuralSDEExploration.pass(latent_sde, ps, timeseries[nums], seed=seed+i)
 	
 	priorsamples = 20
-	prior_latent = NeuralSDEExploration.sample_prior(latent_sde,ps,seed=seed+i;b=priorsamples)
+	prior_latent = NeuralSDEExploration.sample_prior(latent_sde,ps,seed=abs(rand(rng, Int));b=priorsamples)
 	projected_prior = vcat([latent_sde.projector_re(ps.projector_p)(x) for x in prior_latent.u]...)
 
 	posteriorplot = plot(posterior_data[1, :,:]',linewidth=2,legend=false,title="projected posterior")
@@ -288,241 +293,64 @@ end
 cb()
 
 # ╔═╡ f0a34be1-6aa2-4563-abc2-ea163a778752
-function loss(ps, minibatch)
-	mean(NeuralSDEExploration.loss(latent_sde, ps, minibatch, 0.1))
+function loss(ps, minibatch, seed)
+	mean(NeuralSDEExploration.loss(latent_sde, ps, minibatch, 1.0; seed=seed))
 end
 
 # ╔═╡ ef59f249-64c5-4262-b987-327d67b70422
-loss(ps, timeseries[sample(1:size(timeseries)[1], 5, replace=false)])
+loss(ps, timeseries[1:5], 100)
 
 # ╔═╡ f4a16e34-669e-4c93-bd83-e3622a747a3a
 function train(learning_rate, num_steps)
 	ar = 20 # annealing rate
 	sched = Loop(Sequence([Loop(x -> (50*x)/ar, ar), Loop(x -> 50.0, ar)], [ar, ar]), ar*2)
 
-	
 	opt_state = Optimisers.setup(Optimisers.Adam(), ps)
 	for (step, eta) in zip(1:num_steps, sched)
-		minibatch = timeseries[sample(1:size(timeseries)[1], 5, replace=false)]
-		#if step % 10 == 1
-		#	cb()
-		#end
-		
-		l = loss(ps, minibatch)
+		minibatch = timeseries[sample(1:size(timeseries)[1], 10, replace=false)]
+
+		seed = abs(rand(Int))
+		l = loss(ps, minibatch, seed)
 		println("Loss: $l")
 		dps = similar(ps)
-		#Enzyme.autodiff(Reverse, loss, Const, Duplicated(ps, dps))
-		
-		#return Vector(grads)
-		dps = Zygote.gradient(ps -> loss(ps, minibatch), ps)[1]
+
+		dps = Zygote.gradient(ps -> loss(ps, minibatch, seed), ps)[1]
 
 		Optimisers.update!(opt_state, ps, dps)
 	end
-	show(IOContext(stdout, :limit=>false), MIME"text/plain"(), ps)
-	pl = cb()
-	savefig(pl, "currtrain.pdf")
+	
 end
 
-# ╔═╡ 5a17f6c0-ead1-448f-8df8-60e68a96e0db
-begin
-	if enabletraining
-		train(0.1, 1)
-	end
+# ╔═╡ 9789decf-c384-42df-b7aa-3c2137a69a41
+function exportresults(epoch)
+	show(IOContext(stdout, :limit=>false), MIME"text/plain"(), ps)
+	pl = cb()
+	savefig(pl, "~/currtrain_$epoch.pdf")
 end
+
+# ╔═╡ 09ec7a24-6c1c-4767-b22e-f1aa68d32ea3
+train(0.1, 1)
+
+# ╔═╡ 273e3b89-3c48-4828-8378-30232170bc2c
+Profile.clear()
+
+
+# ╔═╡ 4a9b63a7-b588-4c83-81c3-11cd954703c7
+@profile loss(ps, timeseries[1:5], 100)
+
+# ╔═╡ fb3db721-96b3-40e3-adc9-307137a05bf4
+pprof()
+
+# ╔═╡ 913cdb45-55ea-4a04-9434-8336e66144ad
+train(0.1, 1)
 
 # ╔═╡ dbaab69d-8e0a-474b-892a-e869afc55681
 begin
 	if enabletraining
-		train(0.1, 1)
-	end
-end
-
-# ╔═╡ a528a99c-5f9e-4d04-abd2-6b9264fb775d
-begin
-	if enabletraining
-		train(0.1, 500)
-	end
-end
-
-# ╔═╡ 0fc3eae9-467a-4305-b126-327bb3d7892c
-begin
-	if enabletraining
-		train(0.1, 500)
-	end
-end
-
-# ╔═╡ 099466a0-f47d-4aca-9520-63fdc2915332
-begin
-	if enabletraining
-		train(0.1, 500)
-	end
-end
-
-# ╔═╡ 0eaadc9e-e4c9-49cc-a65e-8fd805eacaa1
-begin
-	if enabletraining
-		train(0.1, 500)
-	end
-end
-
-# ╔═╡ 3e9dc0b1-aff1-4b5f-a78c-d42269b247e8
-begin
-	if enabletraining
-		train(0.1, 500)
-	end
-end
-
-# ╔═╡ a5ccef36-cd09-4403-bed2-4aa406039ebb
-begin
-	if enabletraining
-		train(0.1, 500)
-	end
-end
-
-# ╔═╡ 95e10df6-c448-4dae-b400-b6dcfeaf7438
-begin
-	if enabletraining
-		train(0.1, 500)
-	end
-end
-
-# ╔═╡ ccaa1092-915b-4b14-b0e2-eae663cb5b92
-begin
-	if enabletraining
-		train(0.1, 500)
-	end
-end
-
-# ╔═╡ 4d728103-4753-40f6-ab8a-29261d6813e9
-begin
-	if enabletraining
-		train(0.1, 500)
-	end
-end
-
-# ╔═╡ 2d7a69b7-ee51-4fbf-8ce1-40ce3fff751e
-begin
-	if enabletraining
-		train(0.05, 500)
-	end
-end
-
-# ╔═╡ 794b30ff-f409-4c2e-923f-789353306cda
-begin
-	if enabletraining
-		train(0.05, 500)
-	end
-end
-
-# ╔═╡ f3f493de-256b-4cd9-ab16-db88b45df937
-begin
-	if enabletraining
-		train(0.05, 500)
-	end
-end
-
-# ╔═╡ ea8190e8-2147-4846-92f3-531796efacdd
-begin
-	if enabletraining
-		train(0.05, 500)
-	end
-end
-
-# ╔═╡ 78fafa9b-8fcb-455f-ba8d-fee5e511cda5
-begin
-	if enabletraining
-		train(0.05, 500)
-	end
-end
-
-# ╔═╡ 8773bfa2-fd50-4409-be0b-d550b0686e8a
-begin
-	if enabletraining
-		train(0.05, 500)
-	end
-end
-
-# ╔═╡ 322b71cc-7499-4384-9962-25f54c0d3572
-begin
-	if enabletraining
-		train(0.05, 500)
-	end
-end
-
-# ╔═╡ f4159b1c-0b3e-418e-9486-d3584da4dd29
-begin
-	if enabletraining
-		train(0.05, 500)
-	end
-end
-
-# ╔═╡ 73b1b46f-2101-4da3-934a-ea8710a52cb4
-begin
-	if enabletraining
-		train(0.05, 500)
-	end
-end
-
-# ╔═╡ 810228ad-fe76-47a9-b54c-c1afd8de9e2a
-begin
-	if enabletraining
-		train(0.05, 500)
-	end
-end
-
-# ╔═╡ b24aef95-9e67-42b2-b83e-295ca5e967d9
-begin
-	if enabletraining
-		train(0.035, 100)
-	end
-end
-
-# ╔═╡ d18ea71c-efb9-4e7f-abff-a2f81d77b883
-begin
-	if enabletraining
-		train(0.035, 100)
-	end
-end
-
-# ╔═╡ c2dedddf-6ba1-43af-b446-828b392efb36
-begin
-	if enabletraining
-		train(0.035, 1000)
-	end
-end
-
-# ╔═╡ 216734d2-92e7-459d-baa0-74b4f86dfd1a
-begin
-	if enabletraining
-		train(1f-3, 100)
-	end
-end
-
-# ╔═╡ 37c22306-ee80-4625-85e2-ff4093375343
-begin
-	if enabletraining
-		train(1f-3, 1000)
-	end
-end
-
-# ╔═╡ 2961c8fb-83de-4081-b78e-17405e4ec2fc
-begin
-	if enabletraining
-		train(1f-3, 1000)
-	end
-end
-
-# ╔═╡ 2d6c7a30-56e7-4a19-a910-37adc97be19e
-begin
-	if enabletraining
-		train(1f-3, 1000)
-	end
-end
-
-# ╔═╡ d3fd0a5d-2637-48db-94c1-623f6cae9033
-begin
-	if enabletraining
-		train(1f-3, 1000)
+		for epoch in 1:1000
+			train(0.1, 50)
+			exportresults(epoch)
+		end
 	end
 end
 
@@ -569,6 +397,7 @@ show(IOContext(stdout, :limit=>false), MIME"text/plain"(), ps)
 # ╠═f0486891-b8b3-4a39-91df-1389d6f799e1
 # ╠═001c318e-b7a6-48a5-bfd5-6dd0368873ac
 # ╠═05568880-f931-4394-b31e-922850203721
+# ╠═2873fa22-0e8b-44ca-b5bf-3f2b966c5eee
 # ╠═0af50917-abf4-4d73-b2d6-3873b73b2347
 # ╟─9ea12ddb-ff8a-4c16-b2a5-8b7603f262a3
 # ╠═9346f569-d5f9-43cd-9302-1ee64ef9a030
@@ -588,33 +417,12 @@ show(IOContext(stdout, :limit=>false), MIME"text/plain"(), ps)
 # ╠═f0a34be1-6aa2-4563-abc2-ea163a778752
 # ╠═ef59f249-64c5-4262-b987-327d67b70422
 # ╠═f4a16e34-669e-4c93-bd83-e3622a747a3a
-# ╠═5a17f6c0-ead1-448f-8df8-60e68a96e0db
+# ╠═9789decf-c384-42df-b7aa-3c2137a69a41
+# ╠═09ec7a24-6c1c-4767-b22e-f1aa68d32ea3
+# ╠═1a6d21fd-d79e-4463-a387-235db1411b8f
+# ╠═273e3b89-3c48-4828-8378-30232170bc2c
+# ╠═4a9b63a7-b588-4c83-81c3-11cd954703c7
+# ╠═fb3db721-96b3-40e3-adc9-307137a05bf4
+# ╠═913cdb45-55ea-4a04-9434-8336e66144ad
 # ╠═dbaab69d-8e0a-474b-892a-e869afc55681
-# ╠═a528a99c-5f9e-4d04-abd2-6b9264fb775d
-# ╠═0fc3eae9-467a-4305-b126-327bb3d7892c
-# ╠═099466a0-f47d-4aca-9520-63fdc2915332
-# ╠═0eaadc9e-e4c9-49cc-a65e-8fd805eacaa1
-# ╠═3e9dc0b1-aff1-4b5f-a78c-d42269b247e8
-# ╠═a5ccef36-cd09-4403-bed2-4aa406039ebb
-# ╠═95e10df6-c448-4dae-b400-b6dcfeaf7438
-# ╠═ccaa1092-915b-4b14-b0e2-eae663cb5b92
-# ╠═4d728103-4753-40f6-ab8a-29261d6813e9
-# ╠═2d7a69b7-ee51-4fbf-8ce1-40ce3fff751e
-# ╠═794b30ff-f409-4c2e-923f-789353306cda
-# ╠═f3f493de-256b-4cd9-ab16-db88b45df937
-# ╠═ea8190e8-2147-4846-92f3-531796efacdd
-# ╠═78fafa9b-8fcb-455f-ba8d-fee5e511cda5
-# ╠═8773bfa2-fd50-4409-be0b-d550b0686e8a
-# ╠═322b71cc-7499-4384-9962-25f54c0d3572
-# ╠═f4159b1c-0b3e-418e-9486-d3584da4dd29
-# ╠═73b1b46f-2101-4da3-934a-ea8710a52cb4
-# ╠═810228ad-fe76-47a9-b54c-c1afd8de9e2a
-# ╠═b24aef95-9e67-42b2-b83e-295ca5e967d9
-# ╠═d18ea71c-efb9-4e7f-abff-a2f81d77b883
-# ╠═c2dedddf-6ba1-43af-b446-828b392efb36
-# ╠═216734d2-92e7-459d-baa0-74b4f86dfd1a
-# ╠═37c22306-ee80-4625-85e2-ff4093375343
-# ╠═2961c8fb-83de-4081-b78e-17405e4ec2fc
-# ╠═2d6c7a30-56e7-4a19-a910-37adc97be19e
-# ╠═d3fd0a5d-2637-48db-94c1-623f6cae9033
 # ╠═7ce64e25-e5a5-4ace-ba6b-844ef6e4ef82

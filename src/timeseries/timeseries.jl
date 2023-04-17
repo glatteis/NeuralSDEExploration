@@ -8,7 +8,7 @@ export series, timeseriesplot!
 abstract type Timeseries end
 
 "Get a series from a Timeseries"
-function series(model :: Timeseries, u0, tspan, datasize) end
+function series(model :: Timeseries, u0, tspan, datasize; seed=nothing) end
 
 function timeseriesplot!(model :: Timeseries, u0s, tspan, datasize)
     fig = plot(0, 0, xlabel=xlabel(model), ylabel=ylabel(model), fmt=:png, dpi = 600, legend=nothing)
