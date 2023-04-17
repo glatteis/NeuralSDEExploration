@@ -288,7 +288,7 @@ cb()
 
 # ╔═╡ f0a34be1-6aa2-4563-abc2-ea163a778752
 function loss(ps, minibatch, seed)
-	mean(NeuralSDEExploration.loss(latent_sde, ps, minibatch, st, 1.0; seed=seed, ensemblemode=EnsembleThreads()))
+	mean(NeuralSDEExploration.loss(latent_sde, ps, minibatch, st, 1.0; seed=seed, ensemblemode=EnsembleSerial()))
 end
 
 # ╔═╡ ef59f249-64c5-4262-b987-327d67b70422
