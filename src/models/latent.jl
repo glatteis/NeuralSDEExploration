@@ -133,9 +133,9 @@ function pass(n::LatentSDE, ps::ComponentVector, timeseries, st; sense=Interpola
             time_index = searchsortedlast(timeseries[1].t, max(0.0, t))
             timedctx = context[:, batch, time_index]
             
-            posterior_net_input = vcat(copy(u), timedctx)
+            posterior_net_input = vcat(u, timedctx)
             
-            prior = n.drift_prior(copy(u), p.drift_prior, st.drift_prior)[1]
+            prior = n.drift_prior(u, p.drift_prior, st.drift_prior)[1]
             posterior = n.drift_posterior(posterior_net_input, p.drift_posterior, st.drift_posterior)[1]
             diffusion = reduce(vcat, n.diffusion(([[x] for x in u]...,), p.diffusion, st.diffusion)[1])
 
