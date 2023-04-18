@@ -93,10 +93,6 @@ begin
     function normalize(x)
         return ((x - datamin) / (datamax - datamin))
     end
-
-    function rescale(x)
-        return ((datamax - datamin)) + datamin
-    end
 end
 
 # ╔═╡ 9a5c942f-9e2d-4c6c-9cb1-b0dffd8050a0
@@ -333,14 +329,21 @@ end
 # ╔═╡ b3a05ce4-9e72-419e-b72c-871072d2ef3a
 train(0.1, 1)
 
-# ╔═╡ 8fee9dc9-a806-400a-8cf8-4dd389d2e0ed
-cb()
+# ╔═╡ 78aa72e2-8188-441f-9910-1bc5525fda7a
+begin
+	if !(@isdefined PlutoRunner)  # running as job
+		for epoch in 1:1000
+			train(0.1, 100)
+			exportresults(epoch)
+		end
+	end
+end
 
 # ╔═╡ dbaab69d-8e0a-474b-892a-e869afc55681
 begin
-	if enabletraining
+	if (@isdefined PlutoRunner) && enabletraining
 		@gif for epoch in 1:10
-			train(0.1, 20)
+			train(0.1, 1)
 			cb()
 		end
 	end
@@ -412,6 +415,6 @@ show(IOContext(stdout, :limit=>false), MIME"text/plain"(), ps)
 # ╠═9789decf-c384-42df-b7aa-3c2137a69a41
 # ╠═fb3db721-96b3-40e3-adc9-307137a05bf4
 # ╠═b3a05ce4-9e72-419e-b72c-871072d2ef3a
-# ╠═8fee9dc9-a806-400a-8cf8-4dd389d2e0ed
+# ╠═78aa72e2-8188-441f-9910-1bc5525fda7a
 # ╠═dbaab69d-8e0a-474b-892a-e869afc55681
 # ╠═7ce64e25-e5a5-4ace-ba6b-844ef6e4ef82
