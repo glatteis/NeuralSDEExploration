@@ -157,8 +157,8 @@ Drift of posterior. This is the term of an SDE when fed with the context.
 
 # ╔═╡ df2034fd-560d-4529-836a-13745f976c1f
 drift_posterior = Lux.Chain(
-	Lux.Dense(latent_dims + context_size => hidden_size, tanh; init_weight=zeros),
-	Lux.Dense(hidden_size => latent_dims, tanh; init_weight=zeros),
+	Lux.Dense(latent_dims + context_size => hidden_size, tanh),
+	Lux.Dense(hidden_size => latent_dims, tanh),
 	Lux.Scale(latent_dims)
 )
 
@@ -237,7 +237,7 @@ Integrate the posterior SDE in latent space given context:
 @bind ti Slider(1:length(timeseries))
 
 # ╔═╡ 88fa1b08-f0d4-4fcf-89c2-8a9f33710d4c
-posterior_latent, posterior_data, logterm_, kl_divergence_, distance_ = NeuralSDEExploration.pass(latent_sde, ps, timeseries[ti:ti+5], st; seed=seed, ensemblemode=EnsembleThreads())
+posterior_latent, posterior_data, logterm_, kl_divergence_, distance_ = NeuralSDEExploration.pass(latent_sde, ps, timeseries[ti:ti+5], st; seed=seed, ensemblemode=EnsembleSerial())
 
 # ╔═╡ 737a7c93-7da6-4ce8-8f41-1aa32df04568
 posterior_latent[:, :, 10]
@@ -306,7 +306,6 @@ function train(learning_rate, num_steps)
 		seed = abs(rand(Int))
 
 		l, dps = Zygote.withgradient(ps -> loss(ps, minibatch, seed), ps)
-		println(l)
 		Optimisers.update!(opt_state, ps, dps[1])
 	end
 end

@@ -121,8 +121,6 @@ function pass(n::LatentSDE, ps::ComponentVector, timeseries, st; sense=Interpola
     z0 = reduce(hcat, [reshape([x.μ + eps[1, batch] * x.σ for x in initialdists_posterior[:, batch]], :, 1) for batch in eachindex(timeseries)])
 
     augmented_z0 = vcat(z0, zeros(1, length(z0[1, :])))
-    
-    lk = Threads.SpinLock()
 
     function augmented_drift(batch)
         function(u_in::Vector{Float64}, p::ComponentVector, t::Float64)
