@@ -65,7 +65,7 @@ md"Let's generate the data and plot a quick example:"
 # ╔═╡ dd03f851-2e26-4850-a7d4-a64f154d2872
 begin
 	n = 10000
-    datasize = 200
+    datasize = 50
     tspan = (0.0e0, 10e0)
 end
 
@@ -111,7 +111,7 @@ We are going to build a simple latent SDE. Define a few constants...
 context_size = 8 # The size of the context given to the posterior SDE.
 
 # ╔═╡ d81ccb5f-de1c-4a01-93ce-3e7302caedc0
-hidden_size = 256 # The hidden layer size for all ANNs.
+hidden_size = 64 # The hidden layer size for all ANNs.
 
 # ╔═╡ b5721107-7cf5-4da3-b22a-552e3d56bcfa
 latent_dims = 2 # Dimensions of the latent space.
@@ -146,6 +146,7 @@ Drift of prior. This is just an SDE drift in the latent space
 # ╔═╡ c14806bd-42cf-480b-b618-bfe72183feb3
 drift_prior = Lux.Chain(
 	Lux.Dense(latent_dims => hidden_size, tanh),
+	Lux.Dense(hidden_size => hidden_size, tanh),
 	Lux.Dense(hidden_size => latent_dims, tanh),
 	Lux.Scale(latent_dims)
 )
@@ -158,6 +159,7 @@ Drift of posterior. This is the term of an SDE when fed with the context.
 # ╔═╡ df2034fd-560d-4529-836a-13745f976c1f
 drift_posterior = Lux.Chain(
 	Lux.Dense(latent_dims + context_size => hidden_size, tanh),
+	Lux.Dense(hidden_size => hidden_size, tanh),
 	Lux.Dense(hidden_size => latent_dims, tanh),
 	Lux.Scale(latent_dims)
 )
@@ -190,7 +192,7 @@ latent_sde = LatentSDE(
 	EulerHeun(),
 	tspan;
 	saveat=range(tspan[1], tspan[end], datasize),
-	dt=(tspan[end]/(datasize*2))
+	dt=(tspan[end]/datasize)
 )
 
 # ╔═╡ 0f6f4520-576f-42d3-9126-2076a51a6e22
@@ -306,6 +308,7 @@ function train(learning_rate, num_steps)
 		seed = abs(rand(Int))
 
 		l, dps = Zygote.withgradient(ps -> loss(ps, minibatch, seed), ps)
+		println(l)
 		Optimisers.update!(opt_state, ps, dps[1])
 	end
 end
@@ -336,9 +339,9 @@ cb()
 # ╔═╡ dbaab69d-8e0a-474b-892a-e869afc55681
 begin
 	if enabletraining
-		for epoch in 1:1000
-			train(0.1, 50)
-			exportresults(epoch)
+		@gif for epoch in 1:10
+			train(0.1, 20)
+			cb()
 		end
 	end
 end
