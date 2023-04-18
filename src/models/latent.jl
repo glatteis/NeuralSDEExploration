@@ -16,17 +16,11 @@ end
 
 function LatentSDE(initial_prior, initial_posterior, drift_prior, drift_posterior, diffusion, encoder, projector, solver, tspan; kwargs...)
     models = [initial_prior, initial_posterior, drift_prior, drift_posterior, diffusion, encoder, projector]
-    p = []
-    res = []
     LatentSDE{
         [typeof(x) for x in models]...,
-        # [typeof(x) for x in res]...,
-        # [typeof(x) for x in p]...,
         typeof(solver),typeof(tspan),typeof(kwargs)
     }(
         models...,
-        # res...,
-        # p...,
         solver, tspan, kwargs
     )
 end
@@ -128,25 +122,26 @@ function pass(n::LatentSDE, ps::ComponentVector, timeseries, st; sense=Interpola
 
     augmented_z0 = vcat(z0, zeros(1, length(z0[1, :])))
     
-    
+    lk = Threads.SpinLock()
+
     function augmented_drift(batch)
         function(u_in::Vector{Float64}, p::ComponentVector, t::Float64)
             # Remove augmented term from input
             u = u_in[1:end-1]
-            
+
             # Get the context for the posterior at the current time
             time_index = searchsortedlast(timeseries[1].t, max(0.0, t))
             timedctx = context[:, batch, time_index]
             
-            posterior_net_input = vcat(u, timedctx)
+            posterior_net_input = vcat(copy(u), timedctx)
             
-            prior = n.drift_prior(u, p.drift_prior, st.drift_prior)[1]
+            prior = n.drift_prior(copy(u), p.drift_prior, st.drift_prior)[1]
             posterior = n.drift_posterior(posterior_net_input, p.drift_posterior, st.drift_posterior)[1]
-            diffusion = reduce(vcat, n.diffusion(Tuple([[x] for x in u]), p.diffusion, st.diffusion)[1])
+            diffusion = reduce(vcat, n.diffusion(([[x] for x in u]...,), p.diffusion, st.diffusion)[1])
 
             u_term = stable_divide(posterior .- prior, diffusion)
             augmented_term = 0.5e0 * sum(abs2, u_term; dims=[1])
-
+            
             return vcat(posterior, augmented_term)
         end
     end
@@ -158,11 +153,10 @@ function pass(n::LatentSDE, ps::ComponentVector, timeseries, st; sense=Interpola
 
     function prob_func(prob, batch, repeat)
         if seed !== nothing
-            return SDEProblem{false}(augmented_drift(Int(batch)),augmented_diffusion,augmented_z0[:, Int(batch)],n.tspan,ps,seed=seed+Int(batch),noise=noise)
+            return SDEProblem{false}(augmented_drift(batch),augmented_diffusion,augmented_z0[:, batch],n.tspan,ps,seed=seed+Int(batch),noise=noise)
         else
-            return SDEProblem{false}(augmented_drift(Int(batch)),augmented_diffusion,augmented_z0[:, Int(batch)],n.tspan,ps,noise=noise)
+            return SDEProblem{false}(augmented_drift(batch),augmented_diffusion,augmented_z0[:, batch],n.tspan,ps,noise=noise)
         end
-        # DifferentialEquations.remake(prob; f = SDEFunction{false}(augmented_drift(Int(batch)),augmented_diffusion), u0 = augmented_z0[:, batch])
     end
 
     ensemble = EnsembleProblem(nothing, output_func=(sol, i) -> (sol, false), prob_func=prob_func)

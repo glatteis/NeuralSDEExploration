@@ -24,10 +24,10 @@ begin
 end
 
 # ╔═╡ b6abba94-db07-4095-98c9-443e31832e7d
-using Optimisers, StatsBase, Zygote, ForwardDiff, Enzyme, Lux, DifferentialEquations, Functors, ComponentArrays, Distributions, ParameterSchedulers, Random
+using Optimisers, StatsBase, Zygote, Lux, DifferentialEquations, ComponentArrays, ParameterSchedulers, Random, Distributed
 
 # ╔═╡ d1440209-78f7-4a9a-9101-a06ad2534e5d
-using NeuralSDEExploration, Plots, PlutoUI, ProfileSVG
+using NeuralSDEExploration, Plots, PlutoUI
 
 # ╔═╡ 1a6d21fd-d79e-4463-a387-235db1411b8f
 using Profile, PProf
@@ -59,6 +59,9 @@ Let's train a Neural SDE from a modified form of the simple zero-dimensional ene
 # ╔═╡ f74dd752-485b-4203-9d72-c56e55a3ef76
 ebm = NeuralSDEExploration.ZeroDEnergyBalanceModel(0.425, 0.4, 1363, 0.6 * 5.67e-8, 0.14)
 
+# ╔═╡ c799a418-d85e-4f9b-af7a-ed667fab21b6
+println("Running on $(Threads.nthreads()) threads")
+
 # ╔═╡ cc2418c2-c355-4291-b5d7-d9019787834f
 md"Let's generate the data and plot a quick example:"
 
@@ -84,9 +87,6 @@ plot(reduce(hcat, [solution[i].u for i in 1:10]))
 md"""
 Let's normalize our data for training:
 """
-
-# ╔═╡ effceddc-c50b-4578-8e58-8d25ae34f60c
-Tuple([1,2,3])
 
 # ╔═╡ aff1c9d9-b29b-4b2c-b3f1-1e06a9370f64
 begin
@@ -136,7 +136,7 @@ The `initial_posterior` net is the posterior for the initial state. It takes the
 """
 
 # ╔═╡ cdebb87f-9759-4e6b-a00a-d764b3c7fbf8
-initial_posterior = Lux.Dense(context_size => latent_dims + latent_dims)
+initial_posterior = Lux.Dense(context_size => latent_dims + latent_dims; init_weight=zeros)
 
 # ╔═╡ 3ec28482-2d6c-4125-8d85-4fb46b130677
 initial_prior = Lux.Dense(1 => latent_dims + latent_dims) 
@@ -160,8 +160,8 @@ Drift of posterior. This is the term of an SDE when fed with the context.
 
 # ╔═╡ df2034fd-560d-4529-836a-13745f976c1f
 drift_posterior = Lux.Chain(
-	Lux.Dense(latent_dims + context_size => hidden_size, tanh),
-	Lux.Dense(hidden_size => latent_dims, tanh),
+	Lux.Dense(latent_dims + context_size => hidden_size, tanh; init_weight=zeros),
+	Lux.Dense(hidden_size => latent_dims, tanh; init_weight=zeros),
 	Lux.Scale(latent_dims)
 )
 
@@ -240,7 +240,10 @@ Integrate the posterior SDE in latent space given context:
 @bind ti Slider(1:length(timeseries))
 
 # ╔═╡ 88fa1b08-f0d4-4fcf-89c2-8a9f33710d4c
-posterior_latent, posterior_data, logterm_, kl_divergence_, distance_ = NeuralSDEExploration.pass(latent_sde, ps, timeseries[ti:ti+10], st; seed=seed, ensemblemode=EnsembleThreads())
+posterior_latent, posterior_data, logterm_, kl_divergence_, distance_ = NeuralSDEExploration.pass(latent_sde, ps, timeseries[ti:ti+5], st; seed=seed, ensemblemode=EnsembleThreads())
+
+# ╔═╡ 737a7c93-7da6-4ce8-8f41-1aa32df04568
+posterior_latent[:, :, 10]
 
 # ╔═╡ dabf2a1f-ec78-4942-973f-4dbf9037ee7b
 plot(logterm_[1, :, :]', label="KL-Divergence")
@@ -288,7 +291,7 @@ cb()
 
 # ╔═╡ f0a34be1-6aa2-4563-abc2-ea163a778752
 function loss(ps, minibatch, seed)
-	mean(NeuralSDEExploration.loss(latent_sde, ps, minibatch, st, 1.0; seed=seed, ensemblemode=EnsembleSerial()))
+	mean(NeuralSDEExploration.loss(latent_sde, ps, minibatch, st, 1.0; seed=seed, ensemblemode=EnsembleThreads()))
 end
 
 # ╔═╡ ef59f249-64c5-4262-b987-327d67b70422
@@ -301,18 +304,14 @@ function train(learning_rate, num_steps)
 
 	opt_state = Optimisers.setup(Optimisers.Adam(), ps)
 	for (step, eta) in zip(1:num_steps, sched)
-		minibatch = timeseries[sample(1:size(timeseries)[1], 16, replace=false)]
+		minibatch = timeseries[sample(1:size(timeseries)[1], 4, replace=false)]
 
 		seed = abs(rand(Int))
-		l = loss(ps, minibatch, seed)
-		println("Loss: $l")
-		dps = similar(ps)
 
-		dps = Zygote.gradient(ps -> loss(ps, minibatch, seed), ps)[1]
-
-		Optimisers.update!(opt_state, ps, dps)
+		l, dps = Zygote.withgradient(ps -> loss(ps, minibatch, seed), ps)
+		println(l)
+		Optimisers.update!(opt_state, ps, dps[1])
 	end
-	
 end
 
 # ╔═╡ 9789decf-c384-42df-b7aa-3c2137a69a41
@@ -330,7 +329,35 @@ end
 # @profile train(0.1, 1)
 
 # ╔═╡ fb3db721-96b3-40e3-adc9-307137a05bf4
-# pprof()
+# Idea: Use EnsembleDistributed sometime
+# begin
+# 	if !(@isdefined PlutoRunner)  # running as job
+# 		cpunum = length(Sys.cpu_info())
+# 		addprocs(cpunum - 1, topology=:master_worker, exeflags="--project=$(Base.active_project())")
+# 		println("Running on $cpunum workers")
+# 	end
+# end
+
+# ╔═╡ b3a05ce4-9e72-419e-b72c-871072d2ef3a
+train(0.1, 1)
+
+# ╔═╡ 02598b99-c5cd-4438-95e4-918c4acfaa2d
+train(0.1, 50)
+
+# ╔═╡ cde813f3-c7ce-49f0-9feb-7ac803a8ee09
+cb()
+
+# ╔═╡ 83ced516-b13d-4648-99c1-990d9aaeb971
+train(0.1, 50)
+
+# ╔═╡ 5fe91ae0-0211-48df-95e7-bcf94a2563d8
+cb()
+
+# ╔═╡ d7d576ee-786d-4ddd-9438-4fe88a695392
+train(0.1, 50)
+
+# ╔═╡ 8fee9dc9-a806-400a-8cf8-4dd389d2e0ed
+cb()
 
 # ╔═╡ dbaab69d-8e0a-474b-892a-e869afc55681
 begin
@@ -353,13 +380,13 @@ show(IOContext(stdout, :limit=>false), MIME"text/plain"(), ps)
 # ╠═13ef3cd9-7f58-459e-a659-abc35b550326
 # ╟─32be3e35-a529-4d16-8ba0-ec4e223ae401
 # ╠═f74dd752-485b-4203-9d72-c56e55a3ef76
+# ╠═c799a418-d85e-4f9b-af7a-ed667fab21b6
 # ╟─cc2418c2-c355-4291-b5d7-d9019787834f
 # ╠═dd03f851-2e26-4850-a7d4-a64f154d2872
 # ╠═c00a97bf-5e10-4168-8d58-f4f9270258ac
 # ╟─1502612c-1489-4abf-8a8b-5b2d03a68cb1
 # ╠═455263ef-2f94-4f3e-8401-f0da7fb3e493
 # ╟─f4651b27-135e-45f1-8647-64ab08c2e8e8
-# ╠═effceddc-c50b-4578-8e58-8d25ae34f60c
 # ╠═aff1c9d9-b29b-4b2c-b3f1-1e06a9370f64
 # ╠═9a5c942f-9e2d-4c6c-9cb1-b0dffd8050a0
 # ╟─da11fb69-a8a1-456d-9ce7-63180ef27a83
@@ -395,6 +422,7 @@ show(IOContext(stdout, :limit=>false), MIME"text/plain"(), ps)
 # ╠═26885b24-df80-4fbf-9824-e175688f1322
 # ╠═5f56cc7c-861e-41a4-b783-848623b94bf9
 # ╠═88fa1b08-f0d4-4fcf-89c2-8a9f33710d4c
+# ╠═737a7c93-7da6-4ce8-8f41-1aa32df04568
 # ╠═dabf2a1f-ec78-4942-973f-4dbf9037ee7b
 # ╠═38324c42-e5c7-4b59-8129-0e4c17ab5bf1
 # ╠═08021ed6-ac31-4829-9f21-f046af73d5a3
@@ -409,5 +437,12 @@ show(IOContext(stdout, :limit=>false), MIME"text/plain"(), ps)
 # ╠═273e3b89-3c48-4828-8378-30232170bc2c
 # ╠═4a9b63a7-b588-4c83-81c3-11cd954703c7
 # ╠═fb3db721-96b3-40e3-adc9-307137a05bf4
+# ╠═b3a05ce4-9e72-419e-b72c-871072d2ef3a
+# ╠═02598b99-c5cd-4438-95e4-918c4acfaa2d
+# ╠═cde813f3-c7ce-49f0-9feb-7ac803a8ee09
+# ╠═83ced516-b13d-4648-99c1-990d9aaeb971
+# ╠═5fe91ae0-0211-48df-95e7-bcf94a2563d8
+# ╠═d7d576ee-786d-4ddd-9438-4fe88a695392
+# ╠═8fee9dc9-a806-400a-8cf8-4dd389d2e0ed
 # ╠═dbaab69d-8e0a-474b-892a-e869afc55681
 # ╠═7ce64e25-e5a5-4ace-ba6b-844ef6e4ef82
