@@ -29,9 +29,6 @@ using Optimisers, StatsBase, Zygote, Lux, DifferentialEquations, ComponentArrays
 # ╔═╡ d1440209-78f7-4a9a-9101-a06ad2534e5d
 using NeuralSDEExploration, Plots, PlutoUI
 
-# ╔═╡ 1a6d21fd-d79e-4463-a387-235db1411b8f
-using Profile, PProf
-
 # ╔═╡ db557c9a-24d6-4008-8225-4b8867ee93db
 begin
 	if @isdefined PlutoRunner  # running inside Pluto
@@ -321,13 +318,6 @@ function exportresults(epoch)
 	savefig(pl, "~/currtrain_$epoch.pdf")
 end
 
-# ╔═╡ 273e3b89-3c48-4828-8378-30232170bc2c
-# Profile.clear()
-
-
-# ╔═╡ 4a9b63a7-b588-4c83-81c3-11cd954703c7
-# @profile train(0.1, 1)
-
 # ╔═╡ fb3db721-96b3-40e3-adc9-307137a05bf4
 # Idea: Use EnsembleDistributed sometime
 # begin
@@ -340,21 +330,6 @@ end
 
 # ╔═╡ b3a05ce4-9e72-419e-b72c-871072d2ef3a
 train(0.1, 1)
-
-# ╔═╡ 02598b99-c5cd-4438-95e4-918c4acfaa2d
-train(0.1, 50)
-
-# ╔═╡ cde813f3-c7ce-49f0-9feb-7ac803a8ee09
-cb()
-
-# ╔═╡ 83ced516-b13d-4648-99c1-990d9aaeb971
-train(0.1, 50)
-
-# ╔═╡ 5fe91ae0-0211-48df-95e7-bcf94a2563d8
-cb()
-
-# ╔═╡ d7d576ee-786d-4ddd-9438-4fe88a695392
-train(0.1, 50)
 
 # ╔═╡ 8fee9dc9-a806-400a-8cf8-4dd389d2e0ed
 cb()
@@ -433,16 +408,8 @@ show(IOContext(stdout, :limit=>false), MIME"text/plain"(), ps)
 # ╠═ef59f249-64c5-4262-b987-327d67b70422
 # ╠═f4a16e34-669e-4c93-bd83-e3622a747a3a
 # ╠═9789decf-c384-42df-b7aa-3c2137a69a41
-# ╠═1a6d21fd-d79e-4463-a387-235db1411b8f
-# ╠═273e3b89-3c48-4828-8378-30232170bc2c
-# ╠═4a9b63a7-b588-4c83-81c3-11cd954703c7
 # ╠═fb3db721-96b3-40e3-adc9-307137a05bf4
 # ╠═b3a05ce4-9e72-419e-b72c-871072d2ef3a
-# ╠═02598b99-c5cd-4438-95e4-918c4acfaa2d
-# ╠═cde813f3-c7ce-49f0-9feb-7ac803a8ee09
-# ╠═83ced516-b13d-4648-99c1-990d9aaeb971
-# ╠═5fe91ae0-0211-48df-95e7-bcf94a2563d8
-# ╠═d7d576ee-786d-4ddd-9438-4fe88a695392
 # ╠═8fee9dc9-a806-400a-8cf8-4dd389d2e0ed
 # ╠═dbaab69d-8e0a-474b-892a-e869afc55681
 # ╠═7ce64e25-e5a5-4ace-ba6b-844ef6e4ef82
