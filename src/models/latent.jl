@@ -25,8 +25,6 @@ function LatentSDE(initial_prior, initial_posterior, drift_prior, drift_posterio
     )
 end
 
-@functor LatentSDE (initial_prior_p,initial_posterior_p,drift_prior_p,drift_posterior_p,diffusion_p,encoder_p,projector_p,)
-
 function get_distributions(model, model_p, st, context)
     normsandvars, _ = model(context, model_p, st)
     # batches are on the second dimension
@@ -110,8 +108,14 @@ function pass(n::LatentSDE, ps::ComponentVector, timeseries, st; sense=Interpola
     timecat(x, y) = cat(x, y; dims = 3)
 
     # Lux recurrent uses batches / time the other way around...
-    encoder_result = n.encoder(tsmatrix, ps.encoder, st.encoder)[1]
-    context = permutedims(reduce(timecat, reshape(encoder_result, size(encoder_result)..., 1)), [1, 3, 2])
+    # time: dimension 3 => dimension 2
+    # batches: dimension 2 => dimension 3
+    tsmatrix_flipped = permutedims(tsmatrix, (1, 3, 2))
+    context_flipped = n.encoder(tsmatrix_flipped, ps.encoder, st.encoder)[1]
+    # context_flipped is now a vector of 2-dim matrices
+    # latent space: dimension 1
+    # batch: dimension 2
+    context = reduce(timecat, context_flipped)
 
     initialdists_prior = get_distributions(n.initial_prior, ps.initial_prior, st.initial_prior, [1e0])
     initialdists_posterior = get_distributions(n.initial_posterior, ps.initial_posterior, st.initial_posterior, context[:, :, 1])
@@ -128,7 +132,7 @@ function pass(n::LatentSDE, ps::ComponentVector, timeseries, st; sense=Interpola
             u = u_in[1:end-1]
 
             # Get the context for the posterior at the current time
-            time_index = searchsortedlast(timeseries[1].t, max(0.0, t))
+            time_index = min(searchsortedfirst(timeseries[1].t, t), length(timeseries[1].t))
             timedctx = context[:, batch, time_index]
             
             posterior_net_input = vcat(u, timedctx)
