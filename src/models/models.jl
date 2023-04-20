@@ -9,6 +9,7 @@ using StatsBase: sample
 
 include("neural.jl")
 include("latent.jl")
+include("latent_flux.jl")
 
 export NeuralSDEProblem, toy_neural_sde, trainkullback!, trainmeansquare!
 

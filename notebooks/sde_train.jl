@@ -24,7 +24,7 @@ begin
 end
 
 # ╔═╡ b6abba94-db07-4095-98c9-443e31832e7d
-using Optimisers, StatsBase, Zygote, Lux, DifferentialEquations, ComponentArrays, ParameterSchedulers, Random, Distributed
+using Optimisers, StatsBase, Zygote, Lux, DifferentialEquations, ComponentArrays, ParameterSchedulers, Random, Distributed, ForwardDiff, LuxCore
 
 # ╔═╡ d1440209-78f7-4a9a-9101-a06ad2534e5d
 using NeuralSDEExploration, Plots, PlutoUI
@@ -64,10 +64,49 @@ md"Let's generate the data and plot a quick example:"
 
 # ╔═╡ dd03f851-2e26-4850-a7d4-a64f154d2872
 begin
-	n = 10000
-    datasize = 50
-    tspan = (0.0e0, 10e0)
+	n = 1000
+    datasize = 100
+    tspan = (0.0, 5.0)
 end
+
+# ╔═╡ d052d6c0-2065-4ae1-acf7-fbe90ff1cb02
+begin
+	struct BroadcastLayer{T <: NamedTuple} <: 	LuxCore.AbstractExplicitContainerLayer{(:layers,)}
+    layers::T
+	end
+	function BroadcastLayer(layers...)
+	    for l in layers
+	        if !iszero(LuxCore.statelength(l))
+	            throw(ArgumentError("Stateful layer `$l` are not supported for `BroadcastLayer`."))
+	        end
+	    end
+	    names = ntuple(i -> Symbol("layer_$i"), length(layers))
+	    return BroadcastLayer(NamedTuple{names}(layers))
+	end
+	
+	BroadcastLayer(; kwargs...) = BroadcastLayer(connection, (; kwargs...))
+	
+	function (m::BroadcastLayer)(x, ps, st::NamedTuple{names}) where {names}
+		println(values(ps))
+		println(ps)
+		println(values(collect(ps)))
+		println(values(m.layers))
+
+	    results = (first ∘ Lux.apply).(values(m.layers), x, values(collect(ps)), values(st))
+	    return results, st
+	end
+		
+	Base.keys(m::BroadcastLayer) = Base.keys(getfield(m, :layers))
+end
+
+# ╔═╡ 5d020072-8a2e-438d-8e7a-330cca97964b
+LuxCore.initialparameters(rng::Random.AbstractRNG, l::BroadcastLayer) = NamedTuple{keys(l.layers)}(LuxCore.initialparameters.((rng, ), (values(l.layers))),)
+
+# ╔═╡ 1a5b7d12-d972-45cf-a874-27202eb97975
+# ╠═╡ disabled = true
+#=╠═╡
+encoder = Lux.Chain(Lux.Recurrence(Lux.GRUCell(data_dims => context_size); return_sequence=true), BroadcastLayer(Lux.Dense(context_size => context_size)))
+  ╠═╡ =#
 
 # ╔═╡ c00a97bf-5e10-4168-8d58-f4f9270258ac
 solution = NeuralSDEExploration.series(ebm, range(210.0e0, 320.0e0, n), tspan, datasize; seed=10)
@@ -115,13 +154,13 @@ latent_dims = 2 # Dimensions of the latent space.
 # ╔═╡ 9767a8ea-bdda-43fc-b636-8681d150d29f
 data_dims = 1 # Dimensions of our input data.
 
+# ╔═╡ e97cd020-d180-4db3-8e19-3efc2529aad2
+encoder = Lux.Recurrence(Lux.LSTMCell(data_dims => context_size); return_sequence=true)
+
 # ╔═╡ 39154e76-01f7-4710-8f21-6f3a7d3fcfcd
 md"""
 The encoder takes a timeseries and outputs context that can be passed to the posterior SDE, that is, the SDE that has information about the data and encodes $p_\theta(z \mid x)$.
 """
-
-# ╔═╡ 847587ec-9297-471e-b788-7b776c05851e
-encoder = Lux.Recurrence(Lux.LSTMCell(data_dims => context_size); return_sequence=true)
 
 # ╔═╡ 0d09a662-78d3-4202-b2be-843a0669fc9f
 md"""
@@ -166,7 +205,13 @@ Diffusion. Prior and posterior share the same diffusion (they are not actually e
 """
 
 # ╔═╡ a1cb11fb-ec69-4ba2-9ed1-2d1a6d24ccd9
-diffusion = Lux.Parallel(nothing, [Lux.Chain(Lux.Dense(1 => 32, tanh), Lux.Dense(32 => 1, tanh, init_bias=ones), Lux.Scale(1)) for i in 1:latent_dims]...)
+diffusion = Lux.Parallel(nothing, [Lux.Chain(Lux.Dense(1 => 32, tanh), Lux.Dense(32 => 1, tanh, init_bias=ones), Lux.Scale(1, init_weight=ones)) for i in 1:latent_dims]...)
+
+# ╔═╡ 08892d82-da8e-4fbd-be18-0e0b3a3fb498
+# ╠═╡ disabled = true
+#=╠═╡
+diffusion = Lux.Parallel(nothing, [Lux.Scale(1; bias=true, init_weight=zeros, init_bias=ones) for i in 1:latent_dims]...)
+  ╠═╡ =#
 
 # ╔═╡ bfabcd80-fb62-410f-8710-f577852c77df
 md"""
@@ -209,11 +254,14 @@ plot(timeseries[i].u, legend=nothing)
 # ╔═╡ f08369b8-6eb9-4bb2-a389-f054fbe72645
 reshape(timeseries[i].u, 1, :, 1)
 
+# ╔═╡ cb9b4f6d-1b0e-4ca7-97f1-db377a9afca3
+plot(timeseries[i].u)
+
 # ╔═╡ 0c339b92-664d-4fef-a57d-af6c69c65597
 example_context, st_ = encoder(reshape(timeseries[i].u, 1, :, 1), ps.encoder, st.encoder)
 
-# ╔═╡ 2ea4c343-f561-44cd-93ef-ebd462804b54
-plot(reduce(hcat, example_context)')
+# ╔═╡ e1fa0645-42e7-48a1-8066-8b564d4ad519
+plot(reduce((x,y) -> cat(x, y; dims = 3), example_context)[1, :, :]')
 
 # ╔═╡ 9ea12ddb-ff8a-4c16-b2a5-8b7603f262a3
 md"""
@@ -234,11 +282,14 @@ Integrate the posterior SDE in latent space given context:
 # ╔═╡ 5f56cc7c-861e-41a4-b783-848623b94bf9
 @bind ti Slider(1:length(timeseries))
 
+# ╔═╡ f5267a6b-ff1d-4dc1-9d5e-088328ecf617
+timeseries[[1,501,901]]
+
 # ╔═╡ 88fa1b08-f0d4-4fcf-89c2-8a9f33710d4c
-posterior_latent, posterior_data, logterm_, kl_divergence_, distance_ = NeuralSDEExploration.pass(latent_sde, ps, timeseries[ti:ti+5], st; seed=seed, ensemblemode=EnsembleSerial())
+posterior_latent, posterior_data, logterm_, kl_divergence_, distance_ = NeuralSDEExploration.pass(latent_sde, ps, timeseries[[1,501,901]], st; seed=seed, ensemblemode=EnsembleSerial())
 
 # ╔═╡ 737a7c93-7da6-4ce8-8f41-1aa32df04568
-posterior_latent[:, :, 10]
+posterior_latent[:, :, 2]
 
 # ╔═╡ dabf2a1f-ec78-4942-973f-4dbf9037ee7b
 plot(logterm_[1, :, :]', label="KL-Divergence")
@@ -259,7 +310,7 @@ function cb()
 	posterior_latent = nothing
 	datas = []
 	n = 5
-	rng = Xoshiro(294)
+	rng = Xoshiro(5)
 	nums = sample(rng,1:length(timeseries),n;replace=false)
 
 	posterior_latent, posterior_data, logterm_, kl_divergence_, distance_ = NeuralSDEExploration.pass(latent_sde, ps, timeseries[nums], st, seed=seed+i)
@@ -285,12 +336,9 @@ end
 cb()
 
 # ╔═╡ f0a34be1-6aa2-4563-abc2-ea163a778752
-function loss(ps, minibatch, seed)
-	mean(NeuralSDEExploration.loss(latent_sde, ps, minibatch, st, 1.0; seed=seed, ensemblemode=EnsembleThreads()))
+function loss(ps, minibatch)
+	mean(NeuralSDEExploration.loss(latent_sde, ps, minibatch, st, 1.0; ensemblemode=EnsembleSerial()))
 end
-
-# ╔═╡ ef59f249-64c5-4262-b987-327d67b70422
-loss(ps, timeseries[1:5], 100)
 
 # ╔═╡ f4a16e34-669e-4c93-bd83-e3622a747a3a
 function train(learning_rate, num_steps)
@@ -299,13 +347,12 @@ function train(learning_rate, num_steps)
 
 	opt_state = Optimisers.setup(Optimisers.Adam(), ps)
 	for (step, eta) in zip(1:num_steps, sched)
-		minibatch = timeseries[sample(1:size(timeseries)[1], 4, replace=false)]
-
-		seed = abs(rand(Int))
-
-		l, dps = Zygote.withgradient(ps -> loss(ps, minibatch, seed), ps)
-		println(l)
-		Optimisers.update!(opt_state, ps, dps[1])
+		s = sample(rng, 1:size(timeseries)[1], 8, replace=false)
+		minibatch = timeseries[s]
+		l = loss(ps, minibatch)
+		println("Loss: $l")
+		dps = Zygote.gradient(ps -> loss(ps, minibatch), ps)[1]
+		Optimisers.update!(opt_state, ps, dps)
 	end
 end
 
@@ -326,28 +373,43 @@ end
 # 	end
 # end
 
-# ╔═╡ b3a05ce4-9e72-419e-b72c-871072d2ef3a
-train(0.1, 1)
-
 # ╔═╡ 78aa72e2-8188-441f-9910-1bc5525fda7a
 begin
-	if !(@isdefined PlutoRunner)  # running as job
-		for epoch in 1:1000
-			train(0.1, 100)
+	if !(@isdefined PlutoRunner) && enabletraining  # running as job
+		for epoch in 1:10000
+			train(0.05, 100)
 			exportresults(epoch)
 		end
 	end
 end
 
-# ╔═╡ dbaab69d-8e0a-474b-892a-e869afc55681
+# ╔═╡ 08b216d2-e752-4f18-9c0a-e9c571218a53
+dps = Zygote.gradient(ps -> loss(ps, timeseries[1:5]), ps)[1]
+
+# ╔═╡ f2fb7c89-9da0-4464-8adb-2f1058f470fb
+train(0.1, 1)
+
+# ╔═╡ 38ee56b3-a980-467a-a0fd-6711cf049183
 begin
-	if (@isdefined PlutoRunner) && enabletraining
+	if enabletraining
 		@gif for epoch in 1:10
-			train(0.1, 1)
+			train(0.5, 10)
 			cb()
 		end
 	end
 end
+
+
+# ╔═╡ 38716b5c-fe06-488c-b6ed-d2e28bd3d397
+begin
+	if enabletraining
+		@gif for epoch in 1:100
+			train(0.05, 10)
+			cb()
+		end
+	end
+end
+
 
 # ╔═╡ 7ce64e25-e5a5-4ace-ba6b-844ef6e4ef82
 show(IOContext(stdout, :limit=>false), MIME"text/plain"(), ps)
@@ -363,6 +425,10 @@ show(IOContext(stdout, :limit=>false), MIME"text/plain"(), ps)
 # ╠═c799a418-d85e-4f9b-af7a-ed667fab21b6
 # ╟─cc2418c2-c355-4291-b5d7-d9019787834f
 # ╠═dd03f851-2e26-4850-a7d4-a64f154d2872
+# ╠═d052d6c0-2065-4ae1-acf7-fbe90ff1cb02
+# ╠═5d020072-8a2e-438d-8e7a-330cca97964b
+# ╠═1a5b7d12-d972-45cf-a874-27202eb97975
+# ╠═e97cd020-d180-4db3-8e19-3efc2529aad2
 # ╠═c00a97bf-5e10-4168-8d58-f4f9270258ac
 # ╟─1502612c-1489-4abf-8a8b-5b2d03a68cb1
 # ╠═455263ef-2f94-4f3e-8401-f0da7fb3e493
@@ -375,7 +441,6 @@ show(IOContext(stdout, :limit=>false), MIME"text/plain"(), ps)
 # ╠═b5721107-7cf5-4da3-b22a-552e3d56bcfa
 # ╠═9767a8ea-bdda-43fc-b636-8681d150d29f
 # ╟─39154e76-01f7-4710-8f21-6f3a7d3fcfcd
-# ╠═847587ec-9297-471e-b788-7b776c05851e
 # ╠═bdf4c32c-9a2b-4814-8513-c6e16ebee69c
 # ╟─0d09a662-78d3-4202-b2be-843a0669fc9f
 # ╠═cdebb87f-9759-4e6b-a00a-d764b3c7fbf8
@@ -386,6 +451,7 @@ show(IOContext(stdout, :limit=>false), MIME"text/plain"(), ps)
 # ╠═df2034fd-560d-4529-836a-13745f976c1f
 # ╟─4a97576c-96de-458e-b881-3f5dd140fa6a
 # ╠═a1cb11fb-ec69-4ba2-9ed1-2d1a6d24ccd9
+# ╠═08892d82-da8e-4fbd-be18-0e0b3a3fb498
 # ╟─bfabcd80-fb62-410f-8710-f577852c77df
 # ╠═f0486891-b8b3-4a39-91df-1389d6f799e1
 # ╠═001c318e-b7a6-48a5-bfd5-6dd0368873ac
@@ -394,13 +460,15 @@ show(IOContext(stdout, :limit=>false), MIME"text/plain"(), ps)
 # ╠═e5c9f00f-849b-4523-85da-4dab567b2ca8
 # ╠═0667038f-4187-4044-9bec-941800fdba22
 # ╠═f08369b8-6eb9-4bb2-a389-f054fbe72645
+# ╠═cb9b4f6d-1b0e-4ca7-97f1-db377a9afca3
 # ╠═0c339b92-664d-4fef-a57d-af6c69c65597
-# ╠═2ea4c343-f561-44cd-93ef-ebd462804b54
+# ╠═e1fa0645-42e7-48a1-8066-8b564d4ad519
 # ╟─9ea12ddb-ff8a-4c16-b2a5-8b7603f262a3
 # ╠═9346f569-d5f9-43cd-9302-1ee64ef9a030
 # ╟─b98200a8-bf73-42a2-a357-af56812d01c3
 # ╠═26885b24-df80-4fbf-9824-e175688f1322
 # ╠═5f56cc7c-861e-41a4-b783-848623b94bf9
+# ╠═f5267a6b-ff1d-4dc1-9d5e-088328ecf617
 # ╠═88fa1b08-f0d4-4fcf-89c2-8a9f33710d4c
 # ╠═737a7c93-7da6-4ce8-8f41-1aa32df04568
 # ╠═dabf2a1f-ec78-4942-973f-4dbf9037ee7b
@@ -410,11 +478,12 @@ show(IOContext(stdout, :limit=>false), MIME"text/plain"(), ps)
 # ╠═b5c6d43c-8252-4602-8232-b3d1b0bcee33
 # ╠═025b33d9-7473-4a54-a3f1-787a8650f9e7
 # ╠═f0a34be1-6aa2-4563-abc2-ea163a778752
-# ╠═ef59f249-64c5-4262-b987-327d67b70422
 # ╠═f4a16e34-669e-4c93-bd83-e3622a747a3a
 # ╠═9789decf-c384-42df-b7aa-3c2137a69a41
 # ╠═fb3db721-96b3-40e3-adc9-307137a05bf4
-# ╠═b3a05ce4-9e72-419e-b72c-871072d2ef3a
 # ╠═78aa72e2-8188-441f-9910-1bc5525fda7a
-# ╠═dbaab69d-8e0a-474b-892a-e869afc55681
+# ╠═08b216d2-e752-4f18-9c0a-e9c571218a53
+# ╠═f2fb7c89-9da0-4464-8adb-2f1058f470fb
+# ╠═38ee56b3-a980-467a-a0fd-6711cf049183
+# ╠═38716b5c-fe06-488c-b6ed-d2e28bd3d397
 # ╠═7ce64e25-e5a5-4ace-ba6b-844ef6e4ef82
