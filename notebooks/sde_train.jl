@@ -65,8 +65,8 @@ md"Let's generate the data and plot a quick example:"
 # ╔═╡ dd03f851-2e26-4850-a7d4-a64f154d2872
 begin
 	n = 1000
-    datasize = 20
-    tspan = (0.0, 1.0)
+    datasize = 100
+    tspan = (0.0, 5.0)
 end
 
 # ╔═╡ d052d6c0-2065-4ae1-acf7-fbe90ff1cb02
@@ -101,6 +101,12 @@ end
 
 # ╔═╡ 5d020072-8a2e-438d-8e7a-330cca97964b
 LuxCore.initialparameters(rng::Random.AbstractRNG, l::BroadcastLayer) = NamedTuple{keys(l.layers)}(LuxCore.initialparameters.((rng, ), (values(l.layers))),)
+
+# ╔═╡ 1a5b7d12-d972-45cf-a874-27202eb97975
+# ╠═╡ disabled = true
+#=╠═╡
+encoder = Lux.Chain(Lux.Recurrence(Lux.GRUCell(data_dims => context_size); return_sequence=true), BroadcastLayer(Lux.Dense(context_size => context_size)))
+  ╠═╡ =#
 
 # ╔═╡ c00a97bf-5e10-4168-8d58-f4f9270258ac
 solution = NeuralSDEExploration.series(ebm, range(210.0e0, 320.0e0, n), tspan, datasize; seed=10)
@@ -137,19 +143,19 @@ We are going to build a simple latent SDE. Define a few constants...
 """
 
 # ╔═╡ 22453ba0-81a7-43f6-bb80-91d3c991530d
-context_size = 4 # The size of the context given to the posterior SDE.
+context_size = 8 # The size of the context given to the posterior SDE.
 
 # ╔═╡ d81ccb5f-de1c-4a01-93ce-3e7302caedc0
-hidden_size = 16 # The hidden layer size for all ANNs.
+hidden_size = 64 # The hidden layer size for all ANNs.
 
 # ╔═╡ b5721107-7cf5-4da3-b22a-552e3d56bcfa
-latent_dims = 3 # Dimensions of the latent space.
+latent_dims = 2 # Dimensions of the latent space.
 
 # ╔═╡ 9767a8ea-bdda-43fc-b636-8681d150d29f
 data_dims = 1 # Dimensions of our input data.
 
 # ╔═╡ e97cd020-d180-4db3-8e19-3efc2529aad2
-encoder = Lux.Recurrence(Lux.RNNCell(data_dims => context_size); return_sequence=true)
+encoder = Lux.Recurrence(Lux.LSTMCell(data_dims => context_size); return_sequence=true)
 
 # ╔═╡ 39154e76-01f7-4710-8f21-6f3a7d3fcfcd
 md"""
@@ -199,7 +205,13 @@ Diffusion. Prior and posterior share the same diffusion (they are not actually e
 """
 
 # ╔═╡ a1cb11fb-ec69-4ba2-9ed1-2d1a6d24ccd9
-diffusion = Lux.Parallel(nothing, [Lux.Chain(Lux.Dense(1 => 32, tanh), Lux.Dense(32 => 1, tanh, init_bias=ones), Lux.Scale(1)) for i in 1:latent_dims]...)
+diffusion = Lux.Parallel(nothing, [Lux.Chain(Lux.Dense(1 => 32, tanh), Lux.Dense(32 => 1, tanh, init_bias=ones), Lux.Scale(1, init_weight=ones)) for i in 1:latent_dims]...)
+
+# ╔═╡ 08892d82-da8e-4fbd-be18-0e0b3a3fb498
+# ╠═╡ disabled = true
+#=╠═╡
+diffusion = Lux.Parallel(nothing, [Lux.Scale(1; bias=true, init_weight=zeros, init_bias=ones) for i in 1:latent_dims]...)
+  ╠═╡ =#
 
 # ╔═╡ bfabcd80-fb62-410f-8710-f577852c77df
 md"""
@@ -242,8 +254,14 @@ plot(timeseries[i].u, legend=nothing)
 # ╔═╡ f08369b8-6eb9-4bb2-a389-f054fbe72645
 reshape(timeseries[i].u, 1, :, 1)
 
+# ╔═╡ cb9b4f6d-1b0e-4ca7-97f1-db377a9afca3
+plot(timeseries[i].u)
+
 # ╔═╡ 0c339b92-664d-4fef-a57d-af6c69c65597
 example_context, st_ = encoder(reshape(timeseries[i].u, 1, :, 1), ps.encoder, st.encoder)
+
+# ╔═╡ e1fa0645-42e7-48a1-8066-8b564d4ad519
+plot(reduce((x,y) -> cat(x, y; dims = 3), example_context)[1, :, :]')
 
 # ╔═╡ 9ea12ddb-ff8a-4c16-b2a5-8b7603f262a3
 md"""
@@ -264,11 +282,14 @@ Integrate the posterior SDE in latent space given context:
 # ╔═╡ 5f56cc7c-861e-41a4-b783-848623b94bf9
 @bind ti Slider(1:length(timeseries))
 
+# ╔═╡ f5267a6b-ff1d-4dc1-9d5e-088328ecf617
+timeseries[[1,501,901]]
+
 # ╔═╡ 88fa1b08-f0d4-4fcf-89c2-8a9f33710d4c
-posterior_latent, posterior_data, logterm_, kl_divergence_, distance_ = NeuralSDEExploration.pass(latent_sde, ps, timeseries[ti:ti+1], st; seed=seed, ensemblemode=EnsembleSerial())
+posterior_latent, posterior_data, logterm_, kl_divergence_, distance_ = NeuralSDEExploration.pass(latent_sde, ps, timeseries[[1,501,901]], st; seed=seed, ensemblemode=EnsembleSerial())
 
 # ╔═╡ 737a7c93-7da6-4ce8-8f41-1aa32df04568
-posterior_latent[:, :, 10]
+posterior_latent[:, :, 2]
 
 # ╔═╡ dabf2a1f-ec78-4942-973f-4dbf9037ee7b
 plot(logterm_[1, :, :]', label="KL-Divergence")
@@ -289,7 +310,7 @@ function cb()
 	posterior_latent = nothing
 	datas = []
 	n = 5
-	rng = Xoshiro(294)
+	rng = Xoshiro(5)
 	nums = sample(rng,1:length(timeseries),n;replace=false)
 
 	posterior_latent, posterior_data, logterm_, kl_divergence_, distance_ = NeuralSDEExploration.pass(latent_sde, ps, timeseries[nums], st, seed=seed+i)
@@ -326,7 +347,7 @@ function train(learning_rate, num_steps)
 
 	opt_state = Optimisers.setup(Optimisers.Adam(), ps)
 	for (step, eta) in zip(1:num_steps, sched)
-		s = sample(rng, 1:size(timeseries)[1], 16, replace=false)
+		s = sample(rng, 1:size(timeseries)[1], 8, replace=false)
 		minibatch = timeseries[s]
 		l = loss(ps, minibatch)
 		println("Loss: $l")
@@ -362,25 +383,29 @@ begin
 	end
 end
 
+# ╔═╡ 08b216d2-e752-4f18-9c0a-e9c571218a53
+dps = Zygote.gradient(ps -> loss(ps, timeseries[1:5]), ps)[1]
+
 # ╔═╡ f2fb7c89-9da0-4464-8adb-2f1058f470fb
 train(0.1, 1)
 
 # ╔═╡ 38ee56b3-a980-467a-a0fd-6711cf049183
 begin
 	if enabletraining
-		@gif for epoch in 1:100
-			train(0.1, 1)
+		@gif for epoch in 1:10
+			train(0.5, 10)
 			cb()
 		end
 	end
 end
 
 
-# ╔═╡ 678b4f02-ffc0-4516-a95b-803a25ea932f
+# ╔═╡ 38716b5c-fe06-488c-b6ed-d2e28bd3d397
 begin
 	if enabletraining
-		for epoch in 1:1000
-			train(0.05, 100)
+		@gif for epoch in 1:100
+			train(0.05, 10)
+			cb()
 		end
 	end
 end
@@ -426,6 +451,7 @@ show(IOContext(stdout, :limit=>false), MIME"text/plain"(), ps)
 # ╠═df2034fd-560d-4529-836a-13745f976c1f
 # ╟─4a97576c-96de-458e-b881-3f5dd140fa6a
 # ╠═a1cb11fb-ec69-4ba2-9ed1-2d1a6d24ccd9
+# ╠═08892d82-da8e-4fbd-be18-0e0b3a3fb498
 # ╟─bfabcd80-fb62-410f-8710-f577852c77df
 # ╠═f0486891-b8b3-4a39-91df-1389d6f799e1
 # ╠═001c318e-b7a6-48a5-bfd5-6dd0368873ac
@@ -434,12 +460,15 @@ show(IOContext(stdout, :limit=>false), MIME"text/plain"(), ps)
 # ╠═e5c9f00f-849b-4523-85da-4dab567b2ca8
 # ╠═0667038f-4187-4044-9bec-941800fdba22
 # ╠═f08369b8-6eb9-4bb2-a389-f054fbe72645
+# ╠═cb9b4f6d-1b0e-4ca7-97f1-db377a9afca3
 # ╠═0c339b92-664d-4fef-a57d-af6c69c65597
+# ╠═e1fa0645-42e7-48a1-8066-8b564d4ad519
 # ╟─9ea12ddb-ff8a-4c16-b2a5-8b7603f262a3
 # ╠═9346f569-d5f9-43cd-9302-1ee64ef9a030
 # ╟─b98200a8-bf73-42a2-a357-af56812d01c3
 # ╠═26885b24-df80-4fbf-9824-e175688f1322
 # ╠═5f56cc7c-861e-41a4-b783-848623b94bf9
+# ╠═f5267a6b-ff1d-4dc1-9d5e-088328ecf617
 # ╠═88fa1b08-f0d4-4fcf-89c2-8a9f33710d4c
 # ╠═737a7c93-7da6-4ce8-8f41-1aa32df04568
 # ╠═dabf2a1f-ec78-4942-973f-4dbf9037ee7b
@@ -453,7 +482,8 @@ show(IOContext(stdout, :limit=>false), MIME"text/plain"(), ps)
 # ╠═9789decf-c384-42df-b7aa-3c2137a69a41
 # ╠═fb3db721-96b3-40e3-adc9-307137a05bf4
 # ╠═78aa72e2-8188-441f-9910-1bc5525fda7a
+# ╠═08b216d2-e752-4f18-9c0a-e9c571218a53
 # ╠═f2fb7c89-9da0-4464-8adb-2f1058f470fb
 # ╠═38ee56b3-a980-467a-a0fd-6711cf049183
-# ╠═678b4f02-ffc0-4516-a95b-803a25ea932f
+# ╠═38716b5c-fe06-488c-b6ed-d2e28bd3d397
 # ╠═7ce64e25-e5a5-4ace-ba6b-844ef6e4ef82
