@@ -27,6 +27,6 @@ module purge
 module load julia/1.8.2
 
 # Start the script
-JULIA_REVISE_POLL=1 srun -n8 julia --project=. -t2 notebooks/sde_train.jl
+JULIA_REVISE_POLL=1 srun julia --project=. -t8 notebooks/sde_train.jl
 
 # To stop the script, use 'scancel'
