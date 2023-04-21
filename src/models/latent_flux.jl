@@ -191,19 +191,19 @@ function pass(n::LatentSDEFlux, ps::ComponentVector, timeseries; sense=Interpola
    
     timecat(x, y) = cat(x, y; dims = 3)
 
-    posterior = reduce(hcat, [reduce(timecat, [reshape(u[1:end-1], :, 1, 1) for u in batch.u]) for batch in solution.u])
+    posterior_latent = reduce(hcat, [reduce(timecat, [reshape(u[1:end-1], :, 1, 1) for u in batch.u]) for batch in solution.u])
     logterm = reduce(hcat, [reduce(timecat, [reshape(u[end:end], :, 1, 1) for u in batch.u]) for batch in solution.u])
     kl_divergence = sum(initialdists_kl, dims=1) .+ logterm[:, :, end]
 
     projected_z0 = n.projector_re(ps.projector_p)(z0)
-    projected_ts = reduce(timecat, [n.projector_re(ps.projector_p)(x) for x in eachslice(posterior, dims=3)])
+    projected_ts = reduce(timecat, [n.projector_re(ps.projector_p)(x) for x in eachslice(posterior_latent, dims=3)])
 
     logp(x, y) = loglikelihood(Normal(y, 0.05), x)
     likelihoods_initial = [logp(x, y) for (x,y) in zip(tsmatrix[:, :, 1], projected_z0)]
     likelihoods_time = sum([logp(x, y) for (x,y) in zip(tsmatrix, projected_ts)], dims=3)[:, :, 1]
     likelihoods = likelihoods_initial .+ likelihoods_time
     
-    return posterior, projected_ts, logterm, kl_divergence, likelihoods
+    return posterior_latent, projected_ts, logterm, kl_divergence, likelihoods
 end
 
 function loss(n::LatentSDEFlux, ps, timeseries, beta; kwargs...)

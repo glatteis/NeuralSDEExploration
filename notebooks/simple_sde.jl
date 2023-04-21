@@ -44,7 +44,7 @@ begin
     projector = Lux.Dense(2 => 1; bias=false, init_weight=ones)
 
     tspan = (0.0, 5.0)
-    datasize = 10
+    datasize = 4
 
     latent_sde = LatentSDE(
         initial_prior,
@@ -162,10 +162,10 @@ encoder(m2, ps.encoder, st.encoder)
 encoder(m3, ps.encoder, st.encoder)
 
 # ╔═╡ e8ef1773-8087-4f47-abfe-11e73f28a269
-posterior_latent, posterior_data, logterm_, kl_divergence_, distance_ = NeuralSDEExploration.pass(latent_sde, ps, inputs, st; ensemblemode=EnsembleSerial(), seed=10)
+posterior_latent, posterior_data, logterm_, kl_divergence_, distance_ = NeuralSDEExploration.pass(latent_sde, ps, inputs, st; ensemblemode=EnsembleThreads(), seed=10)
 
 # ╔═╡ 5769cf41-397e-47a3-bc2a-1e69f15df2f5
-posterior_latent_flux, posterior_data_flux, logterm_flux_, kl_divergence_flux_, distance_flux_ = NeuralSDEExploration.pass(latent_sde_flux, ps_flux, inputs;seed=10)
+posterior_latent_flux, posterior_data_flux, logterm_flux_, kl_divergence_flux_, distance_flux_ = NeuralSDEExploration.pass(latent_sde_flux, ps_flux, inputs; ensemblemode=EnsembleThreads(), seed=10)
 
 # ╔═╡ 7fabae7c-abef-4d2c-a3b5-b9d2f683dc26
 plot(logterm_[1, :, :]', label="KL-Divergence")
