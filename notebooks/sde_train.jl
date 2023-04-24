@@ -348,10 +348,10 @@ end
 function plotlearning()
 
 	plots = [
-		plot(recorded_loss, legend=false, title="loss")
-		plot(recorded_likelihood, legend=false, title="likelihood")
-		plot(recorded_kl, legend=false, title="kl-divergence")
-		plot(recorded_eta, legend=false, title="eta")
+		plot(recorded_loss, legend=false, title="loss", yaxis=:log)
+		plot(recorded_likelihood, legend=false, title="likelihood", yaxis=:log)
+		plot(recorded_kl, legend=false, title="kl-divergence", yaxis=:log)
+		plot(recorded_eta, legend=false, title="eta", yaxis=:log)
 	]	
 
 	
@@ -367,7 +367,8 @@ end
 
 # ╔═╡ f4a16e34-669e-4c93-bd83-e3622a747a3a
 function train(learning_rate, num_steps, ar)
-	sched = Loop(Sequence([Loop(x -> (25*x)/ar, ar), Loop(x -> 25.0, ar)], [ar, ar]), ar*2)
+	# sched = Loop(Sequence([Loop(x -> (25*x)/ar, ar), Loop(x -> 25.0, ar)], [ar, ar]), ar*2)
+	sched = Loop(x -> 25.0, 1)
 
 	opt_state = Optimisers.setup(Optimisers.Adam(), ps)
 	for (step, eta) in zip(1:num_steps, sched)
