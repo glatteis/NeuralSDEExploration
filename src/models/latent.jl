@@ -112,10 +112,10 @@ function pass(n::LatentSDE, ps::ComponentVector, timeseries, st; sense=Interpola
     # batches: dimension 2 => dimension 3
     tsmatrix_flipped = permutedims(tsmatrix, (1, 3, 2))
     
-    ## !! LUX.JL BUG WORKAROUND !!
-    tsmatrix_flipped_wrong = hcat(tsmatrix_flipped[:, 1:1, :], reverse(tsmatrix_flipped[:, 2:end, :], dims=2))
+    # ## !! LUX.JL BUG WORKAROUND !! (fixed in Lux.jl v0.4.51)
+    # tsmatrix_flipped_wrong = hcat(tsmatrix_flipped[:, 1:1, :], reverse(tsmatrix_flipped[:, 2:end, :], dims=2))
 
-    context_flipped = n.encoder(tsmatrix_flipped_wrong, ps.encoder, st.encoder)[1]
+    context_flipped = n.encoder(tsmatrix_flipped, ps.encoder, st.encoder)[1]
 
     # context_flipped is now a vector of 2-dim matrices
     # latent space: dimension 1
