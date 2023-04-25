@@ -339,10 +339,10 @@ end
 function plotlearning()
 
 	plots = [
-		plot(recorded_loss, legend=false, title="loss", yaxis=:log)
-		plot(recorded_likelihood, legend=false, title="likelihood", yaxis=:log)
-		plot(recorded_kl, legend=false, title="kl-divergence", yaxis=:log)
-		plot(recorded_eta, legend=false, title="eta", yaxis=:log)
+		plot(recorded_loss, legend=false, title="loss")
+		plot(recorded_likelihood, legend=false, title="likelihood")
+		plot(recorded_kl, legend=false, title="kl-divergence")
+		plot(recorded_eta, legend=false, title="eta")
 	]	
 
 	
