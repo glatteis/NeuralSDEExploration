@@ -2,7 +2,7 @@
 
 julia_version = "1.8.5"
 manifest_format = "2.0"
-project_hash = "82251011782b91b4d389262b618a1798fe3d6568"
+project_hash = "bd2993c0e4fd80a0434f30b87d2c4fd9956f3c51"
 
 [[deps.AbstractAlgebra]]
 deps = ["GroupsCore", "InteractiveUtils", "LinearAlgebra", "MacroTools", "Random", "RandomExtensions", "SparseArrays", "Test"]
@@ -1915,6 +1915,14 @@ deps = ["Base64", "Configurations", "Dates", "Distributed", "FileWatching", "Fuz
 git-tree-sha1 = "c3127195e4d10d9de5aa7364b5924ae062dcad35"
 uuid = "c3e4b0f8-55cb-11ea-2926-15256bba5781"
 version = "0.19.25"
+
+[[deps.PlutoArgs]]
+deps = ["AbstractPlutoDingetjes", "PlutoUI", "Test"]
+git-tree-sha1 = "d0c8e4e32ff25a961521cfe3b51e5383db45420f"
+repo-rev = "main"
+repo-url = "https://github.com/glatteis/PlutoArgs.jl"
+uuid = "06cd568a-3b38-413c-b3c7-59344d89f60e"
+version = "0.1.0"
 
 [[deps.PlutoUI]]
 deps = ["AbstractPlutoDingetjes", "Base64", "ColorTypes", "Dates", "FixedPointNumbers", "Hyperscript", "HypertextLiteral", "IOCapture", "InteractiveUtils", "JSON", "Logging", "MIMEs", "Markdown", "Random", "Reexport", "URIs", "UUIDs"]
