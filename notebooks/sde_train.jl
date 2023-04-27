@@ -93,6 +93,9 @@ Timespan of simulations: $(@bind tspan_end Arg("tspan", NumberField(0.01:100.0, 
 # ╔═╡ fe7e2889-88de-49b3-b20b-342357596bfc
 tspan = (0.0, tspan_end)
 
+# ╔═╡ 9a89a97c-da03-4887-ac8c-ef1f5264436e
+println((num_data=n, length=datasize, tspan=tspan))
+
 # ╔═╡ d052d6c0-2065-4ae1-acf7-fbe90ff1cb02
 begin
 	struct BroadcastLayer{T <: NamedTuple} <: 	LuxCore.AbstractExplicitContainerLayer{(:layers,)}
@@ -198,6 +201,9 @@ CLI arg: `--latent-dims`
 
 # ╔═╡ 9767a8ea-bdda-43fc-b636-8681d150d29f
 data_dims = 1 # Dimensions of our input data.
+
+# ╔═╡ db88cae4-cb25-4628-9298-5a694c4b29ef
+println((context_size=context_size, hidden_size=hidden_size, latent_dims=latent_dims, data_dims=data_dims))
 
 # ╔═╡ 0c0e5a95-195e-4057-bcba-f1d92d75cbab
 md"""
@@ -380,7 +386,7 @@ md"""
 """
 
 # ╔═╡ 88fa1b08-f0d4-4fcf-89c2-8a9f33710d4c
-posterior_latent, posterior_data, logterm_, kl_divergence_, distance_ = NeuralSDEExploration.pass(latent_sde, ps, viz_batch, st; seed=seed, ensemblemode=EnsembleThreads())
+posterior_latent, posterior_data, logterm_, kl_divergence_, distance_ = NeuralSDEExploration.pass(latent_sde, ps, viz_batch, st; seed=seed, ensemblemode=EnsembleThreads(), stick_landing=true)
 
 # ╔═╡ dabf2a1f-ec78-4942-973f-4dbf9037ee7b
 plot(logterm_[1, :, :]', title="KL-Divergence")
@@ -532,8 +538,8 @@ end
 # ╔═╡ 38716b5c-fe06-488c-b6ed-d2e28bd3d397
 begin
 	if enabletraining
-		@gif for epoch in 1:10
-			train(0.01, 1, ar=1)
+		@gif for epoch in 1:100
+			train(0.1, 10)
 			plotmodel()
 		end
 	end
@@ -570,6 +576,7 @@ end
 # ╟─a65a7405-d1de-4de5-9391-dcb971af0413
 # ╟─71a38a66-dd66-4000-b664-fc3e04f6d4b8
 # ╟─fe7e2889-88de-49b3-b20b-342357596bfc
+# ╟─9a89a97c-da03-4887-ac8c-ef1f5264436e
 # ╟─d052d6c0-2065-4ae1-acf7-fbe90ff1cb02
 # ╟─5d020072-8a2e-438d-8e7a-330cca97964b
 # ╟─7e6256ef-6a0a-40cc-aa0a-c467b3a524c4
@@ -586,6 +593,7 @@ end
 # ╟─d81ccb5f-de1c-4a01-93ce-3e7302caedc0
 # ╟─b5721107-7cf5-4da3-b22a-552e3d56bcfa
 # ╟─9767a8ea-bdda-43fc-b636-8681d150d29f
+# ╟─db88cae4-cb25-4628-9298-5a694c4b29ef
 # ╟─0c0e5a95-195e-4057-bcba-f1d92d75cbab
 # ╟─bec46289-4d61-4b90-bc30-0a86f174a599
 # ╠═36a0fae8-c384-42fd-a6a0-159ea3664aa1

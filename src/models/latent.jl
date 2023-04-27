@@ -91,7 +91,7 @@ end
 #     return solve(prob,n.args...;sensealg=sense,n.kwargs...)
 # end
 
-function pass(n::LatentSDE, ps::ComponentVector, timeseries, st; sense=InterpolatingAdjoint(autojacvec=ZygoteVJP(allow_nothing=true)), ensemblemode=EnsembleSerial(), seed=nothing, noise=nothing)
+function pass(n::LatentSDE, ps::ComponentVector, timeseries, st; sense=InterpolatingAdjoint(autojacvec=ZygoteVJP(allow_nothing=true)), ensemblemode=EnsembleSerial(), seed=nothing, noise=nothing, stick_landing=false)
     # We are using matrices with the following dimensions:
     # 1 = latent space dimension
     # 2 = batch number
@@ -154,17 +154,30 @@ function pass(n::LatentSDE, ps::ComponentVector, timeseries, st; sense=Interpola
             return vcat(posterior, augmented_term)
         end
     end
-    function augmented_diffusion(u_in::Vector{Float64}, p::ComponentVector, t::Float64)
-        u = u_in[1:end-1]
-        diffusion = reduce(vcat, n.diffusion(Tuple([[x] for x in u]), p.diffusion, st.diffusion)[1])
-        return vcat(diffusion, zeros(Float64, 1))
+    function augmented_diffusion(batch)
+        function(u_in::Vector{Float64}, p::ComponentVector, t::Float64)
+            u = u_in[1:end-1]
+            diffusion = reduce(vcat, n.diffusion(Tuple([[x] for x in u]), p.diffusion, st.diffusion)[1])
+            additional_term = if stick_landing
+                time_index = searchsortedlast(timeseries[1].t, max(0.0, t))
+                timedctx = context[:, batch, time_index]
+                posterior_net_input = vcat(u, timedctx)
+                prior = n.drift_prior(u, p.drift_prior, st.drift_prior)[1]
+                posterior = ChainRulesCore.ignore_derivatives(n.drift_posterior(posterior_net_input, p.drift_posterior, st.drift_posterior)[1])
+                u_term = stable_divide(posterior .- prior, diffusion)
+               sum(u_term; dims=[1])
+            else
+                0.0
+            end
+            return vcat(diffusion, additional_term)
+        end
     end
 
     function prob_func(prob, batch, repeat)
         if seed !== nothing
-            return SDEProblem{false}(augmented_drift(batch),augmented_diffusion,augmented_z0[:, batch],n.tspan,ps,seed=seed+Int(batch),noise=noise)
+            return SDEProblem{false}(augmented_drift(batch),augmented_diffusion(batch),augmented_z0[:, batch],n.tspan,ps,seed=seed+Int(batch),noise=noise)
         else
-            return SDEProblem{false}(augmented_drift(batch),augmented_diffusion,augmented_z0[:, batch],n.tspan,ps,noise=noise)
+            return SDEProblem{false}(augmented_drift(batch),augmented_diffusion(batch),augmented_z0[:, batch],n.tspan,ps,noise=noise)
         end
     end
 
