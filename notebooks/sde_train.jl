@@ -445,6 +445,14 @@ md"""
 # Training
 """
 
+# ╔═╡ 1e79035b-7858-4723-b41a-39357f98c25d
+md"""
+### Hyperparameters
+"""
+
+# ╔═╡ aed4467c-dd6c-421f-aa46-0c5aa1c38c0a
+@bind learning_rate Arg("learning-rate", NumberField(0.0:10.0, 0.05))
+
 # ╔═╡ 550d8974-cd19-4d0b-9492-adb4e14a04b1
 begin
 	recorded_loss = []
@@ -641,6 +649,8 @@ end
 # ╟─b5c6d43c-8252-4602-8232-b3d1b0bcee33
 # ╠═025b33d9-7473-4a54-a3f1-787a8650f9e7
 # ╟─225791b1-0ffc-48e2-8131-7f54848d8d83
+# ╟─1e79035b-7858-4723-b41a-39357f98c25d
+# ╠═aed4467c-dd6c-421f-aa46-0c5aa1c38c0a
 # ╠═550d8974-cd19-4d0b-9492-adb4e14a04b1
 # ╠═fa43f63d-8293-43cc-b099-3b69dbbf4b6a
 # ╠═f0a34be1-6aa2-4563-abc2-ea163a778752
