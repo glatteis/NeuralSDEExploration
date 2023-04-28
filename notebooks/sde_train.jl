@@ -537,7 +537,7 @@ dps = Zygote.gradient(ps -> loss(ps, timeseries[1:5], 1.0)[1], ps)[1]
 begin
 	if !(@isdefined PlutoRunner) && enabletraining  # running as job
 		for epoch in 1:100
-			train(0.05, 250)
+			train(learning_rate, 250)
 			exportresults(epoch)
 		end
 	end
@@ -547,7 +547,7 @@ end
 begin
 	if enabletraining
 		@gif for epoch in 1:100
-			train(0.1, 10)
+			train(learning_rate, 10)
 			plotmodel()
 		end
 	end
