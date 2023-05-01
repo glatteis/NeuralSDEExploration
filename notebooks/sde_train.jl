@@ -188,7 +188,7 @@ CLI arg: `--context-size`
 # ╔═╡ d81ccb5f-de1c-4a01-93ce-3e7302caedc0
 md"""
 The hidden layer size for the ANNs:
-$(@bind hidden_size Arg("hidden-size", NumberField(1:1000000, default=64), required=false)).
+$(@bind hidden_size Arg("hidden-size", NumberField(1:1000000, default=256), required=false)).
 CLI arg: `--hidden-size`
 """
 
@@ -276,7 +276,7 @@ Diffusion. Prior and posterior share the same diffusion (they are not actually e
 """
 
 # ╔═╡ a1cb11fb-ec69-4ba2-9ed1-2d1a6d24ccd9
-diffusion = Lux.Parallel(nothing, [Lux.Chain(Lux.Dense(1 => 32, tanh, init_bias=ones), Lux.Dense(32 => 1, tanh, init_bias=ones), Lux.Scale(1, init_weight=ones)) for i in 1:latent_dims]...)
+diffusion = Lux.Parallel(nothing, [Lux.Chain(Lux.Dense(1 => 32, tanh, init_bias=ones), Lux.Dense(32 => 1, tanh, init_bias=ones), Lux.Scale(1, init_weight=ones), Lux.WrappedFunction(x -> abs.(x) .+ 0.001)) for i in 1:latent_dims]...)
 
 # ╔═╡ b0421c4a-f243-4d39-8cca-a29ea140486d
 md"""
@@ -305,7 +305,7 @@ latent_sde = LatentSDE(
 	diffusion,
 	encoder,
 	projector,
-	EulerHeun(),
+	EM(),
 	tspan;
 	saveat=range(tspan[1], tspan[end], datasize),
 	dt=(tspan[end]/datasize)
@@ -335,7 +335,7 @@ Load parameters from file (random if no file selected): $(@bind ps_file FilePick
 # ╔═╡ dfe0f6ef-ecd5-46a1-a808-77ef9af44b56
 ps = if ps_file !== nothing
 	ps_data = String(ps_file["data"]);
-	eval(Meta.parse(ps_data))
+	ComponentArray(eval(Meta.parse(ps_data)))
 else
 	ComponentArray(ps_)
 end
@@ -386,7 +386,7 @@ md"""
 """
 
 # ╔═╡ 88fa1b08-f0d4-4fcf-89c2-8a9f33710d4c
-posterior_latent, posterior_data, logterm_, kl_divergence_, distance_ = NeuralSDEExploration.pass(latent_sde, ps, viz_batch, st; seed=seed, ensemblemode=EnsembleThreads(), stick_landing=true)
+posterior_latent, posterior_data, logterm_, kl_divergence_, distance_ = NeuralSDEExploration.pass(latent_sde, ps, viz_batch, st; seed=seed, ensemblemode=EnsembleThreads())
 
 # ╔═╡ dabf2a1f-ec78-4942-973f-4dbf9037ee7b
 plot(logterm_[1, :, :]', title="KL-Divergence")
@@ -527,11 +527,10 @@ function exportresults(epoch)
 	savefig(learningfig, folder * "$(epoch)_learning.pdf")
 end
 
-# ╔═╡ 31f82def-0116-4673-836c-b520753e06c8
-exportresults(1)
-
 # ╔═╡ 7a7e8e9b-ca89-4826-8a5c-fe51d96152ad
-dps = Zygote.gradient(ps -> loss(ps, timeseries[1:5], 1.0)[1], ps)[1]
+if enabletraining
+	dps = Zygote.gradient(ps -> loss(ps, timeseries[1:5], 1.0)[1], ps)[1]
+end
 
 # ╔═╡ 78aa72e2-8188-441f-9910-1bc5525fda7a
 begin
@@ -554,17 +553,22 @@ begin
 end
 
 
+# ╔═╡ 8880282e-1b5a-4c85-95ef-699ccf8d4203
+md"""
+# Statistical Analysis
+"""
+
 # ╔═╡ 47b2ec07-40f4-480d-b650-fbf1b44b7527
 begin
 	prior_latent = NeuralSDEExploration.sample_prior(latent_sde,ps,st;b=1000)
-	projected_prior = vcat(reduce(vcat, [latent_sde.projector(x, ps.projector, st.projector)[1] for x in prior_latent.u[20:end]])...)
-	plot(fit(Histogram, projected_prior; nbins=100), xlims=(0.0,1.0))
+	projected_prior = vcat(reduce(vcat, [latent_sde.projector(x, ps.projector, st.projector)[1] for x in prior_latent.u[10:end]])...)
+	plot(fit(Histogram, projected_prior, 0.0:0.01:1.0), xlims=(0.0,1.0))
 end
 
 # ╔═╡ 14f9a62d-9caa-40e9-8502-d2a27b9c950e
 begin
-	ts = vcat(reduce(vcat, [s.u[20:end] for s in timeseries])...)
-	plot(fit(Histogram, ts; nbins=100), xlims=(0.0,1.0))
+	ts = vcat(reduce(vcat, [s.u[10:end] for s in timeseries])...)
+	plot(fit(Histogram, ts, 0.0:0.01:1.0), xlims=(0.0,1.0))
 end
 
 # ╔═╡ Cell order:
@@ -656,9 +660,9 @@ end
 # ╠═f0a34be1-6aa2-4563-abc2-ea163a778752
 # ╠═f4a16e34-669e-4c93-bd83-e3622a747a3a
 # ╠═9789decf-c384-42df-b7aa-3c2137a69a41
-# ╠═31f82def-0116-4673-836c-b520753e06c8
 # ╠═7a7e8e9b-ca89-4826-8a5c-fe51d96152ad
 # ╠═78aa72e2-8188-441f-9910-1bc5525fda7a
 # ╠═38716b5c-fe06-488c-b6ed-d2e28bd3d397
+# ╟─8880282e-1b5a-4c85-95ef-699ccf8d4203
 # ╠═47b2ec07-40f4-480d-b650-fbf1b44b7527
 # ╠═14f9a62d-9caa-40e9-8502-d2a27b9c950e
