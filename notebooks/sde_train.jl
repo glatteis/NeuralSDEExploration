@@ -202,13 +202,21 @@ CLI arg: `--latent-dims`
 # ╔═╡ fe749caf-393f-45b0-98e5-5d10c1821a9d
 md"""
 Stick landing: $(@bind stick_landing Arg("stick-landing", CheckBox()))
+CLI arg: `--stick-landing`
+"""
+
+# ╔═╡ 16c12354-5ab6-4c0e-833d-265642119ed2
+md"""
+Batch size
+$(@bind batch_size Arg("batch-size", NumberField(1:200, default=32), required=false)).
+CLI arg: `--batch-size`
 """
 
 # ╔═╡ 9767a8ea-bdda-43fc-b636-8681d150d29f
 data_dims = 1 # Dimensions of our input data.
 
 # ╔═╡ db88cae4-cb25-4628-9298-5a694c4b29ef
-println((context_size=context_size, hidden_size=hidden_size, latent_dims=latent_dims, data_dims=data_dims))
+println((context_size=context_size, hidden_size=hidden_size, latent_dims=latent_dims, data_dims=data_dims, stick_landing=stick_landing, batch_size=batch_size))
 
 # ╔═╡ 0c0e5a95-195e-4057-bcba-f1d92d75cbab
 md"""
@@ -495,7 +503,7 @@ function train(learning_rate, num_steps, ar=1)
 
 	opt_state = Optimisers.setup(Optimisers.Adam(), ps)
 	for (step, eta) in zip(1:num_steps, sched)
-		s = sample(rng, 1:size(timeseries)[1], 8, replace=false)
+		s = sample(rng, 1:size(timeseries)[1], batch_size, replace=false)
 		minibatch = timeseries[s]
 
 		l, kl_divergence, likelihood = loss(ps, minibatch, eta)
@@ -610,6 +618,7 @@ end
 # ╟─d81ccb5f-de1c-4a01-93ce-3e7302caedc0
 # ╟─b5721107-7cf5-4da3-b22a-552e3d56bcfa
 # ╟─fe749caf-393f-45b0-98e5-5d10c1821a9d
+# ╟─16c12354-5ab6-4c0e-833d-265642119ed2
 # ╟─9767a8ea-bdda-43fc-b636-8681d150d29f
 # ╟─db88cae4-cb25-4628-9298-5a694c4b29ef
 # ╟─0c0e5a95-195e-4057-bcba-f1d92d75cbab
