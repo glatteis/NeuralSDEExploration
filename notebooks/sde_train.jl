@@ -199,6 +199,11 @@ $(@bind latent_dims Arg("latent-dims", NumberField(1:100, default=2), required=f
 CLI arg: `--latent-dims`
 """
 
+# ╔═╡ fe749caf-393f-45b0-98e5-5d10c1821a9d
+md"""
+Stick landing: $(@bind stick_landing Arg("stick-landing", CheckBox()))
+"""
+
 # ╔═╡ 9767a8ea-bdda-43fc-b636-8681d150d29f
 data_dims = 1 # Dimensions of our input data.
 
@@ -479,7 +484,7 @@ end
 
 # ╔═╡ f0a34be1-6aa2-4563-abc2-ea163a778752
 function loss(ps, minibatch, eta)
-	_, _, _, kl_divergence, likelihood = NeuralSDEExploration.pass(latent_sde, ps, minibatch, st; ensemblemode=EnsembleThreads())
+	_, _, _, kl_divergence, likelihood = NeuralSDEExploration.pass(latent_sde, ps, minibatch, st; ensemblemode=EnsembleThreads(), stick_landing=stick_landing)
 	return mean(-likelihood .+ (eta * kl_divergence)), mean(kl_divergence), mean(likelihood)
 end
 
@@ -604,6 +609,7 @@ end
 # ╟─97d724c2-24b0-415c-b90f-6a36e877e9d1
 # ╟─d81ccb5f-de1c-4a01-93ce-3e7302caedc0
 # ╟─b5721107-7cf5-4da3-b22a-552e3d56bcfa
+# ╟─fe749caf-393f-45b0-98e5-5d10c1821a9d
 # ╟─9767a8ea-bdda-43fc-b636-8681d150d29f
 # ╟─db88cae4-cb25-4628-9298-5a694c4b29ef
 # ╟─0c0e5a95-195e-4057-bcba-f1d92d75cbab
