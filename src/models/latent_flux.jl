@@ -52,7 +52,7 @@ end
 
 @functor LatentSDEFlux (initial_prior_p,initial_posterior_p,drift_prior_p,drift_posterior_p,diffusion_p,encoder_p,projector_p,)
 
-function get_distributions(model_re, model_p, context)
+function get_distributions_flux(model_re, model_p, context)
     normsandvars = model_re(model_p)(context)
     # batches are on the second dimension
     batch_indices = eachindex(context[1, :])
@@ -71,7 +71,7 @@ function sample_prior(n::LatentSDEFlux, ps; b=1, seed=nothing)
     dudt_prior(u, p, t) = n.drift_prior_re(p.drift_prior_p)(u)
     dudw_diffusion(u, p, t) = mapslices(row -> vcat([n.diffusion_re(p.diffusion_p)[i]([row[i]]) for i in eachindex(row)]...), u; dims=[1])
     
-    initialdists = get_distributions(n.initial_prior_re, ps.initial_prior_p, [1e0])
+    initialdists = get_distributions_flux(n.initial_prior_re, ps.initial_prior_p, [1e0])
     z0 = hcat([reshape([x.μ + ep * x.σ for x in initialdists], :, 1) for ep in eps[1, :]]...)
 
     if seed !== nothing
@@ -84,7 +84,7 @@ function sample_prior(n::LatentSDEFlux, ps; b=1, seed=nothing)
 end
 
 # from https://github.com/google-research/torchsde/blob/master/examples/latent_sde.py
-function stable_divide(a, b, eps=1e-7)
+function stable_divide_flux(a, b, eps=1e-7)
     b = map(x -> abs(x) <= eps ? eps * sign(x) : x, b)
     a ./ b
 end
@@ -97,7 +97,7 @@ function sample_posterior(n::LatentSDEFlux, ps, timeseries; seed=nothing)
 
     Flux.reset!(n.encoder)
     context = n.encoder_re(n.encoder_p)(hcat([reshape(ts.u, 1, 1, :) for ts in timeseries]...))
-    initialdists = get_distributions(n.initial_posterior_re, n.initial_posterior_p, context[:, :, 1])
+    initialdists = get_distributions_flux(n.initial_posterior_re, n.initial_posterior_p, context[:, :, 1])
     z0 = hcat([reshape([x.μ + eps[1, batch] * x.σ for x in initialdists[:, batch]], :, 1) for batch in eachindex(timeseries)]...)
 
     dudt_posterior = function(u, p, t)
@@ -136,8 +136,8 @@ function pass(n::LatentSDEFlux, ps::ComponentVector, timeseries; sense=Interpola
     context = n.encoder_re(n.encoder_p)(tsmatrix)
     # println("context: $context")
 
-    initialdists_prior = get_distributions(n.initial_prior_re, ps.initial_prior_p, [1e0])
-    initialdists_posterior = get_distributions(n.initial_posterior_re, n.initial_posterior_p, context[:, :, 1])
+    initialdists_prior = get_distributions_flux(n.initial_prior_re, ps.initial_prior_p, [1e0])
+    initialdists_posterior = get_distributions_flux(n.initial_posterior_re, n.initial_posterior_p, context[:, :, 1])
     
     initialdists_kl = reduce(hcat, [reshape([KullbackLeibler(a, b) for (a, b) in zip(initialdists_posterior[:, batch], initialdists_prior)], :, 1) for batch in eachindex(timeseries)])
 
@@ -160,7 +160,7 @@ function pass(n::LatentSDEFlux, ps::ComponentVector, timeseries; sense=Interpola
             posterior = n.drift_posterior_re(p.drift_posterior_p)(posterior_net_input)
             diffusion = reduce(vcat, n.diffusion_re(p.diffusion_p)[i](u[i:i]) for i in eachindex(u))
 
-            u_term = stable_divide(posterior .- prior, diffusion)
+            u_term = stable_divide_flux(posterior .- prior, diffusion)
             augmented_term = 0.5e0 * sum(abs2, u_term; dims=[1])
 
             return_val = vcat(posterior, augmented_term)

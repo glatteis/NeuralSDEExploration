@@ -87,7 +87,7 @@ Length of timeseries: $(@bind datasize Arg("length", NumberField(1:1000, default
 
 # ╔═╡ 71a38a66-dd66-4000-b664-fc3e04f6d4b8
 md"""
-Timespan of simulations: $(@bind tspan_end Arg("tspan", NumberField(0.01:100.0, default=10), required=false)), CLI arg: `--tspan`
+Timespan of simulations: $(@bind tspan_end Arg("tspan", NumberField(0.01:100.0, default=1.0), required=false)), CLI arg: `--tspan`
 """
 
 # ╔═╡ fe7e2889-88de-49b3-b20b-342357596bfc
@@ -188,7 +188,7 @@ CLI arg: `--context-size`
 # ╔═╡ d81ccb5f-de1c-4a01-93ce-3e7302caedc0
 md"""
 The hidden layer size for the ANNs:
-$(@bind hidden_size Arg("hidden-size", NumberField(1:1000000, default=256), required=false)).
+$(@bind hidden_size Arg("hidden-size", NumberField(1:1000000, default=128), required=false)).
 CLI arg: `--hidden-size`
 """
 
@@ -289,7 +289,7 @@ Diffusion. Prior and posterior share the same diffusion (they are not actually e
 """
 
 # ╔═╡ a1cb11fb-ec69-4ba2-9ed1-2d1a6d24ccd9
-diffusion = Lux.Parallel(nothing, [Lux.Chain(Lux.Dense(1 => 32, tanh, init_bias=ones), Lux.Dense(32 => 1, tanh, init_bias=ones), Lux.Scale(1, init_weight=ones), Lux.WrappedFunction(x -> abs.(x) .+ 0.001)) for i in 1:latent_dims]...)
+diffusion = Lux.Parallel(nothing, [Lux.Chain(Lux.Dense(1 => 32, Lux.tanh, init_bias=ones), Lux.Dense(32 => 1, Lux.sigmoid, init_bias=ones), Lux.Scale(1, init_weight=ones)) for i in 1:latent_dims]...)
 
 # ╔═╡ b0421c4a-f243-4d39-8cca-a29ea140486d
 md"""
@@ -399,7 +399,7 @@ md"""
 """
 
 # ╔═╡ 88fa1b08-f0d4-4fcf-89c2-8a9f33710d4c
-posterior_latent, posterior_data, logterm_, kl_divergence_, distance_ = NeuralSDEExploration.pass(latent_sde, ps, viz_batch, st; seed=seed, ensemblemode=EnsembleThreads())
+posterior_latent, posterior_data, logterm_, kl_divergence_, distance_ = NeuralSDEExploration.pass(latent_sde, ps, viz_batch, st; seed=seed, ensemblemode=EnsembleSerial())
 
 # ╔═╡ dabf2a1f-ec78-4942-973f-4dbf9037ee7b
 plot(logterm_[1, :, :]', title="KL-Divergence")
@@ -419,7 +419,7 @@ md"""
 """
 
 # ╔═╡ 2827fe3a-3ecd-4662-a2d3-c980f1e1cd84
-plot(NeuralSDEExploration.sample_prior(latent_sde, ps, st; b=5), title="Prior run")
+[x for x in NeuralSDEExploration.sample_prior(latent_sde, ps, st; b=5).u[3]]
 
 # ╔═╡ b5c6d43c-8252-4602-8232-b3d1b0bcee33
 function plotmodel()
@@ -435,7 +435,7 @@ function plotmodel()
 	
 	priorsamples = 25
 	prior_latent = NeuralSDEExploration.sample_prior(latent_sde,ps,st;seed=abs(rand(rng, Int)),b=priorsamples)
-	projected_prior = vcat([latent_sde.projector(x, ps.projector, st.projector)[1] for x in prior_latent.u]...)
+	projected_prior = reduce(hcat, [reduce(vcat, [latent_sde.projector(u, ps.projector, st.projector)[1] for u in batch.u]) for batch in prior_latent.u])
 
 	posteriorplot = plot(posterior_data[1, :,:]',linewidth=2,legend=false,title="projected posterior")
 	dataplot = plot(timeseries[nums],linewidth=2,legend=false,title="data")
@@ -513,7 +513,7 @@ function train(learning_rate, num_steps, ar=1)
 		push!(recorded_eta, eta)
 		push!(recorded_lr, learning_rate)
 		
-		dps = Zygote.gradient(ps -> loss(ps, minibatch, eta)[1], ps)
+		@time dps = Zygote.gradient(ps -> loss(ps, minibatch, eta)[1], ps)
 		println("Loss: $l")
 		Optimisers.update!(opt_state, ps, dps[1])
 	end
@@ -542,7 +542,7 @@ end
 
 # ╔═╡ 7a7e8e9b-ca89-4826-8a5c-fe51d96152ad
 if enabletraining
-	dps = Zygote.gradient(ps -> loss(ps, timeseries[1:5], 1.0)[1], ps)[1]
+	dps = Zygote.gradient(ps -> loss(ps, timeseries[1:batch_size], 1.0)[1], ps)[1]
 end
 
 # ╔═╡ 78aa72e2-8188-441f-9910-1bc5525fda7a
@@ -555,12 +555,22 @@ begin
 	end
 end
 
+# ╔═╡ 830f7e7a-71d0-43c8-8e74-d1709b8a6707
+function gifplot()
+	p1 = plotmodel()
+	p2 = plotlearning()
+	plot(p1, p2, layout=@layout[a;b],size=(600,700))
+end
+
+# ╔═╡ 763f07e6-dd46-42d6-b57a-8f1994386302
+gifplot()
+
 # ╔═╡ 38716b5c-fe06-488c-b6ed-d2e28bd3d397
 begin
 	if enabletraining
-		@gif for epoch in 1:100
+		@gif for epoch in 1:10
 			train(learning_rate, 10)
-			plotmodel()
+			gifplot()
 		end
 	end
 end
@@ -591,7 +601,7 @@ end
 # ╠═d1440209-78f7-4a9a-9101-a06ad2534e5d
 # ╟─d38b3460-4c01-4bba-b726-150d207c020b
 # ╟─13ef3cd9-7f58-459e-a659-abc35b550326
-# ╠═ff15555b-b1b5-4b42-94a9-da77daa546d0
+# ╟─ff15555b-b1b5-4b42-94a9-da77daa546d0
 # ╟─32be3e35-a529-4d16-8ba0-ec4e223ae401
 # ╟─f74dd752-485b-4203-9d72-c56e55a3ef76
 # ╟─c799a418-d85e-4f9b-af7a-ed667fab21b6
@@ -664,7 +674,7 @@ end
 # ╠═08021ed6-ac31-4829-9f21-f046af73d5a3
 # ╠═3d889727-ae6d-4fa0-98ae-d3ae73fb6a3c
 # ╟─590a0541-e6bf-4bd5-9bf5-1ef9931e60fb
-# ╟─2827fe3a-3ecd-4662-a2d3-c980f1e1cd84
+# ╠═2827fe3a-3ecd-4662-a2d3-c980f1e1cd84
 # ╟─b5c6d43c-8252-4602-8232-b3d1b0bcee33
 # ╠═025b33d9-7473-4a54-a3f1-787a8650f9e7
 # ╟─225791b1-0ffc-48e2-8131-7f54848d8d83
@@ -677,6 +687,8 @@ end
 # ╠═9789decf-c384-42df-b7aa-3c2137a69a41
 # ╠═7a7e8e9b-ca89-4826-8a5c-fe51d96152ad
 # ╠═78aa72e2-8188-441f-9910-1bc5525fda7a
+# ╠═830f7e7a-71d0-43c8-8e74-d1709b8a6707
+# ╠═763f07e6-dd46-42d6-b57a-8f1994386302
 # ╠═38716b5c-fe06-488c-b6ed-d2e28bd3d397
 # ╟─8880282e-1b5a-4c85-95ef-699ccf8d4203
 # ╠═47b2ec07-40f4-480d-b650-fbf1b44b7527

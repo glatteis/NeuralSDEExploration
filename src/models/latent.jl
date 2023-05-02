@@ -41,55 +41,34 @@ function sample_prior(n::LatentSDE, ps, st; b=1, seed=nothing)
     end
     eps = reshape([only(rand(Normal{Float64}(0e0, 1e0), 1)) for i in 1:b], 1, :)
 
+    
     dudt_prior(u, p, t) = n.drift_prior(u, p.drift_prior, st.drift_prior)[1]
     dudw_diffusion(u, p, t) = reduce(vcat, n.diffusion(Tuple([[x] for x in u]), p.diffusion, st.diffusion)[1])
     
     initialdists_prior = get_distributions(n.initial_prior, ps.initial_prior, st.initial_prior, [1e0])
     z0 = hcat([reshape([x.μ + ep * x.σ for x in initialdists_prior], :, 1) for ep in eps[1, :]]...)
 
-    if seed !== nothing
-        prob = SDEProblem{false}(dudt_prior,dudw_diffusion,z0,n.tspan,ps,seed=seed)
-    else
-        prob = SDEProblem{false}(dudt_prior,dudw_diffusion,z0,n.tspan,ps)
+    function prob_func(prob, batch, repeat)
+        if seed !== nothing
+            return SDEProblem{false}(dudt_prior,dudw_diffusion,z0[:, batch],n.tspan,ps,seed=seed+batch)
+        else
+            return SDEProblem{false}(dudt_prior,dudw_diffusion,z0[:, batch],n.tspan,ps)
+        end
     end
-    return solve(prob,n.solver;n.kwargs...)
+
+    ensemble = EnsembleProblem(nothing, output_func=(sol, i) -> (sol, false), prob_func=prob_func)
+
+    return solve(ensemble,n.solver,trajectories=b;n.kwargs...)
 end
 
 # from https://github.com/google-research/torchsde/blob/master/examples/latent_sde.py
 function stable_divide(a, b, eps=1e-7)
+    if any([x <= eps for x in b])
+        @warn "diffusion to small"
+    end
     b = map(x -> abs(x) <= eps ? eps * sign(x) : x, b)
     a ./ b
 end
-
-# function sample_posterior(n::LatentSDE, ps, timeseries; seed=nothing)
-#     if seed !== nothing
-#         Random.seed!(seed)
-#     end
-#     eps = reshape([only(rand(Normal{Float64}(0e0, 1e0), 1)) for i in eachindex(timeseries)], 1, :)
-
-#     Flux.reset!(n.encoder)
-#     context = n.encoder_re(n.encoder_p)(hcat([reshape(ts.u, 1, 1, :) for ts in timeseries]...))
-#     initialdists = get_distributions(n.initial_posterior_re, n.initial_posterior_p, context[:, :, 1])
-#     z0 = hcat([reshape([x.μ + eps[1, batch] * x.σ for x in initialdists[:, batch]], :, 1) for batch in eachindex(timeseries)]...)
-
-#     dudt_posterior = function(u, p, t)
-#         # assumption: each timeseries in batch has the same t (fix later please)
-#         timedctx = context[:, :, min(searchsortedfirst(timeseries[1].t, t), length(context[1, 1, :]))]
-#         net_input = hcat([vcat(u[:, batch], vcat(timedctx[:, batch]...)) for batch in eachindex(timeseries)]...)
-#         n.drift_posterior_re(p.drift_posterior_p)(net_input)
-#     end
-    
-#     dudw_diffusion(u, p, t) = mapslices(row -> vcat([n.diffusion_re(p.diffusion_p)[i]([row[i]]) for i in eachindex(row)]...), u; dims=[1])
-
-#     if seed !== nothing
-#         prob = SDEProblem{false}(dudt_posterior,dudw_diffusion,z0,n.tspan,ps,seed=seed)
-#     else
-#         prob = SDEProblem{false}(dudt_posterior,dudw_diffusion,z0,n.tspan,ps)
-#     end
-#     sense = InterpolatingAdjoint(autojacvec=ZygoteVJP())
-#     # sense = BacksolveAdjoint(autojacvec=ZygoteVJP())
-#     return solve(prob,n.args...;sensealg=sense,n.kwargs...)
-# end
 
 function pass(n::LatentSDE, ps::ComponentVector, timeseries, st; sense=InterpolatingAdjoint(autojacvec=ZygoteVJP(allow_nothing=true)), ensemblemode=EnsembleSerial(), seed=nothing, noise=nothing, stick_landing=false)
     # We are using matrices with the following dimensions:
@@ -192,7 +171,7 @@ function pass(n::LatentSDE, ps::ComponentVector, timeseries, st; sense=Interpola
     projected_z0 = n.projector(z0, ps.projector, st.projector)[1]
     projected_ts = reduce(timecat, [n.projector(x, ps.projector, st.projector)[1] for x in eachslice(posterior_latent, dims=3)])
 
-    logp(x, y) = loglikelihood(Normal(y, 0.05), x)
+    logp(x, y) = loglikelihood(Normal(y, 0.01), x)
     likelihoods_initial = [logp(x, y) for (x,y) in zip(tsmatrix[:, :, 1], projected_z0)]
     likelihoods_time = sum([logp(x, y) for (x,y) in zip(tsmatrix, projected_ts)], dims=3)[:, :, 1]
     likelihoods = likelihoods_initial .+ likelihoods_time
