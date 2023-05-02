@@ -1,7 +1,7 @@
 using Lux, LuxCore, Distributions, InformationGeometry, Functors, ChainRulesCore, DifferentialEquations
 export LatentSDE, sample_prior
 
-struct LatentSDE{N1,N2,N3,N4,N5,N6,N7,S,T,K} <: LuxCore.AbstractExplicitContainerLayer{(:initial_prior,:initial_posterior,:drift_prior,:drift_posterior,:diffusion,:encoder,:projector,)}
+struct LatentSDE{N1,N2,N3,N4,N5,N6,N7,S,T,D,K} <: LuxCore.AbstractExplicitContainerLayer{(:initial_prior,:initial_posterior,:drift_prior,:drift_posterior,:diffusion,:encoder,:projector,)}
     initial_prior::N1
     initial_posterior::N2
     drift_prior::N3
@@ -11,17 +11,18 @@ struct LatentSDE{N1,N2,N3,N4,N5,N6,N7,S,T,K} <: LuxCore.AbstractExplicitContaine
     projector::N7
     solver::S
     tspan::T
+    datasize::D
     kwargs::K
 end
 
-function LatentSDE(initial_prior, initial_posterior, drift_prior, drift_posterior, diffusion, encoder, projector, solver, tspan; kwargs...)
+function LatentSDE(initial_prior, initial_posterior, drift_prior, drift_posterior, diffusion, encoder, projector, solver, tspan, datasize; kwargs...)
     models = [initial_prior, initial_posterior, drift_prior, drift_posterior, diffusion, encoder, projector]
     LatentSDE{
         [typeof(x) for x in models]...,
-        typeof(solver),typeof(tspan),typeof(kwargs)
+        typeof(solver),typeof(tspan),typeof(datasize),typeof(kwargs)
     }(
         models...,
-        solver, tspan, kwargs
+        solver, tspan, datasize, kwargs
     )
 end
 
@@ -40,7 +41,6 @@ function sample_prior(n::LatentSDE, ps, st; b=1, seed=nothing)
         Random.seed!(seed)
     end
     eps = reshape([only(rand(Normal{Float64}(0e0, 1e0), 1)) for i in 1:b], 1, :)
-
     
     dudt_prior(u, p, t) = n.drift_prior(u, p.drift_prior, st.drift_prior)[1]
     dudw_diffusion(u, p, t) = reduce(vcat, n.diffusion(Tuple([[x] for x in u]), p.diffusion, st.diffusion)[1])
@@ -58,7 +58,7 @@ function sample_prior(n::LatentSDE, ps, st; b=1, seed=nothing)
 
     ensemble = EnsembleProblem(nothing, output_func=(sol, i) -> (sol, false), prob_func=prob_func)
 
-    return solve(ensemble,n.solver,trajectories=b;n.kwargs...)
+    return solve(ensemble,n.solver,trajectories=b;saveat=range(n.tspan[1],n.tspan[end],n.datasize),dt=(n.tspan[end]/n.datasize),n.kwargs...)
 end
 
 # from https://github.com/google-research/torchsde/blob/master/examples/latent_sde.py
@@ -70,7 +70,7 @@ function stable_divide(a, b, eps=1e-7)
     a ./ b
 end
 
-function pass(n::LatentSDE, ps::ComponentVector, timeseries, st; sense=InterpolatingAdjoint(autojacvec=ZygoteVJP(allow_nothing=true)), ensemblemode=EnsembleSerial(), seed=nothing, noise=nothing, stick_landing=false)
+function pass(n::LatentSDE, ps::ComponentVector, timeseries, st; sense=InterpolatingAdjoint(autojacvec=ZygoteVJP()), ensemblemode=EnsembleSerial(), seed=nothing, noise=nothing, stick_landing=false)
     # We are using matrices with the following dimensions:
     # 1 = latent space dimension
     # 2 = batch number
@@ -104,9 +104,13 @@ function pass(n::LatentSDE, ps::ComponentVector, timeseries, st; sense=Interpola
     # context = tsmatrix
 
     initialdists_prior = get_distributions(n.initial_prior, ps.initial_prior, st.initial_prior, [1e0])
+
     initialdists_posterior = get_distributions(n.initial_posterior, ps.initial_posterior, st.initial_posterior, context[:, :, 1])
     
     initialdists_kl = reduce(hcat, [reshape([KullbackLeibler(a, b) for (a, b) in zip(initialdists_posterior[:, batch], initialdists_prior)], :, 1) for batch in eachindex(timeseries)])
+    # println(initialdists_prior)
+    # println(initialdists_posterior)
+    # println(initialdists_kl)
 
     z0 = reduce(hcat, [reshape([x.μ + eps[1, batch] * x.σ for x in initialdists_posterior[:, batch]], :, 1) for batch in eachindex(timeseries)])
 
@@ -144,7 +148,7 @@ function pass(n::LatentSDE, ps::ComponentVector, timeseries, st; sense=Interpola
                 prior = n.drift_prior(u, p.drift_prior, st.drift_prior)[1]
                 posterior = ChainRulesCore.ignore_derivatives(n.drift_posterior(posterior_net_input, p.drift_posterior, st.drift_posterior)[1])
                 u_term = stable_divide(posterior .- prior, diffusion)
-               sum(u_term; dims=[1])
+                sum(u_term; dims=[1])
             else
                 0.0
             end
@@ -161,8 +165,8 @@ function pass(n::LatentSDE, ps::ComponentVector, timeseries, st; sense=Interpola
     end
 
     ensemble = EnsembleProblem(nothing, output_func=(sol, i) -> (sol, false), prob_func=prob_func)
-
-    solution = solve(ensemble,n.solver,ensemblemode;trajectories=length(timeseries),sensealg=sense,n.kwargs...)
+    
+    solution = solve(ensemble,n.solver,ensemblemode;trajectories=length(timeseries),sensealg=sense,saveat=range(n.tspan[1],n.tspan[end],n.datasize),dt=(n.tspan[end]/n.datasize),n.kwargs...)
 
     posterior_latent = reduce(hcat, [reduce(timecat, [reshape(u[1:end-1], :, 1, 1) for u in batch.u]) for batch in solution.u])
     logterm = reduce(hcat, [reduce(timecat, [reshape(u[end:end], :, 1, 1) for u in batch.u]) for batch in solution.u])

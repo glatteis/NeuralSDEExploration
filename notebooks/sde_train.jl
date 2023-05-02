@@ -61,9 +61,6 @@ md"""
 Let's train a Neural SDE from a modified form of the simple zero-dimensional energy balance model. First, let's just instantiate the predefined model from the package...
 """
 
-# ╔═╡ f74dd752-485b-4203-9d72-c56e55a3ef76
-ebm = NeuralSDEExploration.ZeroDEnergyBalanceModel(0.425, 0.4, 1363, 0.6 * 5.67e-8, 0.14)
-
 # ╔═╡ c799a418-d85e-4f9b-af7a-ed667fab21b6
 println("Running on $(Threads.nthreads()) threads")
 
@@ -92,6 +89,9 @@ Timespan of simulations: $(@bind tspan_end Arg("tspan", NumberField(0.01:100.0, 
 
 # ╔═╡ fe7e2889-88de-49b3-b20b-342357596bfc
 tspan = (0.0, tspan_end)
+
+# ╔═╡ de70d89a-275d-49d2-9da4-4470c869e56e
+tspan_sim = (-tspan_end, tspan_end)
 
 # ╔═╡ 9a89a97c-da03-4887-ac8c-ef1f5264436e
 println((num_data=n, length=datasize, tspan=tspan))
@@ -135,7 +135,10 @@ md"""
 """
 
 # ╔═╡ c00a97bf-5e10-4168-8d58-f4f9270258ac
-solution = NeuralSDEExploration.series(ebm, range(210.0e0, 320.0e0, n), tspan, datasize; seed=10)
+solution_full = NeuralSDEExploration.series(ebm, range(210e0, 350e0, n), tspan_sim, datasize*2; seed=1)
+
+# ╔═╡ 15cef7cc-30b6-499d-b968-775b3251dedb
+solution = shuffle([(t=x.t[datasize:datasize*2-1], u=x.u[datasize:datasize*2-1]) for x in solution_full])
 
 # ╔═╡ 1502612c-1489-4abf-8a8b-5b2d03a68cb1
 md"""
@@ -143,7 +146,7 @@ Let's also plot some example trajectories:
 """
 
 # ╔═╡ 455263ef-2f94-4f3e-8401-f0da7fb3e493
-plot(reduce(hcat, [solution[i].u for i in 1:10]))
+plot(reduce(hcat, [solution[i].u for i in 1:100]); legend=false)
 
 # ╔═╡ f4651b27-135e-45f1-8647-64ab08c2e8e8
 md"""
@@ -289,7 +292,7 @@ Diffusion. Prior and posterior share the same diffusion (they are not actually e
 """
 
 # ╔═╡ a1cb11fb-ec69-4ba2-9ed1-2d1a6d24ccd9
-diffusion = Lux.Parallel(nothing, [Lux.Chain(Lux.Dense(1 => 32, Lux.tanh), Lux.Dense(32 => 1, Lux.sigmoid_fast), Lux.Scale(1, init_weight=ones, init_bias=ones)) for i in 1:latent_dims]...)
+diffusion = Lux.Parallel(nothing, [Lux.Chain(Lux.Dense(1 => hidden_size, Lux.tanh), Lux.Dense(hidden_size => 1, Lux.sigmoid_fast), Lux.Scale(1, init_weight=ones, init_bias=ones)) for i in 1:latent_dims]...)
 
 # ╔═╡ b0421c4a-f243-4d39-8cca-a29ea140486d
 md"""
@@ -319,9 +322,8 @@ latent_sde = LatentSDE(
 	encoder,
 	projector,
 	EM(),
-	tspan;
-	saveat=range(tspan[1], tspan[end], datasize),
-	dt=(tspan[end]/datasize)
+	tspan,
+	datasize
 )
 
 # ╔═╡ 0f6f4520-576f-42d3-9126-2076a51a6e22
@@ -492,14 +494,14 @@ end
 
 # ╔═╡ f0a34be1-6aa2-4563-abc2-ea163a778752
 function loss(ps, minibatch, eta)
-	_, _, _, kl_divergence, likelihood = NeuralSDEExploration.pass(latent_sde, ps, minibatch, st; ensemblemode=EnsembleThreads(), stick_landing=stick_landing)
+	_, _, _, kl_divergence, likelihood = NeuralSDEExploration.pass(latent_sde, ps, minibatch, st; ensemblemode=EnsembleThreads(), stick_landing=stick_landing, seed=abs(rand(rng, Int)))
 	return mean(-likelihood .+ (eta * kl_divergence)), mean(kl_divergence), mean(likelihood)
 end
 
 # ╔═╡ f4a16e34-669e-4c93-bd83-e3622a747a3a
 function train(learning_rate, num_steps, ar=1)
 	# sched = Loop(Sequence([Loop(x -> (25*x)/ar, ar), Loop(x -> 25.0, ar)], [ar, ar]), ar*2)
-	sched = Loop(x -> 25.0, 1)
+	sched = Loop(x -> 300.0, 1)
 
 	opt_state = Optimisers.setup(Optimisers.Adam(), ps)
 	for (step, eta) in zip(1:num_steps, sched)
@@ -568,13 +570,16 @@ gifplot()
 # ╔═╡ 38716b5c-fe06-488c-b6ed-d2e28bd3d397
 begin
 	if enabletraining
-		@gif for epoch in 1:20
+		@gif for epoch in 1:100
 			train(learning_rate, 10)
 			gifplot()
 		end
 	end
 end
 
+
+# ╔═╡ ee910999-4b7e-4346-958b-05c5e3b24ecc
+train(learning_rate, 1)
 
 # ╔═╡ 8880282e-1b5a-4c85-95ef-699ccf8d4203
 md"""
@@ -594,6 +599,15 @@ begin
 	plot(fit(Histogram, ts, 0.0:0.01:1.0), xlims=(0.0,1.0))
 end
 
+# ╔═╡ f74dd752-485b-4203-9d72-c56e55a3ef76
+# ╠═╡ disabled = true
+#=╠═╡
+ebm = NeuralSDEExploration.ZeroDEnergyBalanceModel(0.425, 0.4, 1363, 0.6 * 5.67e-8, 0.135)
+  ╠═╡ =#
+
+# ╔═╡ ca0a9e78-c445-4356-8f94-2dc4f6fc5ef3
+ebm = NeuralSDEExploration.ZeroDEnergyBalanceModel(0.425, 0.4, 1363, 0.6 * 5.67e-8, 0.01)
+
 # ╔═╡ Cell order:
 # ╠═67cb574d-7bd6-40d9-9dc3-d57f4226cc83
 # ╠═db557c9a-24d6-4008-8225-4b8867ee93db
@@ -603,7 +617,8 @@ end
 # ╟─13ef3cd9-7f58-459e-a659-abc35b550326
 # ╟─ff15555b-b1b5-4b42-94a9-da77daa546d0
 # ╟─32be3e35-a529-4d16-8ba0-ec4e223ae401
-# ╟─f74dd752-485b-4203-9d72-c56e55a3ef76
+# ╠═f74dd752-485b-4203-9d72-c56e55a3ef76
+# ╠═ca0a9e78-c445-4356-8f94-2dc4f6fc5ef3
 # ╟─c799a418-d85e-4f9b-af7a-ed667fab21b6
 # ╟─cc2418c2-c355-4291-b5d7-d9019787834f
 # ╟─0eec0598-7520-47ec-b13a-a7b9da550014
@@ -611,11 +626,13 @@ end
 # ╟─a65a7405-d1de-4de5-9391-dcb971af0413
 # ╟─71a38a66-dd66-4000-b664-fc3e04f6d4b8
 # ╟─fe7e2889-88de-49b3-b20b-342357596bfc
+# ╟─de70d89a-275d-49d2-9da4-4470c869e56e
 # ╟─9a89a97c-da03-4887-ac8c-ef1f5264436e
 # ╟─d052d6c0-2065-4ae1-acf7-fbe90ff1cb02
 # ╟─5d020072-8a2e-438d-8e7a-330cca97964b
 # ╟─7e6256ef-6a0a-40cc-aa0a-c467b3a524c4
 # ╠═c00a97bf-5e10-4168-8d58-f4f9270258ac
+# ╠═15cef7cc-30b6-499d-b968-775b3251dedb
 # ╟─1502612c-1489-4abf-8a8b-5b2d03a68cb1
 # ╠═455263ef-2f94-4f3e-8401-f0da7fb3e493
 # ╟─f4651b27-135e-45f1-8647-64ab08c2e8e8
@@ -679,7 +696,7 @@ end
 # ╠═025b33d9-7473-4a54-a3f1-787a8650f9e7
 # ╟─225791b1-0ffc-48e2-8131-7f54848d8d83
 # ╟─1e79035b-7858-4723-b41a-39357f98c25d
-# ╠═aed4467c-dd6c-421f-aa46-0c5aa1c38c0a
+# ╟─aed4467c-dd6c-421f-aa46-0c5aa1c38c0a
 # ╠═550d8974-cd19-4d0b-9492-adb4e14a04b1
 # ╠═fa43f63d-8293-43cc-b099-3b69dbbf4b6a
 # ╠═f0a34be1-6aa2-4563-abc2-ea163a778752
@@ -690,6 +707,7 @@ end
 # ╠═830f7e7a-71d0-43c8-8e74-d1709b8a6707
 # ╠═763f07e6-dd46-42d6-b57a-8f1994386302
 # ╠═38716b5c-fe06-488c-b6ed-d2e28bd3d397
+# ╠═ee910999-4b7e-4346-958b-05c5e3b24ecc
 # ╟─8880282e-1b5a-4c85-95ef-699ccf8d4203
 # ╠═47b2ec07-40f4-480d-b650-fbf1b44b7527
 # ╠═14f9a62d-9caa-40e9-8502-d2a27b9c950e
