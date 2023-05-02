@@ -289,7 +289,7 @@ Diffusion. Prior and posterior share the same diffusion (they are not actually e
 """
 
 # ╔═╡ a1cb11fb-ec69-4ba2-9ed1-2d1a6d24ccd9
-diffusion = Lux.Parallel(nothing, [Lux.Chain(Lux.Dense(1 => 32, Lux.tanh, init_bias=ones), Lux.Dense(32 => 1, Lux.sigmoid, init_bias=ones), Lux.Scale(1, init_weight=ones)) for i in 1:latent_dims]...)
+diffusion = Lux.Parallel(nothing, [Lux.Chain(Lux.Dense(1 => 32, Lux.tanh), Lux.Dense(32 => 1, Lux.sigmoid_fast), Lux.Scale(1, init_weight=ones, init_bias=ones)) for i in 1:latent_dims]...)
 
 # ╔═╡ b0421c4a-f243-4d39-8cca-a29ea140486d
 md"""
@@ -513,7 +513,7 @@ function train(learning_rate, num_steps, ar=1)
 		push!(recorded_eta, eta)
 		push!(recorded_lr, learning_rate)
 		
-		@time dps = Zygote.gradient(ps -> loss(ps, minibatch, eta)[1], ps)
+		dps = Zygote.gradient(ps -> loss(ps, minibatch, eta)[1], ps)
 		println("Loss: $l")
 		Optimisers.update!(opt_state, ps, dps[1])
 	end
@@ -568,7 +568,7 @@ gifplot()
 # ╔═╡ 38716b5c-fe06-488c-b6ed-d2e28bd3d397
 begin
 	if enabletraining
-		@gif for epoch in 1:10
+		@gif for epoch in 1:20
 			train(learning_rate, 10)
 			gifplot()
 		end
