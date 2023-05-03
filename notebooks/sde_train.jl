@@ -61,6 +61,9 @@ md"""
 Let's train a Neural SDE from a modified form of the simple zero-dimensional energy balance model. First, let's just instantiate the predefined model from the package...
 """
 
+# ╔═╡ f74dd752-485b-4203-9d72-c56e55a3ef76
+ebm = NeuralSDEExploration.ZeroDEnergyBalanceModel(0.425, 0.4, 1363, 0.6 * 5.67e-8, 0.135)
+
 # ╔═╡ c799a418-d85e-4f9b-af7a-ed667fab21b6
 println("Running on $(Threads.nthreads()) threads")
 
@@ -599,26 +602,16 @@ begin
 	plot(fit(Histogram, ts, 0.0:0.01:1.0), xlims=(0.0,1.0))
 end
 
-# ╔═╡ f74dd752-485b-4203-9d72-c56e55a3ef76
-# ╠═╡ disabled = true
-#=╠═╡
-ebm = NeuralSDEExploration.ZeroDEnergyBalanceModel(0.425, 0.4, 1363, 0.6 * 5.67e-8, 0.135)
-  ╠═╡ =#
-
-# ╔═╡ ca0a9e78-c445-4356-8f94-2dc4f6fc5ef3
-ebm = NeuralSDEExploration.ZeroDEnergyBalanceModel(0.425, 0.4, 1363, 0.6 * 5.67e-8, 0.01)
-
 # ╔═╡ Cell order:
 # ╠═67cb574d-7bd6-40d9-9dc3-d57f4226cc83
 # ╠═db557c9a-24d6-4008-8225-4b8867ee93db
 # ╠═b6abba94-db07-4095-98c9-443e31832e7d
 # ╠═d1440209-78f7-4a9a-9101-a06ad2534e5d
 # ╟─d38b3460-4c01-4bba-b726-150d207c020b
-# ╟─13ef3cd9-7f58-459e-a659-abc35b550326
+# ╠═13ef3cd9-7f58-459e-a659-abc35b550326
 # ╟─ff15555b-b1b5-4b42-94a9-da77daa546d0
 # ╟─32be3e35-a529-4d16-8ba0-ec4e223ae401
 # ╠═f74dd752-485b-4203-9d72-c56e55a3ef76
-# ╠═ca0a9e78-c445-4356-8f94-2dc4f6fc5ef3
 # ╟─c799a418-d85e-4f9b-af7a-ed667fab21b6
 # ╟─cc2418c2-c355-4291-b5d7-d9019787834f
 # ╟─0eec0598-7520-47ec-b13a-a7b9da550014
