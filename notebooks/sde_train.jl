@@ -61,6 +61,9 @@ md"""
 Let's train a Neural SDE from a modified form of the simple zero-dimensional energy balance model. First, let's just instantiate the predefined model from the package...
 """
 
+# ╔═╡ a68d7677-f598-4390-ab54-b54a26493107
+model = NeuralSDEExploration.ZeroDEnergyBalanceModel(0.425, 0.4, 1363, 0.6 * 5.67e-8, 0.135)
+
 # ╔═╡ c799a418-d85e-4f9b-af7a-ed667fab21b6
 println("Running on $(Threads.nthreads()) threads")
 
@@ -133,6 +136,9 @@ LuxCore.initialparameters(rng::Random.AbstractRNG, l::BroadcastLayer) = NamedTup
 md"""
 ### Data Generation
 """
+
+# ╔═╡ 8a3250f3-46bd-4989-ab05-aa91d58796ba
+initial_condition = range(210e0, 350e0, n)
 
 # ╔═╡ c00a97bf-5e10-4168-8d58-f4f9270258ac
 solution_full = NeuralSDEExploration.series(model, initial_condition, tspan_sim, datasize*2; seed=1)
@@ -595,24 +601,6 @@ begin
 	ts = vcat(reduce(vcat, [s.u[10:end] for s in timeseries])...)
 	plot(fit(Histogram, ts, 0.0:0.01:1.0), xlims=(0.0,1.0))
 end
-
-# ╔═╡ a68d7677-f598-4390-ab54-b54a26493107
-model = NeuralSDEExploration.ZeroDEnergyBalanceModel(0.425, 0.4, 1363, 0.6 * 5.67e-8, 0.135)
-
-# ╔═╡ 0e7bfa9b-20d8-49d6-bf93-a04d1754b0dc
-# ╠═╡ disabled = true
-#=╠═╡
-model = NeuralSDEExploration.FitzHughNagumoModel()
-  ╠═╡ =#
-
-# ╔═╡ e88635ea-94d7-41d7-8be0-b0c22210384e
-# ╠═╡ disabled = true
-#=╠═╡
-initial_condition = [[0.0, 0.0] for i in 1:n]
-  ╠═╡ =#
-
-# ╔═╡ 8a3250f3-46bd-4989-ab05-aa91d58796ba
-initial_condition = range(210e0, 350e0, n)
 
 # ╔═╡ Cell order:
 # ╠═67cb574d-7bd6-40d9-9dc3-d57f4226cc83
