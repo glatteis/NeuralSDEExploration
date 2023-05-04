@@ -38,30 +38,30 @@ end
 
 
 # ╔═╡ ab5de288-e73a-48f2-b8c6-478d74700f6a
-ebm = NeuralSDEExploration.ZeroDEnergyBalanceModel(0.425, 0.4, 1363, 0.6 * 5.67e-8, 0.14)
+ebm = NeuralSDEExploration.FitzHughNagumoModel()
 
 # ╔═╡ 2ae8f19f-8a70-43ec-b552-d56c1b65d746
 begin
-	n = 2
-    datasize = 100000
-    tspan = (0.0, 100.0)
+	n = 10
+    datasize = 1000
+    tspan = (0.0, 10.0)
 end
 
 
 # ╔═╡ cbce9923-70fa-4706-ab43-62f2c25ec559
-solution = NeuralSDEExploration.series(ebm, range(210.0e0, 320.0e0, n), tspan, datasize; seed=10)
+solution = NeuralSDEExploration.series(ebm, [[0.0, 0.0]], tspan, datasize; seed=10)
+
+# ╔═╡ d8809ab0-978e-435a-9213-a1d0fcc35331
+solution[1]
+
+# ╔═╡ ddd3c757-80d1-49f9-8c62-8340f1d494e9
+plot(solution[1])
 
 # ╔═╡ 4ec721fd-e48f-4597-8b54-ba344392971e
 arima = auto_arima(solution[1].u)
 
 # ╔═╡ 7b289fae-0e7b-4193-b465-3d7ea8ba584c
 @bind steps_ahead Slider(1:100; show_value=true)
-
-# ╔═╡ 2dbac6e2-c574-4456-9dbd-3e9db1ad9a88
-f = forecast(arima, steps_ahead)
-
-# ╔═╡ 7a0e66eb-438b-4fc8-b86d-b7ca9c6ed449
-plot(arima, f)
 
 # ╔═╡ Cell order:
 # ╠═68c8b576-e29e-11ed-2ad2-afc5ee52401a
@@ -70,6 +70,8 @@ plot(arima, f)
 # ╠═ab5de288-e73a-48f2-b8c6-478d74700f6a
 # ╠═2ae8f19f-8a70-43ec-b552-d56c1b65d746
 # ╠═cbce9923-70fa-4706-ab43-62f2c25ec559
+# ╠═d8809ab0-978e-435a-9213-a1d0fcc35331
+# ╠═ddd3c757-80d1-49f9-8c62-8340f1d494e9
 # ╠═4ec721fd-e48f-4597-8b54-ba344392971e
 # ╠═7b289fae-0e7b-4193-b465-3d7ea8ba584c
 # ╠═2dbac6e2-c574-4456-9dbd-3e9db1ad9a88

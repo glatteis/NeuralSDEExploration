@@ -61,6 +61,9 @@ md"""
 Let's train a Neural SDE from a modified form of the simple zero-dimensional energy balance model. First, let's just instantiate the predefined model from the package...
 """
 
+# ╔═╡ 0e7bfa9b-20d8-49d6-bf93-a04d1754b0dc
+model = NeuralSDEExploration.FitzHughNagumoModel()
+
 # ╔═╡ c799a418-d85e-4f9b-af7a-ed667fab21b6
 println("Running on $(Threads.nthreads()) threads")
 
@@ -133,6 +136,9 @@ LuxCore.initialparameters(rng::Random.AbstractRNG, l::BroadcastLayer) = NamedTup
 md"""
 ### Data Generation
 """
+
+# ╔═╡ 8a3250f3-46bd-4989-ab05-aa91d58796ba
+initial_condition = [[0.0, 0.0] for i in 1:n]
 
 # ╔═╡ c00a97bf-5e10-4168-8d58-f4f9270258ac
 solution_full = NeuralSDEExploration.series(model, initial_condition, tspan_sim, datasize*2; seed=1)
@@ -466,7 +472,7 @@ md"""
 """
 
 # ╔═╡ aed4467c-dd6c-421f-aa46-0c5aa1c38c0a
-@bind learning_rate Arg("learning-rate", NumberField(0.0:10.0, 0.05); required=false)
+@bind learning_rate Arg("learning-rate", NumberField(0.0:10.0, 0.05))
 
 # ╔═╡ 550d8974-cd19-4d0b-9492-adb4e14a04b1
 begin
@@ -585,8 +591,8 @@ md"""
 
 # ╔═╡ 47b2ec07-40f4-480d-b650-fbf1b44b7527
 begin
-	prior_latent = NeuralSDEExploration.sample_prior(latent_sde,ps,st;b=n)
-	projected_prior = vcat(reduce(vcat, [latent_sde.projector(x[10:end], ps.projector, st.projector)[1] for x in prior_latent.u])...)
+	prior_latent = NeuralSDEExploration.sample_prior(latent_sde,ps,st;b=1000)
+	projected_prior = vcat(reduce(vcat, [latent_sde.projector(x, ps.projector, st.projector)[1] for x in prior_latent.u[10:end]])...)
 	plot(fit(Histogram, projected_prior, 0.0:0.01:1.0), xlims=(0.0,1.0))
 end
 
@@ -596,34 +602,16 @@ begin
 	plot(fit(Histogram, ts, 0.0:0.01:1.0), xlims=(0.0,1.0))
 end
 
-# ╔═╡ a68d7677-f598-4390-ab54-b54a26493107
-model = NeuralSDEExploration.ZeroDEnergyBalanceModel(0.425, 0.4, 1363, 0.6 * 5.67e-8, 0.135)
-
-# ╔═╡ 0e7bfa9b-20d8-49d6-bf93-a04d1754b0dc
-# ╠═╡ disabled = true
-#=╠═╡
-model = NeuralSDEExploration.FitzHughNagumoModel()
-  ╠═╡ =#
-
-# ╔═╡ e88635ea-94d7-41d7-8be0-b0c22210384e
-# ╠═╡ disabled = true
-#=╠═╡
-initial_condition = [[0.0, 0.0] for i in 1:n]
-  ╠═╡ =#
-
-# ╔═╡ 8a3250f3-46bd-4989-ab05-aa91d58796ba
-initial_condition = range(210e0, 350e0, n)
-
 # ╔═╡ Cell order:
 # ╠═67cb574d-7bd6-40d9-9dc3-d57f4226cc83
 # ╠═db557c9a-24d6-4008-8225-4b8867ee93db
 # ╠═b6abba94-db07-4095-98c9-443e31832e7d
 # ╠═d1440209-78f7-4a9a-9101-a06ad2534e5d
 # ╟─d38b3460-4c01-4bba-b726-150d207c020b
-# ╟─13ef3cd9-7f58-459e-a659-abc35b550326
+# ╠═13ef3cd9-7f58-459e-a659-abc35b550326
 # ╟─ff15555b-b1b5-4b42-94a9-da77daa546d0
 # ╟─32be3e35-a529-4d16-8ba0-ec4e223ae401
-# ╠═a68d7677-f598-4390-ab54-b54a26493107
+# ╠═f74dd752-485b-4203-9d72-c56e55a3ef76
 # ╠═0e7bfa9b-20d8-49d6-bf93-a04d1754b0dc
 # ╟─c799a418-d85e-4f9b-af7a-ed667fab21b6
 # ╟─cc2418c2-c355-4291-b5d7-d9019787834f
@@ -637,7 +625,7 @@ initial_condition = range(210e0, 350e0, n)
 # ╟─d052d6c0-2065-4ae1-acf7-fbe90ff1cb02
 # ╟─5d020072-8a2e-438d-8e7a-330cca97964b
 # ╟─7e6256ef-6a0a-40cc-aa0a-c467b3a524c4
-# ╠═e88635ea-94d7-41d7-8be0-b0c22210384e
+# ╠═224a4b1a-9b9b-46e3-b69a-9451f1aad692
 # ╠═8a3250f3-46bd-4989-ab05-aa91d58796ba
 # ╠═c00a97bf-5e10-4168-8d58-f4f9270258ac
 # ╠═15cef7cc-30b6-499d-b968-775b3251dedb
@@ -716,5 +704,5 @@ initial_condition = range(210e0, 350e0, n)
 # ╠═763f07e6-dd46-42d6-b57a-8f1994386302
 # ╠═38716b5c-fe06-488c-b6ed-d2e28bd3d397
 # ╟─8880282e-1b5a-4c85-95ef-699ccf8d4203
-# ╟─47b2ec07-40f4-480d-b650-fbf1b44b7527
-# ╟─14f9a62d-9caa-40e9-8502-d2a27b9c950e
+# ╠═47b2ec07-40f4-480d-b650-fbf1b44b7527
+# ╠═14f9a62d-9caa-40e9-8502-d2a27b9c950e
