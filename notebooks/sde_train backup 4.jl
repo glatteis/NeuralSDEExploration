@@ -87,7 +87,7 @@ Length of timeseries: $(@bind datasize Arg("length", NumberField(1:1000, default
 
 # ╔═╡ 71a38a66-dd66-4000-b664-fc3e04f6d4b8
 md"""
-Timespan of simulations: $(@bind tspan_end Arg("tspan", NumberField(0.01:100.0, default=.5), required=false)), CLI arg: `--tspan`
+Timespan of simulations: $(@bind tspan_end Arg("tspan", NumberField(0.01:100.0, default=1.0), required=false)), CLI arg: `--tspan`
 """
 
 # ╔═╡ fe7e2889-88de-49b3-b20b-342357596bfc
@@ -505,10 +505,11 @@ function loss(ps, minibatch, eta)
 end
 
 # ╔═╡ f4a16e34-669e-4c93-bd83-e3622a747a3a
-function train(learning_rate, num_steps, opt_state, ar=1)
+function train(learning_rate, num_steps, ar=1)
 	# sched = Loop(Sequence([Loop(x -> (25*x)/ar, ar), Loop(x -> 25.0, ar)], [ar, ar]), ar*2)
 	sched = Loop(x -> 300.0, 1)
 
+	opt_state = Optimisers.setup(Optimisers.Adam(), ps)
 	for (step, eta) in zip(1:num_steps, sched)
 		s = sample(rng, 1:size(timeseries)[1], batch_size, replace=false)
 		minibatch = timeseries[s]
@@ -555,9 +556,8 @@ end
 # ╔═╡ 78aa72e2-8188-441f-9910-1bc5525fda7a
 begin
 	if !(@isdefined PlutoRunner) && enabletraining  # running as job
-		opt_state_job = Optimisers.setup(Optimisers.Adam(), ps)
 		for epoch in 1:100
-			train(learning_rate, 250, opt_state_job)
+			train(learning_rate, 250)
 			exportresults(epoch)
 		end
 	end
@@ -576,10 +576,8 @@ gifplot()
 # ╔═╡ 38716b5c-fe06-488c-b6ed-d2e28bd3d397
 begin
 	if enabletraining
-		opt_state = Optimisers.setup(Optimisers.Adam(), ps)
-
-		@gif for epoch in 1:10
-			train(learning_rate, 10, opt_state)
+		@gif for epoch in 1:100
+			train(learning_rate, 10)
 			gifplot()
 		end
 	end
@@ -614,6 +612,7 @@ end
 # ╟─ff15555b-b1b5-4b42-94a9-da77daa546d0
 # ╟─32be3e35-a529-4d16-8ba0-ec4e223ae401
 # ╠═a68d7677-f598-4390-ab54-b54a26493107
+# ╠═0e7bfa9b-20d8-49d6-bf93-a04d1754b0dc
 # ╟─c799a418-d85e-4f9b-af7a-ed667fab21b6
 # ╟─cc2418c2-c355-4291-b5d7-d9019787834f
 # ╟─0eec0598-7520-47ec-b13a-a7b9da550014
@@ -626,6 +625,7 @@ end
 # ╟─d052d6c0-2065-4ae1-acf7-fbe90ff1cb02
 # ╟─5d020072-8a2e-438d-8e7a-330cca97964b
 # ╟─7e6256ef-6a0a-40cc-aa0a-c467b3a524c4
+# ╠═e88635ea-94d7-41d7-8be0-b0c22210384e
 # ╠═8a3250f3-46bd-4989-ab05-aa91d58796ba
 # ╠═c00a97bf-5e10-4168-8d58-f4f9270258ac
 # ╠═15cef7cc-30b6-499d-b968-775b3251dedb

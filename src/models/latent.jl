@@ -106,11 +106,6 @@ function pass(n::LatentSDE, ps::ComponentVector, timeseries, st; sense=Interpola
     initialdists_prior = get_distributions(n.initial_prior, ps.initial_prior, st.initial_prior, [1e0])
 
     initialdists_posterior = get_distributions(n.initial_posterior, ps.initial_posterior, st.initial_posterior, context[:, :, 1])
-    
-    initialdists_kl = reduce(hcat, [reshape([KullbackLeibler(a, b) for (a, b) in zip(initialdists_posterior[:, batch], initialdists_prior)], :, 1) for batch in eachindex(timeseries)])
-    # println(initialdists_prior)
-    # println(initialdists_posterior)
-    # println(initialdists_kl)
 
     z0 = reduce(hcat, [reshape([x.μ + eps[1, batch] * x.σ for x in initialdists_posterior[:, batch]], :, 1) for batch in eachindex(timeseries)])
 
@@ -167,10 +162,22 @@ function pass(n::LatentSDE, ps::ComponentVector, timeseries, st; sense=Interpola
     ensemble = EnsembleProblem(nothing, output_func=(sol, i) -> (sol, false), prob_func=prob_func)
     
     solution = solve(ensemble,n.solver,ensemblemode;trajectories=length(timeseries),sensealg=sense,saveat=range(n.tspan[1],n.tspan[end],n.datasize),dt=(n.tspan[end]/n.datasize),n.kwargs...)
-
+    
+    # if ts_start > 1, the timeseries starts after the latent sde, thus only score after ts_start
+    # the end must be the same (documentation forthcoming)
+    # ts_start = searchsortedlast(timeseries[1].t, solution.t[1][1])
+    # println(ts_start)
+    ts_start = 1
+    
     posterior_latent = reduce(hcat, [reduce(timecat, [reshape(u[1:end-1], :, 1, 1) for u in batch.u]) for batch in solution.u])
     logterm = reduce(hcat, [reduce(timecat, [reshape(u[end:end], :, 1, 1) for u in batch.u]) for batch in solution.u])
+    initialdists_kl = if ts_start == 1
+        reduce(hcat, [reshape([KullbackLeibler(a, b) for (a, b) in zip(initialdists_posterior[:, batch], initialdists_prior)], :, 1) for batch in eachindex(timeseries)])
+    else
+        0.0
+    end
     kl_divergence = sum(initialdists_kl, dims=1) .+ logterm[:, :, end]
+    
 
     projected_z0 = n.projector(z0, ps.projector, st.projector)[1]
     projected_ts = reduce(timecat, [n.projector(x, ps.projector, st.projector)[1] for x in eachslice(posterior_latent, dims=3)])
