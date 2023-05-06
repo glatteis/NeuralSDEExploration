@@ -87,7 +87,7 @@ Length of timeseries: $(@bind datasize Arg("length", NumberField(1:1000, default
 
 # ╔═╡ 71a38a66-dd66-4000-b664-fc3e04f6d4b8
 md"""
-Timespan of simulations: $(@bind tspan_end Arg("tspan", NumberField(0.01:100.0, default=.5), required=false)), CLI arg: `--tspan`
+Timespan of simulations: $(@bind tspan_end Arg("tspan", NumberField(0.5:100.0; default=0.5), required=false)), CLI arg: `--tspan`
 """
 
 # ╔═╡ fe7e2889-88de-49b3-b20b-342357596bfc
