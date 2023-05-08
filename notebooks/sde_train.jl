@@ -223,6 +223,18 @@ $(@bind latent_dims Arg("latent-dims", NumberField(1:100, default=2), required=f
 CLI arg: `--latent-dims`
 """
 
+# ╔═╡ fe749caf-393f-45b0-98e5-5d10c1821a9d
+md"""
+Stick landing: $(@bind stick_landing Arg("stick-landing", CheckBox(), required=false))
+CLI arg: `--stick-landing`
+"""
+
+# ╔═╡ 60b5397d-7350-460b-9117-319dc127cc7e
+md"""
+Use GPU: $(@bind gpu Arg("gpu", CheckBox(), required=false))
+CLI arg: `--gpu`
+"""
+
 # ╔═╡ 86620e12-9631-4156-8b1c-60545b8a8352
 if gpu
 	using CUDA, DiffEqGPU
@@ -634,18 +646,6 @@ begin
 	ts = vcat(reduce(vcat, [s.u[10:end] for s in timeseries])...)
 	plot(fit(Histogram, ts, 0.0:0.01:1.0), xlims=(0.0,1.0))
 end
-
-# ╔═╡ fe749caf-393f-45b0-98e5-5d10c1821a9d
-md"""
-Stick landing: $(@bind stick_landing Arg("stick-landing", CheckBox()), required=false)
-CLI arg: `--stick-landing`
-"""
-
-# ╔═╡ 60b5397d-7350-460b-9117-319dc127cc7e
-md"""
-Use GPU: $(@bind gpu Arg("gpu", CheckBox()), required=false)
-CLI arg: `--gpu`
-"""
 
 # ╔═╡ Cell order:
 # ╠═67cb574d-7bd6-40d9-9dc3-d57f4226cc83
