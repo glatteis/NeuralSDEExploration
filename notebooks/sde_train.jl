@@ -24,7 +24,7 @@ begin
 end
 
 # ╔═╡ b6abba94-db07-4095-98c9-443e31832e7d
-using Optimisers, StatsBase, Zygote, Lux, DifferentialEquations, ComponentArrays, ParameterSchedulers, Random, Distributed, ForwardDiff, LuxCore, Dates
+using Optimisers, StatsBase, Zygote, Lux, DifferentialEquations, ComponentArrays, ParameterSchedulers, Random, Distributed, ForwardDiff, LuxCore, Dates, JLD2
 
 # ╔═╡ d1440209-78f7-4a9a-9101-a06ad2534e5d
 using NeuralSDEExploration, Plots, PlutoUI, PlutoArgs
@@ -84,37 +84,37 @@ Number of timeseries in data: $(@bind n Arg("num-data", NumberField(1:1000000, d
 
 # ╔═╡ a65a7405-d1de-4de5-9391-dcb971af0413
 md"""
-Timestep size: $(@bind dt Arg("dt", NumberField(0.0:10.0, default=0.02), required=false)), CLI arg: `--dt`
+Timestep size: $(@bind dt Arg("dt", NumberField(0.0:1.0, 0.05), required=false)), CLI arg: `--dt`
 """
 
 # ╔═╡ e6a71aae-9d81-45a9-af9a-c4188dda2787
 md"""
-Timespan start of data generation: $(@bind tspan_start_data Arg("tspan-start-data", NumberField(0f0:100.0f0; default=0f0), required=false)), CLI arg: `--tspan-start-data`
+Timespan start of data generation: $(@bind tspan_start_data Arg("tspan-start-data", NumberField(0f0:100.0f0, 0f0), required=false)), CLI arg: `--tspan-start-data`
 """
 
 # ╔═╡ 71a38a66-dd66-4000-b664-fc3e04f6d4b8
 md"""
-Timespan end of data generation: $(@bind tspan_end_data Arg("tspan-end-data", NumberField(0.5f0:100f0; default=1f0), required=false)), CLI arg: `--tspan-end-data`
+Timespan end of data generation: $(@bind tspan_end_data Arg("tspan-end-data", NumberField(0.5f0:100f0, 1f0), required=false)), CLI arg: `--tspan-end-data`
 """
 
 # ╔═╡ bae92e09-2e87-4a1e-aa2e-906f33985f6d
 md"""
-Timespan start of training data: $(@bind tspan_start_train Arg("tspan-start-train", NumberField(0.5f0:100f0; default=0f0), required=false)), CLI arg: `--tspan-start-train`
+Timespan start of training data: $(@bind tspan_start_train Arg("tspan-start-train", NumberField(0.5f0:100f0, 0.5f0), required=false)), CLI arg: `--tspan-start-train`
 """
 
 # ╔═╡ bd7acf1a-c09a-4531-ad2c-b5e7e28af382
 md"""
-Timespan end of training data: $(@bind tspan_end_train Arg("tspan-end-train", NumberField(0.5f0:100f0; default=1f0), required=false)), CLI arg: `--tspan-end-train`
+Timespan end of training data: $(@bind tspan_end_train Arg("tspan-end-train", NumberField(0.5f0:100f0, 1f0), required=false)), CLI arg: `--tspan-end-train`
 """
 
 # ╔═╡ 42ece6c1-9e8a-45e7-adf4-6f353da6a4e5
 md"""
-Timespan start of model: $(@bind tspan_start_model Arg("tspan-start-model", NumberField(0.5f0:100.0f0; default=0f0), required=false)), CLI arg: `--tspan-start-model`
+Timespan start of model: $(@bind tspan_start_model Arg("tspan-start-model", NumberField(0.5f0:100.0f0, 0.3f0), required=false)), CLI arg: `--tspan-start-model`
 """
 
 # ╔═╡ 3665efa6-6527-4771-82fd-285c3c0f8b41
 md"""
-Timespan end of model: $(@bind tspan_end_model Arg("tspan-end-model", NumberField(0.5f0:100f0; default=0.5f0), required=false)), CLI arg: `--tspan-end-model`
+Timespan end of model: $(@bind tspan_end_model Arg("tspan-end-model", NumberField(0.5f0:100f0, 1.0f0), required=false)), CLI arg: `--tspan-end-model`
 """
 
 # ╔═╡ fe7e2889-88de-49b3-b20b-342357596bfc
@@ -400,6 +400,11 @@ solver = if gpu
 else
 	EM()
 end
+
+# ╔═╡ ec41b765-2f73-43a5-a575-c97a5a107c4e
+md"""
+Steps: $(steps(tspan_model, dt))
+"""
 
 # ╔═╡ 001c318e-b7a6-48a5-bfd5-6dd0368873ac
 latent_sde = LatentSDE(
@@ -764,6 +769,7 @@ end
 # ╠═f0486891-b8b3-4a39-91df-1389d6f799e1
 # ╟─b8b2f4b5-e90c-4066-8dad-27e8dfa1d7c5
 # ╠═08759cda-2a2a-41ff-af94-5b1000c9e53f
+# ╟─ec41b765-2f73-43a5-a575-c97a5a107c4e
 # ╠═001c318e-b7a6-48a5-bfd5-6dd0368873ac
 # ╠═0f6f4520-576f-42d3-9126-2076a51a6e22
 # ╟─1938e122-2c05-46fc-b179-db38322530ff
