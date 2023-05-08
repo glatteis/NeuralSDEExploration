@@ -231,6 +231,13 @@ $(@bind batch_size Arg("batch-size", NumberField(1:200, default=32), required=fa
 CLI arg: `--batch-size`
 """
 
+# ╔═╡ f12633b6-c770-439d-939f-c41b74a5c309
+md"""
+Eta
+$(@bind eta Arg("eta", NumberField(0.1:1000.0, default=50.0), required=false)).
+CLI arg: `--eta`
+"""
+
 # ╔═╡ 9767a8ea-bdda-43fc-b636-8681d150d29f
 data_dims = length(solution[1].u[1]) # Dimensions of our input data.
 
@@ -528,7 +535,7 @@ end
 # ╔═╡ f4a16e34-669e-4c93-bd83-e3622a747a3a
 function train(learning_rate, num_steps, opt_state, ar=1)
 	# sched = Loop(Sequence([Loop(x -> (25*x)/ar, ar), Loop(x -> 25.0, ar)], [ar, ar]), ar*2)
-	sched = Loop(x -> 300.0, 1)
+	sched = Loop(x -> eta, 1)
 
 	for (step, eta) in zip(1:num_steps, sched)
 		s = sample(rng, 1:size(timeseries)[1], batch_size, replace=false)
@@ -685,6 +692,7 @@ model = NeuralSDEExploration.ZeroDEnergyBalanceModel(0.425, 0.4, 1363, 0.6 * 5.6
 # ╟─fe749caf-393f-45b0-98e5-5d10c1821a9d
 # ╟─60b5397d-7350-460b-9117-319dc127cc7e
 # ╟─16c12354-5ab6-4c0e-833d-265642119ed2
+# ╟─f12633b6-c770-439d-939f-c41b74a5c309
 # ╟─9767a8ea-bdda-43fc-b636-8681d150d29f
 # ╟─db88cae4-cb25-4628-9298-5a694c4b29ef
 # ╟─86620e12-9631-4156-8b1c-60545b8a8352
