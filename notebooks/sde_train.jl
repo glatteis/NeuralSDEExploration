@@ -84,7 +84,7 @@ Number of timeseries in data: $(@bind n Arg("num-data", NumberField(1:1000000, d
 
 # ╔═╡ a65a7405-d1de-4de5-9391-dcb971af0413
 md"""
-Timestep size: $(@bind dt Arg("dt", NumberField(0.0:10.0, default=0.05), required=false)), CLI arg: `--dt`
+Timestep size: $(@bind dt Arg("dt", NumberField(0.0:10.0, default=0.02), required=false)), CLI arg: `--dt`
 """
 
 # ╔═╡ e6a71aae-9d81-45a9-af9a-c4188dda2787
@@ -279,7 +279,7 @@ end
 # ╔═╡ 16c12354-5ab6-4c0e-833d-265642119ed2
 md"""
 Batch size
-$(@bind batch_size Arg("batch-size", NumberField(1:200, default=32), required=false)).
+$(@bind batch_size Arg("batch-size", NumberField(1:200, default=128), required=false)).
 CLI arg: `--batch-size`
 """
 
@@ -714,8 +714,8 @@ end
 # ╟─42ece6c1-9e8a-45e7-adf4-6f353da6a4e5
 # ╟─3665efa6-6527-4771-82fd-285c3c0f8b41
 # ╟─fe7e2889-88de-49b3-b20b-342357596bfc
-# ╠═de70d89a-275d-49d2-9da4-4470c869e56e
-# ╠═986c442a-d02e-42d4-bda4-f66a1c92f799
+# ╟─de70d89a-275d-49d2-9da4-4470c869e56e
+# ╟─986c442a-d02e-42d4-bda4-f66a1c92f799
 # ╟─9a89a97c-da03-4887-ac8c-ef1f5264436e
 # ╠═c441712f-e4b2-4f4a-83e1-aad558685288
 # ╟─d052d6c0-2065-4ae1-acf7-fbe90ff1cb02
