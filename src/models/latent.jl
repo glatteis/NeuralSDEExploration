@@ -115,7 +115,8 @@ function pass(n::LatentSDE, ps::ComponentVector, timeseries, st; sense=Interpola
             u = u_in[1:end-1]
 
             # Get the context for the posterior at the current time
-            time_index = searchsortedlast(timeseries[1].t, max(0f0, t))
+            # initial state evolve => get the posterior at future start time
+            time_index = max(1, searchsortedlast(timeseries[1].t, t))
             timedctx = context[:, batch, time_index]
             
             posterior_net_input = vcat(u, timedctx)
@@ -135,7 +136,7 @@ function pass(n::LatentSDE, ps::ComponentVector, timeseries, st; sense=Interpola
             u = u_in[1:end-1]
             diffusion = reduce(vcat, n.diffusion(Tuple([[x] for x in u]), p.diffusion, st.diffusion)[1])
             additional_term = if stick_landing
-                time_index = searchsortedlast(timeseries[1].t, max(0f0, t))
+                time_index = max(1, searchsortedlast(timeseries[1].t, t))
                 timedctx = context[:, batch, time_index]
                 posterior_net_input = vcat(u, timedctx)
                 prior = n.drift_prior(u, p.drift_prior, st.drift_prior)[1]
@@ -161,19 +162,14 @@ function pass(n::LatentSDE, ps::ComponentVector, timeseries, st; sense=Interpola
     
     solution = solve(ensemble,n.solver,ensemblemode;trajectories=length(timeseries),sensealg=sense,saveat=range(n.tspan[1],n.tspan[end],n.datasize),dt=(n.tspan[end]/n.datasize),n.kwargs...)
     
-    # if ts_start > 1, the timeseries starts after the latent sde, thus only score after ts_start
+    # if ts_start > 0, the timeseries starts after the latent sde, thus only score after ts_start
     # the end must be the same (documentation forthcoming)
-    # ts_start = searchsortedlast(timeseries[1].t, solution.t[1][1])
-    # println(ts_start)
-    ts_start = 1
-    
+    ts_indices = [searchsortedlast(solution[1].t, t) for t in timeseries[1].t]
+    ts_start = ts_indices[1]
+
     posterior_latent = reduce(hcat, [reduce(timecat, [reshape(u[1:end-1], :, 1, 1) for u in batch.u]) for batch in solution.u])
     logterm = reduce(hcat, [reduce(timecat, [reshape(u[end:end], :, 1, 1) for u in batch.u]) for batch in solution.u])
-    initialdists_kl = if ts_start == 1
-        reduce(hcat, [reshape([KullbackLeibler(a, b) for (a, b) in zip(initialdists_posterior[:, batch], initialdists_prior)], :, 1) for batch in eachindex(timeseries)])
-    else
-        0f0
-    end
+    initialdists_kl = reduce(hcat, [reshape([KullbackLeibler(a, b) for (a, b) in zip(initialdists_posterior[:, batch], initialdists_prior)], :, 1) for batch in eachindex(timeseries)])
     kl_divergence = sum(initialdists_kl, dims=1) .+ logterm[:, :, end]
     
 
@@ -181,8 +177,12 @@ function pass(n::LatentSDE, ps::ComponentVector, timeseries, st; sense=Interpola
     projected_ts = reduce(timecat, [n.projector(x, ps.projector, st.projector)[1] for x in eachslice(posterior_latent, dims=3)])
 
     logp(x, y) = loglikelihood(Normal(y, 0.01f0), x)
-    likelihoods_initial = [logp(x, y) for (x,y) in zip(tsmatrix[:, :, 1], projected_z0)]
-    likelihoods_time = sum([logp(x, y) for (x,y) in zip(tsmatrix, projected_ts)], dims=3)[:, :, 1]
+    likelihoods_initial = if ts_start == 0
+        [logp(x, y) for (x,y) in zip(tsmatrix[:, :, 1], projected_z0)]
+    else
+        fill(0f0, size(projected_z0))
+    end
+    likelihoods_time = sum([logp(x, y) for (x,y) in zip(tsmatrix, projected_ts[:, :,  ts_indices])], dims=3)[:, :, 1]
     likelihoods = likelihoods_initial .+ likelihoods_time
     
     return posterior_latent, projected_ts, logterm, kl_divergence, likelihoods

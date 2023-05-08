@@ -3,9 +3,10 @@
 #SBATCH --job-name=train
 #SBATCH --account=tipes
 #SBATCH --partition=standard
-#SBATCH --cpus-per-task=4
-#SBATCH --mem=64G
+#SBATCH --partition=gpu
+#SBATCH --gres=gpu:v100:1
 #SBATCH --time=24:00:00
+#SBATCH --cpus-per-task=2
 #SBATCH --output=/home/linushe/outputs/plain-%j.log
 
 ###
@@ -27,6 +28,6 @@ module purge
 module load julia/1.8.2
 
 # Start the script
-srun julia --project=. -t4 notebooks/sde_train.jl -m fhn --batch-size 128 --eta 10.0 --learning-rate 0.02 --latent-dims 2 --stick-landing false
+srun julia --project=. -t2 notebooks/sde_train.jl --gpu true -m sun --batch-size 128 --eta 10.0 --learning-rate 0.02 --latent-dims 2 --stick-landing false
 
 # To stop the script, use 'scancel'
