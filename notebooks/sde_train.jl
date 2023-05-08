@@ -238,6 +238,13 @@ $(@bind eta Arg("eta", NumberField(0.1:1000.0, default=50.0), required=false)).
 CLI arg: `--eta`
 """
 
+# ╔═╡ 3c630a3a-7714-41c7-8cc3-601cd6efbceb
+md"""
+Learning rate
+$(@bind learning_rate Arg("learning-rate", NumberField(0.001:1000.0, default=50.0), required=false)).
+CLI arg: `--learning-rate`, `-lr`
+"""
+
 # ╔═╡ 9767a8ea-bdda-43fc-b636-8681d150d29f
 data_dims = length(solution[1].u[1]) # Dimensions of our input data.
 
@@ -487,14 +494,6 @@ md"""
 # Training
 """
 
-# ╔═╡ 1e79035b-7858-4723-b41a-39357f98c25d
-md"""
-### Hyperparameters
-"""
-
-# ╔═╡ aed4467c-dd6c-421f-aa46-0c5aa1c38c0a
-@bind learning_rate Arg("learning-rate", NumberField(0.0:10.0, 0.05); required=false)
-
 # ╔═╡ 550d8974-cd19-4d0b-9492-adb4e14a04b1
 begin
 	recorded_loss = []
@@ -632,17 +631,21 @@ begin
 	plot(fit(Histogram, ts, 0.0:0.01:1.0), xlims=(0.0,1.0))
 end
 
-# ╔═╡ 8a3250f3-46bd-4989-ab05-aa91d58796ba
-# ╠═╡ disabled = true
-#=╠═╡
-initial_condition = range(210f0, 350f0, n)
-  ╠═╡ =#
-
-# ╔═╡ 35067efb-9f10-4e44-a2ac-4c1040b7866e
-initial_condition = [[0f0, 0f0] for i in 1:n]
-
-# ╔═╡ 04a2eb66-b7cb-4bf0-85ed-a50ccdce6f09
-model = NeuralSDEExploration.FitzHughNagumoModel()
+# ╔═╡ 2da6bbd4-8036-471c-b94e-10182cf8a834
+(initial_condition, model) = if model_name == "sun"
+	(
+		range(210f0, 350f0, n),
+		NeuralSDEExploration.ZeroDEnergyBalanceModel(0.425, 0.4, 1363, 0.6 * 5.67e-8, 0.135)
+	)
+elseif model_name == "fhn"
+	(
+		[[0f0, 0f0] for i in 1:n],
+		NeuralSDEExploration.FitzHughNagumoModel()
+	)
+else
+	@error "Invalid model name!"
+	nothing
+end
 
 # ╔═╡ a68d7677-f598-4390-ab54-b54a26493107
 # ╠═╡ disabled = true
@@ -660,7 +663,6 @@ model = NeuralSDEExploration.ZeroDEnergyBalanceModel(0.425, 0.4, 1363, 0.6 * 5.6
 # ╟─ff15555b-b1b5-4b42-94a9-da77daa546d0
 # ╟─32be3e35-a529-4d16-8ba0-ec4e223ae401
 # ╠═a68d7677-f598-4390-ab54-b54a26493107
-# ╠═04a2eb66-b7cb-4bf0-85ed-a50ccdce6f09
 # ╟─c799a418-d85e-4f9b-af7a-ed667fab21b6
 # ╟─cc2418c2-c355-4291-b5d7-d9019787834f
 # ╟─0eec0598-7520-47ec-b13a-a7b9da550014
@@ -674,8 +676,7 @@ model = NeuralSDEExploration.ZeroDEnergyBalanceModel(0.425, 0.4, 1363, 0.6 * 5.6
 # ╟─d052d6c0-2065-4ae1-acf7-fbe90ff1cb02
 # ╟─5d020072-8a2e-438d-8e7a-330cca97964b
 # ╟─7e6256ef-6a0a-40cc-aa0a-c467b3a524c4
-# ╠═8a3250f3-46bd-4989-ab05-aa91d58796ba
-# ╠═35067efb-9f10-4e44-a2ac-4c1040b7866e
+# ╠═2da6bbd4-8036-471c-b94e-10182cf8a834
 # ╠═c00a97bf-5e10-4168-8d58-f4f9270258ac
 # ╠═15cef7cc-30b6-499d-b968-775b3251dedb
 # ╟─1502612c-1489-4abf-8a8b-5b2d03a68cb1
@@ -693,6 +694,7 @@ model = NeuralSDEExploration.ZeroDEnergyBalanceModel(0.425, 0.4, 1363, 0.6 * 5.6
 # ╟─60b5397d-7350-460b-9117-319dc127cc7e
 # ╟─16c12354-5ab6-4c0e-833d-265642119ed2
 # ╟─f12633b6-c770-439d-939f-c41b74a5c309
+# ╟─3c630a3a-7714-41c7-8cc3-601cd6efbceb
 # ╟─9767a8ea-bdda-43fc-b636-8681d150d29f
 # ╟─db88cae4-cb25-4628-9298-5a694c4b29ef
 # ╟─86620e12-9631-4156-8b1c-60545b8a8352
@@ -743,8 +745,6 @@ model = NeuralSDEExploration.ZeroDEnergyBalanceModel(0.425, 0.4, 1363, 0.6 * 5.6
 # ╟─b5c6d43c-8252-4602-8232-b3d1b0bcee33
 # ╠═025b33d9-7473-4a54-a3f1-787a8650f9e7
 # ╟─225791b1-0ffc-48e2-8131-7f54848d8d83
-# ╟─1e79035b-7858-4723-b41a-39357f98c25d
-# ╟─aed4467c-dd6c-421f-aa46-0c5aa1c38c0a
 # ╠═550d8974-cd19-4d0b-9492-adb4e14a04b1
 # ╠═fa43f63d-8293-43cc-b099-3b69dbbf4b6a
 # ╠═f943cd4b-ab94-40c0-bf59-3db777eee928
