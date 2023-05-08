@@ -70,7 +70,7 @@ function stable_divide(a, b, eps=1e-7)
     a ./ b
 end
 
-function pass(n::LatentSDE, ps::ComponentVector, timeseries, st; sense=InterpolatingAdjoint(autojacvec=ZygoteVJP()), ensemblemode=EnsembleSerial(), seed=nothing, noise=nothing, stick_landing=false)
+function pass(n::LatentSDE, ps::ComponentVector, timeseries, st; sense=InterpolatingAdjoint(autojacvec=ZygoteVJP()), ensemblemode=EnsembleSerial(), seed=nothing, noise=(seed) -> nothing, stick_landing=false)
     # We are using matrices with the following dimensions:
     # 1 = latent space dimension
     # 2 = batch number
@@ -152,9 +152,9 @@ function pass(n::LatentSDE, ps::ComponentVector, timeseries, st; sense=Interpola
 
     function prob_func(prob, batch, repeat)
         if seed !== nothing
-            return SDEProblem{false}(augmented_drift(batch),augmented_diffusion(batch),augmented_z0[:, batch],n.tspan,ps,seed=seed+Int(batch),noise=noise)
+            return SDEProblem{false}(augmented_drift(batch),augmented_diffusion(batch),augmented_z0[:, batch],n.tspan,ps,seed=seed+Int(batch),noise=noise(seed))
         else
-            return SDEProblem{false}(augmented_drift(batch),augmented_diffusion(batch),augmented_z0[:, batch],n.tspan,ps,noise=noise)
+            return SDEProblem{false}(augmented_drift(batch),augmented_diffusion(batch),augmented_z0[:, batch],n.tspan,ps,noise=noise(nothing))
         end
     end
 
@@ -164,7 +164,7 @@ function pass(n::LatentSDE, ps::ComponentVector, timeseries, st; sense=Interpola
     
     # if ts_start > 0, the timeseries starts after the latent sde, thus only score after ts_start
     # the end must be the same (documentation forthcoming)
-    ts_indices = [searchsortedlast(solution[1].t, t) for t in timeseries[1].t]
+    ts_indices = [searchsortedfirst(solution[1].t, t) for t in timeseries[1].t]
     ts_start = ts_indices[1]
 
     posterior_latent = reduce(hcat, [reduce(timecat, [reshape(u[1:end-1], :, 1, 1) for u in batch.u]) for batch in solution.u])
@@ -177,7 +177,7 @@ function pass(n::LatentSDE, ps::ComponentVector, timeseries, st; sense=Interpola
     projected_ts = reduce(timecat, [n.projector(x, ps.projector, st.projector)[1] for x in eachslice(posterior_latent, dims=3)])
 
     logp(x, y) = loglikelihood(Normal(y, 0.01f0), x)
-    likelihoods_initial = if ts_start == 0
+    likelihoods_initial = if ts_start == 1
         [logp(x, y) for (x,y) in zip(tsmatrix[:, :, 1], projected_z0)]
     else
         fill(0f0, size(projected_z0))

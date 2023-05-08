@@ -24,7 +24,7 @@ begin
 end
 
 # ╔═╡ b6abba94-db07-4095-98c9-443e31832e7d
-using Optimisers, StatsBase, Zygote, Lux, DifferentialEquations, ComponentArrays, ParameterSchedulers, Random, Distributed, ForwardDiff, LuxCore, Dates, JLD2
+using Optimisers, StatsBase, Zygote, Lux, DifferentialEquations, ComponentArrays, ParameterSchedulers, Random, Distributed, ForwardDiff, LuxCore, Dates, JLD2, SciMLSensitivity
 
 # ╔═╡ d1440209-78f7-4a9a-9101-a06ad2534e5d
 using NeuralSDEExploration, Plots, PlutoUI, PlutoArgs
@@ -241,21 +241,21 @@ md"""
 # ╔═╡ 97d724c2-24b0-415c-b90f-6a36e877e9d1
 md"""
 The size of the context given to the posterior SDE:
-$(@bind context_size Arg("context-size", NumberField(1:100, default=8), required=false)).
+$(@bind context_size Arg("context-size", NumberField(1:100, 8), required=false)).
 CLI arg: `--context-size`
 """
 
 # ╔═╡ d81ccb5f-de1c-4a01-93ce-3e7302caedc0
 md"""
 The hidden layer size for the ANNs:
-$(@bind hidden_size Arg("hidden-size", NumberField(1:1000000, default=128), required=false)).
+$(@bind hidden_size Arg("hidden-size", NumberField(1:1000000, 128), required=false)).
 CLI arg: `--hidden-size`
 """
 
 # ╔═╡ b5721107-7cf5-4da3-b22a-552e3d56bcfa
 md"""
 Dimensions of the latent space:
-$(@bind latent_dims Arg("latent-dims", NumberField(1:100, default=2), required=false)).
+$(@bind latent_dims Arg("latent-dims", NumberField(1:100, 2), required=false)).
 CLI arg: `--latent-dims`
 """
 
@@ -279,22 +279,29 @@ end
 # ╔═╡ 16c12354-5ab6-4c0e-833d-265642119ed2
 md"""
 Batch size
-$(@bind batch_size Arg("batch-size", NumberField(1:200, default=128), required=false)).
+$(@bind batch_size Arg("batch-size", NumberField(1:200, 128), required=false)).
 CLI arg: `--batch-size`
 """
 
 # ╔═╡ f12633b6-c770-439d-939f-c41b74a5c309
 md"""
 Eta
-$(@bind eta Arg("eta", NumberField(0.1:1000.0, default=50.0), required=false)).
+$(@bind eta Arg("eta", NumberField(0.1:1000.0, 50.0), required=false)).
 CLI arg: `--eta`
 """
 
 # ╔═╡ 3c630a3a-7714-41c7-8cc3-601cd6efbceb
 md"""
 Learning rate
-$(@bind learning_rate Arg("learning-rate", NumberField(0.02:1000.0, default=0.03), required=false)).
+$(@bind learning_rate Arg("learning-rate", NumberField(0.02:1000.0, 0.03), required=false)).
 CLI arg: `--learning-rate`
+"""
+
+# ╔═╡ 2c64b173-d4ad-477d-afde-5f3916e922ef
+md"""
+KL Annealing oscillation time
+$(@bind kl_rate Arg("kl-rate", NumberField(1:100000, 1000), required=false)).
+CLI arg: `--kl-rate`
 """
 
 # ╔═╡ 9767a8ea-bdda-43fc-b636-8681d150d29f
@@ -403,7 +410,7 @@ end
 
 # ╔═╡ ec41b765-2f73-43a5-a575-c97a5a107c4e
 md"""
-Steps: $(steps(tspan_model, dt))
+Steps that will be derived: $(steps(tspan_model, dt))
 """
 
 # ╔═╡ 001c318e-b7a6-48a5-bfd5-6dd0368873ac
@@ -598,9 +605,8 @@ function loss(ps, minibatch, eta)
 end
 
 # ╔═╡ f4a16e34-669e-4c93-bd83-e3622a747a3a
-function train(learning_rate, num_steps, opt_state, ar=1)
-	# sched = Loop(Sequence([Loop(x -> (25*x)/ar, ar), Loop(x -> 25.0, ar)], [ar, ar]), ar*2)
-	sched = Loop(x -> eta, 1)
+function train(learning_rate, num_steps, opt_state, sched=Loop(x -> eta, 1))
+	
 
 	for (step, eta) in zip(1:num_steps, sched)
 		s = sample(rng, 1:size(timeseries)[1], batch_size, replace=false)
@@ -645,12 +651,15 @@ if enabletraining
 	dps = Zygote.gradient(ps -> loss(ps, timeseries[1:batch_size], 1.0)[1], ps)[1]
 end
 
+# ╔═╡ 67e5ae14-3062-4a93-9492-fc6e9861577f
+sched = Loop(Sequence([Loop(x -> (eta*x*2)/kl_rate, kl_rate÷2), Loop(x -> eta, kl_rate÷2)], [kl_rate÷2, kl_rate÷2]), kl_rate)
+
 # ╔═╡ 78aa72e2-8188-441f-9910-1bc5525fda7a
 begin
 	if !(@isdefined PlutoRunner) && enabletraining  # running as job
 		opt_state_job = Optimisers.setup(Optimisers.Adam(), ps)
 		for epoch in 1:100
-			train(learning_rate, 250, opt_state_job)
+			train(learning_rate, 250, opt_state_job, sched=sched)
 			exportresults(epoch)
 		end
 	end
@@ -667,17 +676,20 @@ end
 gifplot()
 
 # ╔═╡ 38716b5c-fe06-488c-b6ed-d2e28bd3d397
+# ╠═╡ disabled = true
+#=╠═╡
 begin
 	if enabletraining
 		opt_state = Optimisers.setup(Optimisers.Adam(), ps)
 
 		@gif for epoch in 1:10
-			train(learning_rate, 10, opt_state)
+			train(learning_rate, 10, opt_state, sched=sched)
 			gifplot()
 		end
 	end
 end
 
+  ╠═╡ =#
 
 # ╔═╡ 8880282e-1b5a-4c85-95ef-699ccf8d4203
 md"""
@@ -746,6 +758,7 @@ end
 # ╟─16c12354-5ab6-4c0e-833d-265642119ed2
 # ╟─f12633b6-c770-439d-939f-c41b74a5c309
 # ╟─3c630a3a-7714-41c7-8cc3-601cd6efbceb
+# ╟─2c64b173-d4ad-477d-afde-5f3916e922ef
 # ╟─9767a8ea-bdda-43fc-b636-8681d150d29f
 # ╟─db88cae4-cb25-4628-9298-5a694c4b29ef
 # ╟─86620e12-9631-4156-8b1c-60545b8a8352
@@ -805,6 +818,7 @@ end
 # ╠═f4a16e34-669e-4c93-bd83-e3622a747a3a
 # ╠═9789decf-c384-42df-b7aa-3c2137a69a41
 # ╠═7a7e8e9b-ca89-4826-8a5c-fe51d96152ad
+# ╠═67e5ae14-3062-4a93-9492-fc6e9861577f
 # ╠═78aa72e2-8188-441f-9910-1bc5525fda7a
 # ╠═830f7e7a-71d0-43c8-8e74-d1709b8a6707
 # ╠═763f07e6-dd46-42d6-b57a-8f1994386302
