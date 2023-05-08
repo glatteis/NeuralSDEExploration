@@ -2,7 +2,7 @@
 
 julia_version = "1.8.5"
 manifest_format = "2.0"
-project_hash = "bd2993c0e4fd80a0434f30b87d2c4fd9956f3c51"
+project_hash = "8c66329406138a3410c52e3b462abc78f05198a0"
 
 [[deps.AbstractAlgebra]]
 deps = ["GroupsCore", "InteractiveUtils", "LinearAlgebra", "MacroTools", "Random", "RandomExtensions", "SparseArrays", "Test"]
@@ -494,6 +494,12 @@ deps = ["Adapt", "ChainRulesCore", "ConsoleProgressMonitor", "DataInterpolations
 git-tree-sha1 = "cc9b281d0def40e27bbd3728e7d6db7a4af68364"
 uuid = "aae7a2af-3d4f-5e19-a356-7da93b79d9d0"
 version = "2.0.0"
+
+[[deps.DiffEqGPU]]
+deps = ["Adapt", "ChainRulesCore", "DiffEqBase", "Distributed", "DocStringExtensions", "ForwardDiff", "KernelAbstractions", "LinearAlgebra", "LinearSolve", "MuladdMacro", "Parameters", "Random", "RecursiveArrayTools", "Requires", "SciMLBase", "SimpleDiffEq", "StaticArrays", "TOML", "ZygoteRules"]
+git-tree-sha1 = "774f31ea1b1313b6a294b203a69b6f0b2b4205a4"
+uuid = "071ae1c0-96b5-11e9-1965-c90190d839ea"
+version = "2.2.1"
 
 [[deps.DiffEqNoiseProcess]]
 deps = ["DiffEqBase", "Distributions", "GPUArraysCore", "LinearAlgebra", "Markdown", "Optim", "PoissonRandom", "QuadGK", "Random", "Random123", "RandomNumbers", "RecipesBase", "RecursiveArrayTools", "Requires", "ResettableStacks", "SciMLBase", "StaticArrays", "Statistics"]
@@ -2314,6 +2320,12 @@ version = "0.4.0"
 git-tree-sha1 = "874e8867b33a00e784c8a7e4b60afe9e037b74e1"
 uuid = "777ac1f9-54b0-4bf8-805c-2214025038e7"
 version = "1.1.0"
+
+[[deps.SimpleDiffEq]]
+deps = ["DiffEqBase", "LinearAlgebra", "MuladdMacro", "Parameters", "RecursiveArrayTools", "Reexport", "StaticArrays"]
+git-tree-sha1 = "58369b3d052f61b6607fbaef76b745929be77712"
+uuid = "05bca326-078c-5bf0-a5bf-ce7c7982d7fd"
+version = "1.9.0"
 
 [[deps.SimpleNonlinearSolve]]
 deps = ["ArrayInterface", "DiffEqBase", "FiniteDiff", "ForwardDiff", "LinearAlgebra", "Reexport", "Requires", "SciMLBase", "SnoopPrecompile", "StaticArraysCore"]

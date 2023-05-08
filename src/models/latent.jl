@@ -33,19 +33,19 @@ function get_distributions(model, model_p, st, context)
     # output ordered like [norm, var, norm, var, ...]
     halfindices = 1:Int(length(normsandvars[:, 1])/2)
     
-    return hcat([reshape([Normal{Float64}(normsandvars[2*i-1, j], exp(0.5e0 * normsandvars[2*i, j])) for i in halfindices], :, 1) for j in batch_indices]...)
+    return hcat([reshape([Normal{Float32}(normsandvars[2*i-1, j], exp(0.5f0 * normsandvars[2*i, j])) for i in halfindices], :, 1) for j in batch_indices]...)
 end
 
 function sample_prior(n::LatentSDE, ps, st; b=1, seed=nothing)
     if seed !== nothing
         Random.seed!(seed)
     end
-    eps = reshape([only(rand(Normal{Float64}(0e0, 1e0), 1)) for i in 1:b], 1, :)
+    eps = reshape([only(rand(Normal{Float32}(0f0, 1f0), 1)) for i in 1:b], 1, :)
     
     dudt_prior(u, p, t) = n.drift_prior(u, p.drift_prior, st.drift_prior)[1]
     dudw_diffusion(u, p, t) = reduce(vcat, n.diffusion(Tuple([[x] for x in u]), p.diffusion, st.diffusion)[1])
     
-    initialdists_prior = get_distributions(n.initial_prior, ps.initial_prior, st.initial_prior, [1e0])
+    initialdists_prior = get_distributions(n.initial_prior, ps.initial_prior, st.initial_prior, [1f0])
     z0 = hcat([reshape([x.μ + ep * x.σ for x in initialdists_prior], :, 1) for ep in eps[1, :]]...)
 
     function prob_func(prob, batch, repeat)
@@ -79,7 +79,7 @@ function pass(n::LatentSDE, ps::ComponentVector, timeseries, st; sense=Interpola
         if seed !== nothing
             Random.seed!(seed)
         end
-        reshape([only(rand(Normal{Float64}(0e0, 1e0), 1)) for i in eachindex(timeseries)], 1, :)
+        reshape([only(rand(Normal{Float32}(0f0, 1f0), 1)) for i in eachindex(timeseries)], 1, :)
     end
     
     tsmatrix = reduce(hcat, [reshape(ts.u, 1, 1, :) for ts in timeseries])
@@ -93,7 +93,7 @@ function pass(n::LatentSDE, ps::ComponentVector, timeseries, st; sense=Interpola
     
     # ## !! LUX.JL BUG WORKAROUND !! (fixed in Lux.jl v0.4.51)
     # tsmatrix_flipped_wrong = hcat(tsmatrix_flipped[:, 1:1, :], reverse(tsmatrix_flipped[:, 2:end, :], dims=2))
-
+    
     context_flipped = n.encoder(tsmatrix_flipped, ps.encoder, st.encoder)[1]
 
     # context_flipped is now a vector of 2-dim matrices
@@ -101,23 +101,21 @@ function pass(n::LatentSDE, ps::ComponentVector, timeseries, st; sense=Interpola
     # batch: dimension 2
     context = reduce(timecat, context_flipped)
     
-    # context = tsmatrix
-
-    initialdists_prior = get_distributions(n.initial_prior, ps.initial_prior, st.initial_prior, [1e0])
+    initialdists_prior = get_distributions(n.initial_prior, ps.initial_prior, st.initial_prior, [1f0])
 
     initialdists_posterior = get_distributions(n.initial_posterior, ps.initial_posterior, st.initial_posterior, context[:, :, 1])
 
     z0 = reduce(hcat, [reshape([x.μ + eps[1, batch] * x.σ for x in initialdists_posterior[:, batch]], :, 1) for batch in eachindex(timeseries)])
 
-    augmented_z0 = vcat(z0, zeros(1, length(z0[1, :])))
+    augmented_z0 = vcat(z0, zeros32(1, length(z0[1, :])))
 
     function augmented_drift(batch)
-        function(u_in::Vector{Float64}, p::ComponentVector, t::Float64)
+        function(u_in::Vector{Float32}, p::ComponentVector, t::Float32)
             # Remove augmented term from input
             u = u_in[1:end-1]
 
             # Get the context for the posterior at the current time
-            time_index = searchsortedlast(timeseries[1].t, max(0.0, t))
+            time_index = searchsortedlast(timeseries[1].t, max(0f0, t))
             timedctx = context[:, batch, time_index]
             
             posterior_net_input = vcat(u, timedctx)
@@ -127,17 +125,17 @@ function pass(n::LatentSDE, ps::ComponentVector, timeseries, st; sense=Interpola
             diffusion = reduce(vcat, n.diffusion(([[x] for x in u]...,), p.diffusion, st.diffusion)[1])
 
             u_term = stable_divide(posterior .- prior, diffusion)
-            augmented_term = 0.5e0 * sum(abs2, u_term; dims=[1])
+            augmented_term = 0.5f0 * sum(abs2, u_term; dims=[1])
             
             return vcat(posterior, augmented_term)
         end
     end
     function augmented_diffusion(batch)
-        function(u_in::Vector{Float64}, p::ComponentVector, t::Float64)
+        function(u_in::Vector{Float32}, p::ComponentVector, t::Float32)
             u = u_in[1:end-1]
             diffusion = reduce(vcat, n.diffusion(Tuple([[x] for x in u]), p.diffusion, st.diffusion)[1])
             additional_term = if stick_landing
-                time_index = searchsortedlast(timeseries[1].t, max(0.0, t))
+                time_index = searchsortedlast(timeseries[1].t, max(0f0, t))
                 timedctx = context[:, batch, time_index]
                 posterior_net_input = vcat(u, timedctx)
                 prior = n.drift_prior(u, p.drift_prior, st.drift_prior)[1]
@@ -145,7 +143,7 @@ function pass(n::LatentSDE, ps::ComponentVector, timeseries, st; sense=Interpola
                 u_term = stable_divide(posterior .- prior, diffusion)
                 sum(u_term; dims=[1])
             else
-                0.0
+                0f0
             end
             return vcat(diffusion, additional_term)
         end
@@ -174,7 +172,7 @@ function pass(n::LatentSDE, ps::ComponentVector, timeseries, st; sense=Interpola
     initialdists_kl = if ts_start == 1
         reduce(hcat, [reshape([KullbackLeibler(a, b) for (a, b) in zip(initialdists_posterior[:, batch], initialdists_prior)], :, 1) for batch in eachindex(timeseries)])
     else
-        0.0
+        0f0
     end
     kl_divergence = sum(initialdists_kl, dims=1) .+ logterm[:, :, end]
     
@@ -182,7 +180,7 @@ function pass(n::LatentSDE, ps::ComponentVector, timeseries, st; sense=Interpola
     projected_z0 = n.projector(z0, ps.projector, st.projector)[1]
     projected_ts = reduce(timecat, [n.projector(x, ps.projector, st.projector)[1] for x in eachslice(posterior_latent, dims=3)])
 
-    logp(x, y) = loglikelihood(Normal(y, 0.01), x)
+    logp(x, y) = loglikelihood(Normal(y, 0.01f0), x)
     likelihoods_initial = [logp(x, y) for (x,y) in zip(tsmatrix[:, :, 1], projected_z0)]
     likelihoods_time = sum([logp(x, y) for (x,y) in zip(tsmatrix, projected_ts)], dims=3)[:, :, 1]
     likelihoods = likelihoods_initial .+ likelihoods_time

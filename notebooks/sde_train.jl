@@ -61,9 +61,6 @@ md"""
 Let's train a Neural SDE from a modified form of the simple zero-dimensional energy balance model. First, let's just instantiate the predefined model from the package...
 """
 
-# ╔═╡ a68d7677-f598-4390-ab54-b54a26493107
-model = NeuralSDEExploration.ZeroDEnergyBalanceModel(0.425, 0.4, 1363, 0.6 * 5.67e-8, 0.135)
-
 # ╔═╡ c799a418-d85e-4f9b-af7a-ed667fab21b6
 println("Running on $(Threads.nthreads()) threads")
 
@@ -73,6 +70,11 @@ md"Let's generate the data and plot a quick example:"
 # ╔═╡ 0eec0598-7520-47ec-b13a-a7b9da550014
 md"""
 ### Constants
+"""
+
+# ╔═╡ cb3a270e-0f2a-4be3-9ab3-ea5e4c56d0e7
+md"""
+Used model: $(@bind model_name Arg("model", Select(["sun", "fhn"]), short_name="m")), CLI arg: `--model`, `-m` (required!)
 """
 
 # ╔═╡ 4c3b8784-368d-49c3-a875-c54960ec9be5
@@ -91,7 +93,7 @@ Timespan of simulations: $(@bind tspan_end Arg("tspan", NumberField(0.5:100.0; d
 """
 
 # ╔═╡ fe7e2889-88de-49b3-b20b-342357596bfc
-tspan = (0.0, tspan_end)
+tspan = (0f0, Float32(tspan_end))
 
 # ╔═╡ de70d89a-275d-49d2-9da4-4470c869e56e
 tspan_sim = (-tspan_end, tspan_end)
@@ -137,14 +139,11 @@ md"""
 ### Data Generation
 """
 
-# ╔═╡ 8a3250f3-46bd-4989-ab05-aa91d58796ba
-initial_condition = range(210e0, 350e0, n)
-
 # ╔═╡ c00a97bf-5e10-4168-8d58-f4f9270258ac
 solution_full = NeuralSDEExploration.series(model, initial_condition, tspan_sim, datasize*2; seed=1)
 
 # ╔═╡ 15cef7cc-30b6-499d-b968-775b3251dedb
-solution = shuffle([(t=x.t[datasize:datasize*2-1], u=map(first, x.u[datasize:datasize*2-1])) for x in solution_full])
+solution = shuffle([(t=map(Float32, x.t[datasize:datasize*2-1]), u=map(Float32 ∘ first, x.u[datasize:datasize*2-1])) for x in solution_full])
 
 # ╔═╡ 1502612c-1489-4abf-8a8b-5b2d03a68cb1
 md"""
@@ -213,6 +212,17 @@ md"""
 Stick landing: $(@bind stick_landing Arg("stick-landing", CheckBox()))
 CLI arg: `--stick-landing`
 """
+
+# ╔═╡ 60b5397d-7350-460b-9117-319dc127cc7e
+md"""
+Use GPU: $(@bind gpu Arg("gpu", CheckBox()))
+CLI arg: `--gpu`
+"""
+
+# ╔═╡ 86620e12-9631-4156-8b1c-60545b8a8352
+if gpu
+	using CUDA, DiffEqGPU
+end
 
 # ╔═╡ 16c12354-5ab6-4c0e-833d-265642119ed2
 md"""
@@ -327,9 +337,13 @@ latent_sde = LatentSDE(
 	diffusion,
 	encoder,
 	projector,
+	#DRI1(),
 	EM(),
 	tspan,
-	datasize
+	datasize;
+
+	weak_timeseries_errors=false,
+    weak_dense_errors=false,
 )
 
 # ╔═╡ 0f6f4520-576f-42d3-9126-2076a51a6e22
@@ -358,7 +372,7 @@ ps = if ps_file !== nothing
 	ps_data = String(ps_file["data"]);
 	ComponentArray(eval(Meta.parse(ps_data)))
 else
-	ComponentArray(ps_)
+	ComponentArray{Float32}(ps_)
 end
 
 # ╔═╡ cbc85049-9563-4b5d-8d14-a171f4d0d6aa
@@ -498,6 +512,13 @@ function plotlearning()
 	plot(plots...; layout=l)
 end
 
+# ╔═╡ f943cd4b-ab94-40c0-bf59-3db777eee928
+ensemblemode = if gpu
+	EnsembleGPUKernel(0.0)
+else
+	EnsembleThreads()
+end
+
 # ╔═╡ f0a34be1-6aa2-4563-abc2-ea163a778752
 function loss(ps, minibatch, eta)
 	_, _, _, kl_divergence, likelihood = NeuralSDEExploration.pass(latent_sde, ps, minibatch, st; ensemblemode=EnsembleThreads(), stick_landing=stick_landing, seed=abs(rand(rng, Int)))
@@ -604,6 +625,24 @@ begin
 	plot(fit(Histogram, ts, 0.0:0.01:1.0), xlims=(0.0,1.0))
 end
 
+# ╔═╡ 8a3250f3-46bd-4989-ab05-aa91d58796ba
+# ╠═╡ disabled = true
+#=╠═╡
+initial_condition = range(210f0, 350f0, n)
+  ╠═╡ =#
+
+# ╔═╡ 35067efb-9f10-4e44-a2ac-4c1040b7866e
+initial_condition = [[0f0, 0f0] for i in 1:n]
+
+# ╔═╡ 04a2eb66-b7cb-4bf0-85ed-a50ccdce6f09
+model = NeuralSDEExploration.FitzHughNagumoModel()
+
+# ╔═╡ a68d7677-f598-4390-ab54-b54a26493107
+# ╠═╡ disabled = true
+#=╠═╡
+model = NeuralSDEExploration.ZeroDEnergyBalanceModel(0.425, 0.4, 1363, 0.6 * 5.67e-8, 0.135)
+  ╠═╡ =#
+
 # ╔═╡ Cell order:
 # ╠═67cb574d-7bd6-40d9-9dc3-d57f4226cc83
 # ╠═db557c9a-24d6-4008-8225-4b8867ee93db
@@ -614,9 +653,11 @@ end
 # ╟─ff15555b-b1b5-4b42-94a9-da77daa546d0
 # ╟─32be3e35-a529-4d16-8ba0-ec4e223ae401
 # ╠═a68d7677-f598-4390-ab54-b54a26493107
+# ╠═04a2eb66-b7cb-4bf0-85ed-a50ccdce6f09
 # ╟─c799a418-d85e-4f9b-af7a-ed667fab21b6
 # ╟─cc2418c2-c355-4291-b5d7-d9019787834f
 # ╟─0eec0598-7520-47ec-b13a-a7b9da550014
+# ╟─cb3a270e-0f2a-4be3-9ab3-ea5e4c56d0e7
 # ╟─4c3b8784-368d-49c3-a875-c54960ec9be5
 # ╟─a65a7405-d1de-4de5-9391-dcb971af0413
 # ╟─71a38a66-dd66-4000-b664-fc3e04f6d4b8
@@ -627,6 +668,7 @@ end
 # ╟─5d020072-8a2e-438d-8e7a-330cca97964b
 # ╟─7e6256ef-6a0a-40cc-aa0a-c467b3a524c4
 # ╠═8a3250f3-46bd-4989-ab05-aa91d58796ba
+# ╠═35067efb-9f10-4e44-a2ac-4c1040b7866e
 # ╠═c00a97bf-5e10-4168-8d58-f4f9270258ac
 # ╠═15cef7cc-30b6-499d-b968-775b3251dedb
 # ╟─1502612c-1489-4abf-8a8b-5b2d03a68cb1
@@ -641,9 +683,11 @@ end
 # ╟─d81ccb5f-de1c-4a01-93ce-3e7302caedc0
 # ╟─b5721107-7cf5-4da3-b22a-552e3d56bcfa
 # ╟─fe749caf-393f-45b0-98e5-5d10c1821a9d
+# ╟─60b5397d-7350-460b-9117-319dc127cc7e
 # ╟─16c12354-5ab6-4c0e-833d-265642119ed2
 # ╟─9767a8ea-bdda-43fc-b636-8681d150d29f
 # ╟─db88cae4-cb25-4628-9298-5a694c4b29ef
+# ╟─86620e12-9631-4156-8b1c-60545b8a8352
 # ╟─0c0e5a95-195e-4057-bcba-f1d92d75cbab
 # ╟─bec46289-4d61-4b90-bc30-0a86f174a599
 # ╠═36a0fae8-c384-42fd-a6a0-159ea3664aa1
@@ -695,6 +739,7 @@ end
 # ╟─aed4467c-dd6c-421f-aa46-0c5aa1c38c0a
 # ╠═550d8974-cd19-4d0b-9492-adb4e14a04b1
 # ╠═fa43f63d-8293-43cc-b099-3b69dbbf4b6a
+# ╠═f943cd4b-ab94-40c0-bf59-3db777eee928
 # ╠═f0a34be1-6aa2-4563-abc2-ea163a778752
 # ╠═f4a16e34-669e-4c93-bd83-e3622a747a3a
 # ╠═9789decf-c384-42df-b7aa-3c2137a69a41
