@@ -176,7 +176,7 @@ function pass(n::LatentSDE, ps::ComponentVector, timeseries, st; sense=Interpola
     projected_z0 = n.projector(z0, ps.projector, st.projector)[1]
     projected_ts = reduce(timecat, [n.projector(x, ps.projector, st.projector)[1] for x in eachslice(posterior_latent, dims=3)])
 
-    logp(x, y) = loglikelihood(Normal(y, 0.01f0), x)
+    logp(x, y) = loglikelihood(Normal(y, 0.05f0), x)
     likelihoods_initial = if ts_start == 1
         [logp(x, y) for (x,y) in zip(tsmatrix[:, :, 1], projected_z0)]
     else

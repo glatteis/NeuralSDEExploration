@@ -286,7 +286,7 @@ CLI arg: `--batch-size`
 # ╔═╡ f12633b6-c770-439d-939f-c41b74a5c309
 md"""
 Eta
-$(@bind eta Arg("eta", NumberField(0.1:1000.0, 50.0), required=false)).
+$(@bind eta Arg("eta", NumberField(0.1:1000.0, 1.0), required=false)).
 CLI arg: `--eta`
 """
 
@@ -605,10 +605,10 @@ function loss(ps, minibatch, eta)
 end
 
 # ╔═╡ f4a16e34-669e-4c93-bd83-e3622a747a3a
-function train(learning_rate, num_steps, opt_state, sched=Loop(x -> eta, 1))
-	
-
-	for (step, eta) in zip(1:num_steps, sched)
+function train(learning_rate, num_steps, opt_state; sched=Loop(x -> eta, 1))
+	for step in 1:num_steps
+		eta = popfirst!(sched)
+		
 		s = sample(rng, 1:size(timeseries)[1], batch_size, replace=false)
 		minibatch = timeseries[s]
 
@@ -652,14 +652,14 @@ if enabletraining
 end
 
 # ╔═╡ 67e5ae14-3062-4a93-9492-fc6e9861577f
-sched = Loop(Sequence([Loop(x -> (eta*x*2)/kl_rate, kl_rate÷2), Loop(x -> eta, kl_rate÷2)], [kl_rate÷2, kl_rate÷2]), kl_rate)
+sched = Iterators.Stateful(Loop(Sequence([Loop(x -> (eta*x*2)/kl_rate, kl_rate÷2), Loop(x -> eta, kl_rate÷2)], [kl_rate÷2, kl_rate÷2]), kl_rate))
 
 # ╔═╡ 78aa72e2-8188-441f-9910-1bc5525fda7a
 begin
 	if !(@isdefined PlutoRunner) && enabletraining  # running as job
 		opt_state_job = Optimisers.setup(Optimisers.Adam(), ps)
 		for epoch in 1:100
-			train(learning_rate, 250, opt_state_job, sched=sched)
+			train(learning_rate, 250, opt_state_job; sched=sched)
 			exportresults(epoch)
 		end
 	end
@@ -676,20 +676,17 @@ end
 gifplot()
 
 # ╔═╡ 38716b5c-fe06-488c-b6ed-d2e28bd3d397
-# ╠═╡ disabled = true
-#=╠═╡
 begin
 	if enabletraining
 		opt_state = Optimisers.setup(Optimisers.Adam(), ps)
 
 		@gif for epoch in 1:10
-			train(learning_rate, 10, opt_state, sched=sched)
+			train(learning_rate, 10, opt_state; sched=sched)
 			gifplot()
 		end
 	end
 end
 
-  ╠═╡ =#
 
 # ╔═╡ 8880282e-1b5a-4c85-95ef-699ccf8d4203
 md"""
