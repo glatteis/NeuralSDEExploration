@@ -74,3 +74,5 @@ arima = auto_arima(solution[1].u)
 # ╠═ddd3c757-80d1-49f9-8c62-8340f1d494e9
 # ╠═4ec721fd-e48f-4597-8b54-ba344392971e
 # ╠═7b289fae-0e7b-4193-b465-3d7ea8ba584c
+# ╠═2dbac6e2-c574-4456-9dbd-3e9db1ad9a88
+# ╠═7a0e66eb-438b-4fc8-b86d-b7ca9c6ed449

@@ -23,8 +23,11 @@ begin
 	end
 end
 
+# ╔═╡ 2ddd89c2-4484-4f9e-926a-13b28a4bcb3a
+Pkg.add("PGFPlotsX")
+
 # ╔═╡ b6abba94-db07-4095-98c9-443e31832e7d
-using Optimisers, StatsBase, Zygote, Lux, DifferentialEquations, ComponentArrays, ParameterSchedulers, Random, Distributed, ForwardDiff, LuxCore, Dates, JLD2, SciMLSensitivity
+using Optimisers, StatsBase, Zygote, Lux, DifferentialEquations, ComponentArrays, ParameterSchedulers, Random, Distributed, ForwardDiff, LuxCore, Dates, JLD2, SciMLSensitivity, PGFPlotsX
 
 # ╔═╡ d1440209-78f7-4a9a-9101-a06ad2534e5d
 using NeuralSDEExploration, Plots, PlutoUI, PlutoArgs
@@ -35,8 +38,12 @@ begin
 		Revise.retry()
 	else
 		ENV["GKSwstype"]="nul" # no GTK for plots
+		println(join(ARGS, " "))
 	end
 end
+
+# ╔═╡ 01192a12-23e7-4c94-a516-e262d23cc870
+pgfplotsx()
 
 # ╔═╡ d38b3460-4c01-4bba-b726-150d207c020b
 TableOfContents(title="Latent SDE")
@@ -203,7 +210,7 @@ Let's also plot some example trajectories:
 """
 
 # ╔═╡ 455263ef-2f94-4f3e-8401-f0da7fb3e493
-plot(reduce(hcat, [solution[i].u for i in 1:100]); legend=false)
+plot(reduce(hcat, [solution[i].u for i in 1:10]); legend=false)
 
 # ╔═╡ f4651b27-135e-45f1-8647-64ab08c2e8e8
 md"""
@@ -295,6 +302,12 @@ md"""
 Learning rate
 $(@bind learning_rate Arg("learning-rate", NumberField(0.02:1000.0, 0.03), required=false)).
 CLI arg: `--learning-rate`
+"""
+
+# ╔═╡ 8bb3084f-5fde-413e-b0fe-8b2e19673fae
+md"""
+KL Annealing Enabled: $(@bind kl_anneal Arg("kl-anneal", CheckBox(), required=false))
+CLI arg: `--kl-anneal`
 """
 
 # ╔═╡ 2c64b173-d4ad-477d-afde-5f3916e922ef
@@ -454,9 +467,11 @@ md"""
 Load parameters from file (random if no file selected): $(@bind ps_file FilePicker())
 """
 
+# ╔═╡ b2f9d58e-830e-4179-a6d2-469ceb93d504
+ps_data = ps_file === nothing ? nothing : String(ps_file["data"])
+
 # ╔═╡ dfe0f6ef-ecd5-46a1-a808-77ef9af44b56
 ps = if ps_file !== nothing
-	ps_data = String(ps_file["data"]);
 	ComponentArray(eval(Meta.parse(ps_data)))
 else
 	ComponentArray{Float32}(ps_)
@@ -523,8 +538,13 @@ plot(logterm_[1, :, :]', title="KL-Divergence")
 # ╔═╡ 38324c42-e5c7-4b59-8129-0e4c17ab5bf1
 plot(posterior_data[1, :, :]', label="posterior")
 
+# ╔═╡ 3d31519c-0ef6-4b89-82ba-71931c5f47b8
+md"""
+Latent posterior plot for: $(@bind latent_posterior_i Slider(1:length(ti), show_value=true))
+"""
+
 # ╔═╡ 08021ed6-ac31-4829-9f21-f046af73d5a3
-plot(posterior_latent[:, 1, :]')
+plot(posterior_latent[:, latent_posterior_i, :]')
 
 # ╔═╡ 3d889727-ae6d-4fa0-98ae-d3ae73fb6a3c
 plot(NeuralSDEExploration.sample_prior(latent_sde, ps, st; seed=seed+1))
@@ -536,6 +556,14 @@ md"""
 
 # ╔═╡ 2827fe3a-3ecd-4662-a2d3-c980f1e1cd84
 [x for x in NeuralSDEExploration.sample_prior(latent_sde, ps, st; b=5).u[3]]
+
+# ╔═╡ 3ab9a483-08f2-4767-8bd5-ae1375a62dbe
+function plot_prior(priorsamples; rng=rng)
+	prior_latent = NeuralSDEExploration.sample_prior(latent_sde,ps,st;seed=abs(rand(rng, Int)),b=priorsamples)
+	projected_prior = reduce(hcat, [reduce(vcat, [latent_sde.projector(u, ps.projector, st.projector)[1] for u in batch.u]) for batch in prior_latent.u])
+	priorplot = plot(projected_prior, linewidth=.5,color=:grey,legend=false,title="projected prior")
+	return priorplot
+end
 
 # ╔═╡ b5c6d43c-8252-4602-8232-b3d1b0bcee33
 function plotmodel()
@@ -550,12 +578,10 @@ function plotmodel()
 	posterior_latent, posterior_data, logterm_, kl_divergence_, distance_ = NeuralSDEExploration.pass(latent_sde, ps, timeseries[nums], st, seed=seed)
 	
 	priorsamples = 25
-	prior_latent = NeuralSDEExploration.sample_prior(latent_sde,ps,st;seed=abs(rand(rng, Int)),b=priorsamples)
-	projected_prior = reduce(hcat, [reduce(vcat, [latent_sde.projector(u, ps.projector, st.projector)[1] for u in batch.u]) for batch in prior_latent.u])
+	priorplot = plot_prior(priorsamples, rng=rng)
 
 	posteriorplot = plot(posterior_data[1, :,:]',linewidth=2,legend=false,title="projected posterior")
 	dataplot = plot(timeseries[nums],linewidth=2,legend=false,title="data")
-	priorplot = plot(projected_prior, linewidth=.5,color=:grey,legend=false,title="projected prior")
 	
 	timeseriesplot = plot(sample(rng, timeseries, priorsamples),linewidth=.5,color=:grey,legend=false,title="data")
 	
@@ -587,8 +613,8 @@ end
 function plotlearning()
 
 	plots = [
-		plot(recorded_loss, legend=false, title="loss")
-		plot(recorded_likelihood, legend=false, title="likelihood")
+		plot(map(x -> max(1e-8, x), recorded_loss), legend=false, title="loss", yscale=:log10)
+		plot(map(x -> max(1e-8, -x), recorded_likelihood), legend=false, title="-loglike", yscale=:log10)
 		plot(recorded_kl, legend=false, title="kl-divergence")
 		plot(recorded_eta, legend=false, title="eta")
 	]	
@@ -641,9 +667,11 @@ function exportresults(epoch)
 	
 	modelfig = plotmodel()
 	savefig(modelfig, folder * "$(epoch)_model.pdf")
-
+	savefig(modelfig, folder * "$(epoch)_model.tex")
+	
 	learningfig = plotlearning()
 	savefig(learningfig, folder * "$(epoch)_learning.pdf")
+	savefig(learningfig, folder * "$(epoch)_learning.tex")
 end
 
 # ╔═╡ 7a7e8e9b-ca89-4826-8a5c-fe51d96152ad
@@ -652,7 +680,11 @@ if enabletraining
 end
 
 # ╔═╡ 67e5ae14-3062-4a93-9492-fc6e9861577f
-sched = Iterators.Stateful(Loop(Sequence([Loop(x -> (eta*x*2)/kl_rate, kl_rate÷2), Loop(x -> eta, kl_rate÷2)], [kl_rate÷2, kl_rate÷2]), kl_rate))
+if kl_anneal
+	sched = Iterators.Stateful(Loop(Sequence([Loop(x -> (eta*x*2)/kl_rate, kl_rate÷2), Loop(x -> eta, kl_rate÷2)], [kl_rate÷2, kl_rate÷2]), kl_rate))
+else
+	sched = Iterators.Stateful(Loop(x -> eta, 1))
+end
 
 # ╔═╡ 78aa72e2-8188-441f-9910-1bc5525fda7a
 begin
@@ -675,6 +707,9 @@ end
 # ╔═╡ 763f07e6-dd46-42d6-b57a-8f1994386302
 gifplot()
 
+# ╔═╡ 4f955207-5f7f-4bbf-a738-d518a21b651d
+recorded_loss
+
 # ╔═╡ 38716b5c-fe06-488c-b6ed-d2e28bd3d397
 begin
 	if enabletraining
@@ -695,22 +730,60 @@ md"""
 
 # ╔═╡ 47b2ec07-40f4-480d-b650-fbf1b44b7527
 begin
-	prior_latent = NeuralSDEExploration.sample_prior(latent_sde,ps,st;b=n)
+	prior_latent = NeuralSDEExploration.sample_prior(latent_sde,ps,st;b=length(timeseries))
 	projected_prior = vcat(reduce(vcat, [latent_sde.projector(x[10:end], ps.projector, st.projector)[1] for x in prior_latent.u])...)
-	plot(fit(Histogram, projected_prior, 0.0:0.01:1.0), xlims=(0.0,1.0))
+	histogram_prior = fit(Histogram, projected_prior, 0.0:0.01:1.0)
 end
 
 # ╔═╡ 14f9a62d-9caa-40e9-8502-d2a27b9c950e
 begin
 	ts = vcat(reduce(vcat, [s.u[10:end] for s in timeseries])...)
-	plot(fit(Histogram, ts, 0.0:0.01:1.0), xlims=(0.0,1.0))
+	histogram_data = fit(Histogram, ts, 0.0:0.01:1.0)
 end
+
+# ╔═╡ b7acea88-c9a8-4fdf-b3b2-c74b25f9dd93
+begin
+	plot([
+		histogram_data,
+		histogram_prior,
+	], layout=@layout [a; b])
+end
+
+# ╔═╡ 1ad4db6e-19ba-42a3-b023-32b902beb9fd
+begin
+	plot([
+		histogram_data,
+		histogram_prior,
+	])
+end
+
+# ╔═╡ 300da269-58f1-402b-88de-9c60b8c2dd9d
+md"""
+Timeseries tip at: $(@bind tipping_point NumberField(0.01:1.0, 0.6))
+"""
+
+# ╔═╡ f62e09f3-2d12-4bea-b7d9-02edd4418330
+tip_index = searchsortedfirst(histogram_prior.edges[1], tipping_point)
+
+# ╔═╡ 667da247-9664-4621-8e90-84e0515e5edb
+prior_tipping_rate = histogram_prior.weights[tip_index] / sum(histogram_prior.weights)
+
+# ╔═╡ e4ecb1ad-fef2-4450-82ff-240e076727bd
+data_tipping_rate = histogram_data.weights[tip_index] / sum(histogram_data.weights)
+
+# ╔═╡ ddafd313-823a-43c2-99c9-7e22660d5f58
+plot_prior(25)
+
+# ╔═╡ 3ed1236e-a805-48c5-9250-def2cdaab2cb
+plot(reduce(hcat, [solution[i].u for i in 1:25]); legend=false)
 
 # ╔═╡ Cell order:
 # ╠═67cb574d-7bd6-40d9-9dc3-d57f4226cc83
 # ╠═db557c9a-24d6-4008-8225-4b8867ee93db
+# ╠═2ddd89c2-4484-4f9e-926a-13b28a4bcb3a
 # ╠═b6abba94-db07-4095-98c9-443e31832e7d
 # ╠═d1440209-78f7-4a9a-9101-a06ad2534e5d
+# ╠═01192a12-23e7-4c94-a516-e262d23cc870
 # ╟─d38b3460-4c01-4bba-b726-150d207c020b
 # ╟─13ef3cd9-7f58-459e-a659-abc35b550326
 # ╟─ff15555b-b1b5-4b42-94a9-da77daa546d0
@@ -755,6 +828,7 @@ end
 # ╟─16c12354-5ab6-4c0e-833d-265642119ed2
 # ╟─f12633b6-c770-439d-939f-c41b74a5c309
 # ╟─3c630a3a-7714-41c7-8cc3-601cd6efbceb
+# ╟─8bb3084f-5fde-413e-b0fe-8b2e19673fae
 # ╟─2c64b173-d4ad-477d-afde-5f3916e922ef
 # ╟─9767a8ea-bdda-43fc-b636-8681d150d29f
 # ╟─db88cae4-cb25-4628-9298-5a694c4b29ef
@@ -786,7 +860,8 @@ end
 # ╠═05568880-f931-4394-b31e-922850203721
 # ╟─fd10820a-eb9b-4ff0-b66b-2d74ba4f1af3
 # ╟─421ca47e-2d28-4340-97d5-1a31582d4bed
-# ╟─dfe0f6ef-ecd5-46a1-a808-77ef9af44b56
+# ╠═b2f9d58e-830e-4179-a6d2-469ceb93d504
+# ╠═dfe0f6ef-ecd5-46a1-a808-77ef9af44b56
 # ╟─cbc85049-9563-4b5d-8d14-a171f4d0d6aa
 # ╟─f5734b1a-4258-44ae-ac00-9520170997bc
 # ╟─5f56cc7c-861e-41a4-b783-848623b94bf9
@@ -802,10 +877,12 @@ end
 # ╠═88fa1b08-f0d4-4fcf-89c2-8a9f33710d4c
 # ╟─dabf2a1f-ec78-4942-973f-4dbf9037ee7b
 # ╠═38324c42-e5c7-4b59-8129-0e4c17ab5bf1
+# ╟─3d31519c-0ef6-4b89-82ba-71931c5f47b8
 # ╠═08021ed6-ac31-4829-9f21-f046af73d5a3
 # ╠═3d889727-ae6d-4fa0-98ae-d3ae73fb6a3c
 # ╟─590a0541-e6bf-4bd5-9bf5-1ef9931e60fb
 # ╠═2827fe3a-3ecd-4662-a2d3-c980f1e1cd84
+# ╠═3ab9a483-08f2-4767-8bd5-ae1375a62dbe
 # ╠═b5c6d43c-8252-4602-8232-b3d1b0bcee33
 # ╠═025b33d9-7473-4a54-a3f1-787a8650f9e7
 # ╟─225791b1-0ffc-48e2-8131-7f54848d8d83
@@ -819,7 +896,16 @@ end
 # ╠═78aa72e2-8188-441f-9910-1bc5525fda7a
 # ╠═830f7e7a-71d0-43c8-8e74-d1709b8a6707
 # ╠═763f07e6-dd46-42d6-b57a-8f1994386302
+# ╠═4f955207-5f7f-4bbf-a738-d518a21b651d
 # ╠═38716b5c-fe06-488c-b6ed-d2e28bd3d397
 # ╟─8880282e-1b5a-4c85-95ef-699ccf8d4203
-# ╟─47b2ec07-40f4-480d-b650-fbf1b44b7527
-# ╟─14f9a62d-9caa-40e9-8502-d2a27b9c950e
+# ╠═47b2ec07-40f4-480d-b650-fbf1b44b7527
+# ╠═14f9a62d-9caa-40e9-8502-d2a27b9c950e
+# ╠═b7acea88-c9a8-4fdf-b3b2-c74b25f9dd93
+# ╠═1ad4db6e-19ba-42a3-b023-32b902beb9fd
+# ╟─300da269-58f1-402b-88de-9c60b8c2dd9d
+# ╠═f62e09f3-2d12-4bea-b7d9-02edd4418330
+# ╠═667da247-9664-4621-8e90-84e0515e5edb
+# ╠═e4ecb1ad-fef2-4450-82ff-240e076727bd
+# ╠═ddafd313-823a-43c2-99c9-7e22660d5f58
+# ╠═3ed1236e-a805-48c5-9250-def2cdaab2cb
