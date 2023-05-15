@@ -81,6 +81,11 @@ md"""
 Used model: $(@bind model_name Arg("model", Select(["sun", "fhn"]), short_name="m")), CLI arg: `--model`, `-m` (required!)
 """
 
+# ╔═╡ 95bdd676-d8df-4fef-bdd7-cce85b717018
+md"""
+Noise term size: $(@bind noise Arg("noise", NumberField(0.0:1.0, 0.135), required=false)), CLI arg: `--noise`
+"""
+
 # ╔═╡ 4c3b8784-368d-49c3-a875-c54960ec9be5
 md"""
 Number of timeseries in data: $(@bind n Arg("num-data", NumberField(1:1000000, default=5000), required=false)), CLI arg: `--num-data`
@@ -180,7 +185,7 @@ md"""
 (initial_condition, model) = if model_name == "sun"
 	(
 		range(210f0, 350f0, n),
-		NeuralSDEExploration.ZeroDEnergyBalanceModel(0.425, 0.4, 1363, 0.6 * 5.67e-8, 0.135)
+		NeuralSDEExploration.ZeroDEnergyBalanceModel(0.425, 0.4, 1363, 0.6 * 5.67e-8, noise)
 	)
 elseif model_name == "fhn"
 	(
@@ -788,6 +793,7 @@ plot(reduce(hcat, [solution[i].u for i in 1:25]); legend=false)
 # ╟─cc2418c2-c355-4291-b5d7-d9019787834f
 # ╟─0eec0598-7520-47ec-b13a-a7b9da550014
 # ╟─cb3a270e-0f2a-4be3-9ab3-ea5e4c56d0e7
+# ╟─95bdd676-d8df-4fef-bdd7-cce85b717018
 # ╟─4c3b8784-368d-49c3-a875-c54960ec9be5
 # ╟─a65a7405-d1de-4de5-9391-dcb971af0413
 # ╟─e6a71aae-9d81-45a9-af9a-c4188dda2787
