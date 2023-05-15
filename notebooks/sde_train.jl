@@ -23,11 +23,8 @@ begin
 	end
 end
 
-# ╔═╡ 2ddd89c2-4484-4f9e-926a-13b28a4bcb3a
-Pkg.add("PGFPlotsX")
-
 # ╔═╡ b6abba94-db07-4095-98c9-443e31832e7d
-using Optimisers, StatsBase, Zygote, Lux, DifferentialEquations, ComponentArrays, ParameterSchedulers, Random, Distributed, ForwardDiff, LuxCore, Dates, JLD2, SciMLSensitivity, PGFPlotsX
+using Optimisers, StatsBase, Zygote, Lux, DifferentialEquations, ComponentArrays, ParameterSchedulers, Random, Distributed, ForwardDiff, LuxCore, Dates, JLD2, SciMLSensitivity
 
 # ╔═╡ d1440209-78f7-4a9a-9101-a06ad2534e5d
 using NeuralSDEExploration, Plots, PlutoUI, PlutoArgs
@@ -667,11 +664,11 @@ function exportresults(epoch)
 	
 	modelfig = plotmodel()
 	savefig(modelfig, folder * "$(epoch)_model.pdf")
-	savefig(modelfig, folder * "$(epoch)_model.tex")
+	#savefig(modelfig, folder * "$(epoch)_model.tex")
 	
 	learningfig = plotlearning()
 	savefig(learningfig, folder * "$(epoch)_learning.pdf")
-	savefig(learningfig, folder * "$(epoch)_learning.tex")
+	#savefig(learningfig, folder * "$(epoch)_learning.tex")
 end
 
 # ╔═╡ 7a7e8e9b-ca89-4826-8a5c-fe51d96152ad
@@ -780,7 +777,6 @@ plot(reduce(hcat, [solution[i].u for i in 1:25]); legend=false)
 # ╔═╡ Cell order:
 # ╠═67cb574d-7bd6-40d9-9dc3-d57f4226cc83
 # ╠═db557c9a-24d6-4008-8225-4b8867ee93db
-# ╠═2ddd89c2-4484-4f9e-926a-13b28a4bcb3a
 # ╠═b6abba94-db07-4095-98c9-443e31832e7d
 # ╠═d1440209-78f7-4a9a-9101-a06ad2534e5d
 # ╠═01192a12-23e7-4c94-a516-e262d23cc870
