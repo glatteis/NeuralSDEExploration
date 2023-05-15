@@ -24,7 +24,7 @@ begin
 end
 
 # ╔═╡ b6abba94-db07-4095-98c9-443e31832e7d
-using Optimisers, StatsBase, Zygote, Lux, DifferentialEquations, ComponentArrays, ParameterSchedulers, Random, Distributed, ForwardDiff, LuxCore, Dates, JLD2, SciMLSensitivity
+using Optimisers, StatsBase, Zygote, Lux, DifferentialEquations, ComponentArrays, ParameterSchedulers, Random, Distributed, ForwardDiff, LuxCore, Dates, JLD2, SciMLSensitivity, PGFPlotsX
 
 # ╔═╡ d1440209-78f7-4a9a-9101-a06ad2534e5d
 using NeuralSDEExploration, Plots, PlutoUI, PlutoArgs
@@ -664,11 +664,11 @@ function exportresults(epoch)
 	
 	modelfig = plotmodel()
 	savefig(modelfig, folder * "$(epoch)_model.pdf")
-	#savefig(modelfig, folder * "$(epoch)_model.tex")
+	savefig(modelfig, folder * "$(epoch)_model.tex")
 	
 	learningfig = plotlearning()
 	savefig(learningfig, folder * "$(epoch)_learning.pdf")
-	#savefig(learningfig, folder * "$(epoch)_learning.tex")
+	savefig(learningfig, folder * "$(epoch)_learning.tex")
 end
 
 # ╔═╡ 7a7e8e9b-ca89-4826-8a5c-fe51d96152ad

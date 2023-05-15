@@ -38,7 +38,12 @@ end
 
 
 # ╔═╡ ab5de288-e73a-48f2-b8c6-478d74700f6a
-ebm = NeuralSDEExploration.FitzHughNagumoModel()
+ebm = NeuralSDEExploration.FitzHughNagumoModel(0.04,
+2.23,
+0.82,
+-6.98,
+0.0,
+-1.51)
 
 # ╔═╡ 2ae8f19f-8a70-43ec-b552-d56c1b65d746
 begin
