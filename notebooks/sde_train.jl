@@ -78,7 +78,7 @@ md"""
 
 # ╔═╡ cb3a270e-0f2a-4be3-9ab3-ea5e4c56d0e7
 md"""
-Used model: $(@bind model_name Arg("model", Select(["sun", "fhn"]), short_name="m")), CLI arg: `--model`, `-m` (required!)
+Used model: $(@bind model_name Arg("model", Select(["sun", "fhn", "ou"]), short_name="m")), CLI arg: `--model`, `-m` (required!)
 """
 
 # ╔═╡ 95bdd676-d8df-4fef-bdd7-cce85b717018
@@ -191,6 +191,11 @@ elseif model_name == "fhn"
 	(
 		[[0f0, 0f0] for i in 1:n],
 		NeuralSDEExploration.FitzHughNagumoModel()
+	)
+elseif model_name == "ou"
+	(
+		[0f0 for i in 1:n],
+		NeuralSDEExploration.OrnsteinUhlenbeck()
 	)
 else
 	@error "Invalid model name!"
@@ -469,11 +474,11 @@ md"""
 Load parameters from file (random if no file selected): $(@bind ps_file FilePicker())
 """
 
-# ╔═╡ b2f9d58e-830e-4179-a6d2-469ceb93d504
+# ╔═╡ 375d2d66-a24c-4e1e-9b36-ef70972a0448
 ps_data = ps_file === nothing ? nothing : String(ps_file["data"])
 
 # ╔═╡ dfe0f6ef-ecd5-46a1-a808-77ef9af44b56
-ps = if ps_file !== nothing
+ps = if ps_data !== nothing
 	ComponentArray(eval(Meta.parse(ps_data)))
 else
 	ComponentArray{Float32}(ps_)
@@ -861,8 +866,8 @@ plot(reduce(hcat, [solution[i].u for i in 1:25]); legend=false)
 # ╟─1938e122-2c05-46fc-b179-db38322530ff
 # ╠═05568880-f931-4394-b31e-922850203721
 # ╟─fd10820a-eb9b-4ff0-b66b-2d74ba4f1af3
-# ╟─421ca47e-2d28-4340-97d5-1a31582d4bed
-# ╠═b2f9d58e-830e-4179-a6d2-469ceb93d504
+# ╠═421ca47e-2d28-4340-97d5-1a31582d4bed
+# ╠═375d2d66-a24c-4e1e-9b36-ef70972a0448
 # ╠═dfe0f6ef-ecd5-46a1-a808-77ef9af44b56
 # ╟─cbc85049-9563-4b5d-8d14-a171f4d0d6aa
 # ╟─f5734b1a-4258-44ae-ac00-9520170997bc
