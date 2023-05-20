@@ -40,7 +40,9 @@ begin
 end
 
 # ╔═╡ 01192a12-23e7-4c94-a516-e262d23cc870
-pgfplotsx()
+if !(@isdefined PlutoRunner)
+	# pgfplotsx()
+end
 
 # ╔═╡ d38b3460-4c01-4bba-b726-150d207c020b
 TableOfContents(title="Latent SDE")
@@ -479,7 +481,8 @@ ps_data = ps_file === nothing ? nothing : String(ps_file["data"])
 
 # ╔═╡ dfe0f6ef-ecd5-46a1-a808-77ef9af44b56
 ps = if ps_data !== nothing
-	ComponentArray(eval(Meta.parse(ps_data)))
+	parsed_array = Meta.parse(replace(ps_data, ")" => ",)"))
+	ComponentArray(eval(parsed_array))
 else
 	ComponentArray{Float32}(ps_)
 end
@@ -674,11 +677,11 @@ function exportresults(epoch)
 	
 	modelfig = plotmodel()
 	savefig(modelfig, folder * "$(epoch)_model.pdf")
-	savefig(modelfig, folder * "$(epoch)_model.tex")
+	# savefig(modelfig, folder * "$(epoch)_model.tex")
 	
 	learningfig = plotlearning()
 	savefig(learningfig, folder * "$(epoch)_learning.pdf")
-	savefig(learningfig, folder * "$(epoch)_learning.tex")
+	# savefig(learningfig, folder * "$(epoch)_learning.tex")
 end
 
 # ╔═╡ 7a7e8e9b-ca89-4826-8a5c-fe51d96152ad
@@ -866,7 +869,7 @@ plot(reduce(hcat, [solution[i].u for i in 1:25]); legend=false)
 # ╟─1938e122-2c05-46fc-b179-db38322530ff
 # ╠═05568880-f931-4394-b31e-922850203721
 # ╟─fd10820a-eb9b-4ff0-b66b-2d74ba4f1af3
-# ╠═421ca47e-2d28-4340-97d5-1a31582d4bed
+# ╟─421ca47e-2d28-4340-97d5-1a31582d4bed
 # ╠═375d2d66-a24c-4e1e-9b36-ef70972a0448
 # ╠═dfe0f6ef-ecd5-46a1-a808-77ef9af44b56
 # ╟─cbc85049-9563-4b5d-8d14-a171f4d0d6aa
