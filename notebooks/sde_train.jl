@@ -623,8 +623,8 @@ end
 function plotlearning()
 
 	plots = [
-		plot(map(x -> max(1e-8, x), recorded_loss), legend=false, title="loss", yscale=:log10)
-		plot(map(x -> max(1e-8, -x), recorded_likelihood), legend=false, title="-loglike", yscale=:log10)
+		plot(map(x -> max(1e-8, x+100.0), recorded_loss), legend=false, title="loss", yscale=:log10)
+		plot(map(x -> max(1e-8, -x+100.0), recorded_likelihood), legend=false, title="-loglike", yscale=:log10)
 		plot(recorded_kl, legend=false, title="kl-divergence")
 		plot(recorded_eta, legend=false, title="eta")
 	]	
@@ -738,16 +738,21 @@ md"""
 # Statistical Analysis
 """
 
+# ╔═╡ 78a74e8f-f0a3-4cf2-aecc-4ba56ca5cf7f
+md"""
+Histogram span: $(@bind hspan RangeSlider(1:steps(tspan_data, dt)))
+"""
+
 # ╔═╡ 47b2ec07-40f4-480d-b650-fbf1b44b7527
 begin
 	prior_latent = NeuralSDEExploration.sample_prior(latent_sde,ps,st;b=length(timeseries))
-	projected_prior = vcat(reduce(vcat, [latent_sde.projector(x[10:end], ps.projector, st.projector)[1] for x in prior_latent.u])...)
+	projected_prior = vcat(reduce(vcat, [latent_sde.projector(x[hspan], ps.projector, st.projector)[1] for x in prior_latent.u])...)
 	histogram_prior = fit(Histogram, projected_prior, 0.0:0.01:1.0)
 end
 
 # ╔═╡ 14f9a62d-9caa-40e9-8502-d2a27b9c950e
 begin
-	ts = vcat(reduce(vcat, [s.u[10:end] for s in timeseries])...)
+	ts = vcat(reduce(vcat, [s.u[hspan] for s in timeseries])...)
 	histogram_data = fit(Histogram, ts, 0.0:0.01:1.0)
 end
 
@@ -909,10 +914,11 @@ plot(reduce(hcat, [solution[i].u for i in 1:25]); legend=false)
 # ╠═4f955207-5f7f-4bbf-a738-d518a21b651d
 # ╠═38716b5c-fe06-488c-b6ed-d2e28bd3d397
 # ╟─8880282e-1b5a-4c85-95ef-699ccf8d4203
-# ╠═47b2ec07-40f4-480d-b650-fbf1b44b7527
-# ╠═14f9a62d-9caa-40e9-8502-d2a27b9c950e
-# ╠═b7acea88-c9a8-4fdf-b3b2-c74b25f9dd93
-# ╠═1ad4db6e-19ba-42a3-b023-32b902beb9fd
+# ╟─78a74e8f-f0a3-4cf2-aecc-4ba56ca5cf7f
+# ╟─47b2ec07-40f4-480d-b650-fbf1b44b7527
+# ╟─14f9a62d-9caa-40e9-8502-d2a27b9c950e
+# ╟─b7acea88-c9a8-4fdf-b3b2-c74b25f9dd93
+# ╟─1ad4db6e-19ba-42a3-b023-32b902beb9fd
 # ╟─300da269-58f1-402b-88de-9c60b8c2dd9d
 # ╠═f62e09f3-2d12-4bea-b7d9-02edd4418330
 # ╠═667da247-9664-4621-8e90-84e0515e5edb
