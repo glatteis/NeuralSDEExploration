@@ -24,7 +24,7 @@ begin
 end
 
 # ╔═╡ b6abba94-db07-4095-98c9-443e31832e7d
-using Optimisers, StatsBase, Zygote, Lux, DifferentialEquations, ComponentArrays, ParameterSchedulers, Random, Distributed, ForwardDiff, LuxCore, Dates, JLD2, SciMLSensitivity, PGFPlotsX
+using Optimisers, StatsBase, Zygote, Lux, DifferentialEquations, ComponentArrays, ParameterSchedulers, Random, Distributed, ForwardDiff, LuxCore, Dates, JLD2, SciMLSensitivity
 
 # ╔═╡ d1440209-78f7-4a9a-9101-a06ad2534e5d
 using NeuralSDEExploration, Plots, PlutoUI, PlutoArgs
@@ -37,11 +37,6 @@ begin
 		ENV["GKSwstype"]="nul" # no GTK for plots
 		println(join(ARGS, " "))
 	end
-end
-
-# ╔═╡ 01192a12-23e7-4c94-a516-e262d23cc870
-if !(@isdefined PlutoRunner)
-	# pgfplotsx()
 end
 
 # ╔═╡ d38b3460-4c01-4bba-b726-150d207c020b
@@ -797,7 +792,6 @@ plot(reduce(hcat, [solution[i].u for i in 1:25]); legend=false)
 # ╠═db557c9a-24d6-4008-8225-4b8867ee93db
 # ╠═b6abba94-db07-4095-98c9-443e31832e7d
 # ╠═d1440209-78f7-4a9a-9101-a06ad2534e5d
-# ╠═01192a12-23e7-4c94-a516-e262d23cc870
 # ╟─d38b3460-4c01-4bba-b726-150d207c020b
 # ╟─13ef3cd9-7f58-459e-a659-abc35b550326
 # ╟─ff15555b-b1b5-4b42-94a9-da77daa546d0
