@@ -70,7 +70,7 @@ function stable_divide(a, b, eps=1e-7)
     a ./ b
 end
 
-function pass(n::LatentSDE, ps::ComponentVector, timeseries, st; sense=InterpolatingAdjoint(autojacvec=ZygoteVJP(), checkpointing=true), ensemblemode=EnsembleSerial(), seed=nothing, noise=(seed) -> nothing, stick_landing=false)
+function pass(n::LatentSDE, ps::ComponentVector, timeseries, st; sense=InterpolatingAdjoint(autojacvec=ZygoteVJP()), ensemblemode=EnsembleSerial(), seed=nothing, noise=(seed) -> nothing, stick_landing=false)
     # We are using matrices with the following dimensions:
     # 1 = latent space dimension
     # 2 = batch number
