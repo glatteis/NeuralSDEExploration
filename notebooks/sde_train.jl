@@ -80,7 +80,7 @@ Used model: $(@bind model_name Arg("model", Select(["sun", "fhn", "ou"]), short_
 
 # ╔═╡ 95bdd676-d8df-4fef-bdd7-cce85b717018
 md"""
-Noise term size: $(@bind noise Arg("noise", NumberField(0.0:1.0, 0.135), required=false)), CLI arg: `--noise`
+Noise term size: $(@bind noise_term Arg("noise", NumberField(0.0:1.0, 0.135), required=false)), CLI arg: `--noise`
 """
 
 # ╔═╡ 4c3b8784-368d-49c3-a875-c54960ec9be5
@@ -182,7 +182,7 @@ md"""
 (initial_condition, model) = if model_name == "sun"
 	(
 		range(210f0, 350f0, n),
-		NeuralSDEExploration.ZeroDEnergyBalanceModel(0.425, 0.4, 1363, 0.6 * 5.67e-8, noise)
+		NeuralSDEExploration.ZeroDEnergyBalanceModel(0.425, 0.4, 1363, 0.6 * 5.67e-8, noise_term)
 	)
 elseif model_name == "fhn"
 	(
@@ -324,6 +324,26 @@ CLI arg: `--kl-rate`
 # ╔═╡ 9767a8ea-bdda-43fc-b636-8681d150d29f
 data_dims = length(solution[1].u[1]) # Dimensions of our input data.
 
+# ╔═╡ 3db229f0-0e13-4d80-8680-58b89161db35
+md"""
+Use backsolve: $(@bind backsolve Arg("backsolve", CheckBox(), required=false))
+CLI arg: `--backsolve`
+"""
+
+# ╔═╡ 2bb433bb-17df-4a34-9ccf-58c0cf8b4dd3
+(sense, noise) = if backsolve
+	bridge = BrownianBridge(tspan_start_model, tspan_end_model, 0f0, 0f0)
+	(
+		BacksolveAdjoint(autojacvec=ZygoteVJP(), checkpointing=true),
+		(seed) -> bridge
+	)
+else
+	(
+		InterpolatingAdjoint(autojacvec=ZygoteVJP()),
+		(seed) -> nothing,
+	)
+end
+
 # ╔═╡ db88cae4-cb25-4628-9298-5a694c4b29ef
 println((context_size=context_size, hidden_size=hidden_size, latent_dims=latent_dims, data_dims=data_dims, stick_landing=stick_landing, batch_size=batch_size))
 
@@ -422,7 +442,7 @@ md"""
 solver = if gpu
 	GPUEM()
 else
-	EM()
+	EulerHeun()
 end
 
 # ╔═╡ ec41b765-2f73-43a5-a575-c97a5a107c4e
@@ -631,7 +651,7 @@ end
 
 # ╔═╡ f0a34be1-6aa2-4563-abc2-ea163a778752
 function loss(ps, minibatch, eta)
-	_, _, _, kl_divergence, likelihood = NeuralSDEExploration.pass(latent_sde, ps, minibatch, st; ensemblemode=ensemblemode, stick_landing=stick_landing, seed=abs(rand(rng, Int)))
+	_, _, _, kl_divergence, likelihood = NeuralSDEExploration.pass(latent_sde, ps, minibatch, st; sense=sense, noise=noise, ensemblemode=ensemblemode, stick_landing=stick_landing, seed=abs(rand(rng, Int)))
 	return mean(-likelihood .+ (eta * kl_divergence)), mean(kl_divergence), mean(likelihood)
 end
 
@@ -681,7 +701,7 @@ end
 
 # ╔═╡ 7a7e8e9b-ca89-4826-8a5c-fe51d96152ad
 if enabletraining
-	dps = Zygote.gradient(ps -> loss(ps, timeseries[1:batch_size], 1.0)[1], ps)[1]
+	@time dps = Zygote.gradient(ps -> loss(ps, timeseries[1:batch_size], 1.0)[1], ps)[1]
 end
 
 # ╔═╡ 67e5ae14-3062-4a93-9492-fc6e9861577f
@@ -735,7 +755,7 @@ md"""
 
 # ╔═╡ 78a74e8f-f0a3-4cf2-aecc-4ba56ca5cf7f
 md"""
-Histogram span: $(@bind hspan RangeSlider(1:steps(tspan_data, dt)))
+Histogram span: $(@bind hspan RangeSlider(1:steps(tspan_train, dt)))
 """
 
 # ╔═╡ 47b2ec07-40f4-480d-b650-fbf1b44b7527
@@ -840,6 +860,8 @@ plot(reduce(hcat, [solution[i].u for i in 1:25]); legend=false)
 # ╟─8bb3084f-5fde-413e-b0fe-8b2e19673fae
 # ╟─2c64b173-d4ad-477d-afde-5f3916e922ef
 # ╟─9767a8ea-bdda-43fc-b636-8681d150d29f
+# ╟─3db229f0-0e13-4d80-8680-58b89161db35
+# ╠═2bb433bb-17df-4a34-9ccf-58c0cf8b4dd3
 # ╟─db88cae4-cb25-4628-9298-5a694c4b29ef
 # ╟─86620e12-9631-4156-8b1c-60545b8a8352
 # ╟─0c0e5a95-195e-4057-bcba-f1d92d75cbab
