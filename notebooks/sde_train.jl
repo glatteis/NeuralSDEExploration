@@ -231,6 +231,9 @@ begin
     end
 end
 
+# ╔═╡ 5d78e254-4134-4c2a-8092-03f6df7d5092
+println((datamin=datamin, datamax=datamax))
+
 # ╔═╡ 9a5c942f-9e2d-4c6c-9cb1-b0dffd8050a0
 timeseries = [(t=ts.t, u=map(normalize, ts.u)) for ts in solution]
 
@@ -263,12 +266,28 @@ $(@bind hidden_size Arg("hidden-size", NumberField(1:1000000, 128), required=fal
 CLI arg: `--hidden-size`
 """
 
+# ╔═╡ 6489b190-e08f-466c-93c4-92a723f8e594
+md"""
+The hidden layer size for the prior:
+$(@bind prior_size Arg("prior-size", NumberField(1:1000000, hidden_size), required=false)).
+CLI arg: `--prior-size`
+"""
+
 # ╔═╡ b5721107-7cf5-4da3-b22a-552e3d56bcfa
 md"""
 Dimensions of the latent space:
 $(@bind latent_dims Arg("latent-dims", NumberField(1:100, 2), required=false)).
 CLI arg: `--latent-dims`
 """
+
+# ╔═╡ 9382314d-c076-4b95-8171-71d903bb9271
+md"""
+Time dependence: $(@bind time_dependence Arg("time-dep", CheckBox(), required=false))
+CLI arg: `--time-dep`
+"""
+
+# ╔═╡ ad6247f6-6cb9-4a57-92d3-6328cbd84ecd
+in_dims = latent_dims + (time_dependence ? 1 : 0)
 
 # ╔═╡ fe749caf-393f-45b0-98e5-5d10c1821a9d
 md"""
@@ -308,6 +327,26 @@ $(@bind learning_rate Arg("learning-rate", NumberField(0.02:1000.0, 0.03), requi
 CLI arg: `--learning-rate`
 """
 
+# ╔═╡ 7c23c32f-97bc-4c8d-ac54-42753be61345
+md"""
+Max learning rate
+$(@bind max_learning_rate Arg("max-learning-rate", NumberField(0.02:1000.0, 0.06), required=false)).
+CLI arg: `--max-learning-rate`
+"""
+
+# ╔═╡ 64e7bba4-fb17-4ed8-851f-de9204f0f42d
+md"""
+LR Cycling Enabled: $(@bind lr_cycle Arg("lr-cycle", CheckBox(), required=false))
+CLI arg: `--lr-cycle`
+"""
+
+# ╔═╡ 33d53264-3c8f-4f63-9dd2-46ebd00f4e28
+md"""
+LR oscillation time
+$(@bind lr_rate Arg("lr-rate", NumberField(1:100000, 1000), required=false)).
+CLI arg: `--lr-rate`
+"""
+
 # ╔═╡ 8bb3084f-5fde-413e-b0fe-8b2e19673fae
 md"""
 KL Annealing Enabled: $(@bind kl_anneal Arg("kl-anneal", CheckBox(), required=false))
@@ -326,7 +365,7 @@ data_dims = length(solution[1].u[1]) # Dimensions of our input data.
 
 # ╔═╡ 3db229f0-0e13-4d80-8680-58b89161db35
 md"""
-Use backsolve: $(@bind backsolve Arg("backsolve", CheckBox(), required=false))
+Use backsolve: $(@bind backsolve Arg("backsolve", CheckBox(true), required=false))
 CLI arg: `--backsolve`
 """
 
@@ -388,9 +427,9 @@ Drift of prior. This is just an SDE drift in the latent space
 
 # ╔═╡ c14806bd-42cf-480b-b618-bfe72183feb3
 drift_prior = Lux.Chain(
-	Lux.Dense(latent_dims => hidden_size, tanh),
-	Lux.Dense(hidden_size => hidden_size, tanh),
-	Lux.Dense(hidden_size => latent_dims, tanh),
+	Lux.Dense(in_dims => prior_size, tanh),
+	Lux.Dense(prior_size => prior_size, tanh),
+	Lux.Dense(prior_size => latent_dims, tanh),
 	Lux.Scale(latent_dims)
 )
 
@@ -401,7 +440,7 @@ Drift of posterior. This is the term of an SDE when fed with the context.
 
 # ╔═╡ df2034fd-560d-4529-836a-13745f976c1f
 drift_posterior = Lux.Chain(
-	Lux.Dense(latent_dims + context_size => hidden_size, tanh),
+	Lux.Dense(in_dims + context_size => hidden_size, tanh),
 	Lux.Dense(hidden_size => hidden_size, tanh),
 	Lux.Dense(hidden_size => latent_dims, tanh),
 	Lux.Scale(latent_dims)
@@ -418,7 +457,7 @@ Diffusion. Prior and posterior share the same diffusion (they are not actually e
 """
 
 # ╔═╡ a1cb11fb-ec69-4ba2-9ed1-2d1a6d24ccd9
-diffusion = Lux.Parallel(nothing, [Lux.Chain(Lux.Dense(1 => hidden_size, Lux.tanh), Lux.Dense(hidden_size => 1, Lux.sigmoid_fast), Lux.Scale(1, init_weight=ones, init_bias=ones)) for i in 1:latent_dims]...)
+diffusion = Lux.Parallel(nothing, [Lux.Chain(Lux.Dense((time_dependence ? 2 : 1) => hidden_size, Lux.tanh), Lux.Dense(hidden_size => 1, Lux.sigmoid_fast), Lux.Scale(1, init_weight=ones, init_bias=ones)) for i in 1:latent_dims]...)
 
 # ╔═╡ b0421c4a-f243-4d39-8cca-a29ea140486d
 md"""
@@ -446,9 +485,7 @@ else
 end
 
 # ╔═╡ ec41b765-2f73-43a5-a575-c97a5a107c4e
-md"""
-Steps that will be derived: $(steps(tspan_model, dt))
-"""
+println("Steps that will be derived: $(steps(tspan_model, dt))")
 
 # ╔═╡ 001c318e-b7a6-48a5-bfd5-6dd0368873ac
 latent_sde = LatentSDE(
@@ -463,6 +500,7 @@ latent_sde = LatentSDE(
 	solver,
 	tspan_model,
 	steps(tspan_model, dt);
+	timedependent=time_dependence,
 	adaptive=false
 )
 
@@ -555,7 +593,7 @@ else
 end
 
 # ╔═╡ 88fa1b08-f0d4-4fcf-89c2-8a9f33710d4c
-posterior_latent, posterior_data, logterm_, kl_divergence_, distance_ = NeuralSDEExploration.pass(latent_sde, ps, viz_batch, st; seed=seed, ensemblemode=ensemblemode)
+posterior_latent, posterior_data, logterm_, kl_divergence_, distance_ = latent_sde(viz_batch, ps, st; seed=seed, ensemblemode=ensemblemode)
 
 # ╔═╡ dabf2a1f-ec78-4942-973f-4dbf9037ee7b
 plot(logterm_[1, :, :]', title="KL-Divergence")
@@ -586,7 +624,7 @@ md"""
 function plot_prior(priorsamples; rng=rng)
 	prior_latent = NeuralSDEExploration.sample_prior(latent_sde,ps,st;seed=abs(rand(rng, Int)),b=priorsamples)
 	projected_prior = reduce(hcat, [reduce(vcat, [latent_sde.projector(u, ps.projector, st.projector)[1] for u in batch.u]) for batch in prior_latent.u])
-	priorplot = plot(projected_prior, linewidth=.5,color=:grey,legend=false,title="projected prior")
+	priorplot = plot(projected_prior, linewidth=.5,color=:black,legend=false,title="projected prior")
 	return priorplot
 end
 
@@ -600,7 +638,7 @@ function plotmodel()
 	rng = Xoshiro(0)
 	nums = sample(rng,1:length(timeseries),n;replace=false)
 
-	posterior_latent, posterior_data, logterm_, kl_divergence_, distance_ = NeuralSDEExploration.pass(latent_sde, ps, timeseries[nums], st, seed=seed)
+	posterior_latent, posterior_data, logterm_, kl_divergence_, distance_ = latent_sde(timeseries[nums], ps, st, seed=seed)
 	
 	priorsamples = 25
 	priorplot = plot_prior(priorsamples, rng=rng)
@@ -608,7 +646,7 @@ function plotmodel()
 	posteriorplot = plot(posterior_data[1, :,:]',linewidth=2,legend=false,title="projected posterior")
 	dataplot = plot(timeseries[nums],linewidth=2,legend=false,title="data")
 	
-	timeseriesplot = plot(sample(rng, timeseries, priorsamples),linewidth=.5,color=:grey,legend=false,title="data")
+	timeseriesplot = plot(sample(rng, timeseries, priorsamples),linewidth=.5,color=:black,legend=false,title="data")
 	
 	l = @layout [a b ; c d]
 	p = plot(dataplot, posteriorplot, timeseriesplot, priorplot, layout=l)
@@ -651,7 +689,7 @@ end
 
 # ╔═╡ f0a34be1-6aa2-4563-abc2-ea163a778752
 function loss(ps, minibatch, eta)
-	_, _, _, kl_divergence, likelihood = NeuralSDEExploration.pass(latent_sde, ps, minibatch, st; sense=sense, noise=noise, ensemblemode=ensemblemode, stick_landing=stick_landing, seed=abs(rand(rng, Int)))
+	_, _, _, kl_divergence, likelihood = latent_sde(minibatch, ps, st; sense=sense, noise=noise, ensemblemode=ensemblemode, stick_landing=stick_landing, seed=abs(rand(rng, Int)))
 	return mean(-likelihood .+ (eta * kl_divergence)), mean(kl_divergence), mean(likelihood)
 end
 
@@ -740,7 +778,7 @@ begin
 	if enabletraining
 		opt_state = Optimisers.setup(Optimisers.Adam(), ps)
 
-		@gif for epoch in 1:10
+		@gif for epoch in 1:30
 			train(learning_rate, 10, opt_state; sched=sched)
 			gifplot()
 		end
@@ -779,12 +817,18 @@ begin
 	], layout=@layout [a; b])
 end
 
+# ╔═╡ 797ea98e-a690-43a8-b212-0c3a9484e2da
+plot(histogram_data, legend=false, title="data")
+
+# ╔═╡ 25638805-7c33-4b91-846d-0dc893acea56
+plot(histogram_prior, legend=false, title="projected prior")
+
 # ╔═╡ 1ad4db6e-19ba-42a3-b023-32b902beb9fd
 begin
-	plot([
+	p_hist = plot([
 		histogram_data,
 		histogram_prior,
-	])
+	], alpha=0.5, labels=["data" "prior"], title="marginal probabilities (1x extrapolation)")
 end
 
 # ╔═╡ 300da269-58f1-402b-88de-9c60b8c2dd9d
@@ -801,11 +845,29 @@ prior_tipping_rate = histogram_prior.weights[tip_index] / sum(histogram_prior.we
 # ╔═╡ e4ecb1ad-fef2-4450-82ff-240e076727bd
 data_tipping_rate = histogram_data.weights[tip_index] / sum(histogram_data.weights)
 
+# ╔═╡ b9fb2abc-31a0-48bb-b41d-665f8b3512e5
+gr(size=(600,300))
+
 # ╔═╡ ddafd313-823a-43c2-99c9-7e22660d5f58
-plot_prior(25)
+p_prior = plot_prior(25)
 
 # ╔═╡ 3ed1236e-a805-48c5-9250-def2cdaab2cb
-plot(reduce(hcat, [solution[i].u for i in 1:25]); legend=false)
+p_data = plot((solution[1].t, reduce(hcat, [solution[i].u for i in 1:25])); legend=false, linewidth=.5,color=:black, title="data")
+
+# ╔═╡ cad2efa8-c434-4661-8dd4-2e2ebd66ee09
+plot([(x, projector(drift_prior([x], ps.drift_prior, st.drift_prior)[1], ps.projector, st.projector)[1][1]) for x in 0:0.01:1])
+
+# ╔═╡ 975d41c9-caed-47df-a870-c587c775aa03
+plot([(normalize(x), NeuralSDEExploration.drift(x, model, 0)) for x in datamin:0.1:datamax])
+
+# ╔═╡ 5c18b3e0-0209-4468-a720-af6972bce28e
+plot([(x, projector(diffusion(([x],), ps.diffusion, st.diffusion)[1][1], ps.projector, st.projector)[1][1]) for x in 0:0.01:2])
+
+# ╔═╡ 84d0265b-c26a-4561-a24a-396da3c6157d
+plot([(normalize(x), NeuralSDEExploration.diffusion(x, model, 0)) for x in datamin:0.1:datamax])
+
+# ╔═╡ 4219497d-9cf6-420f-975d-241259de5e1f
+savefig(p_hist, "~/Downloads/histogram_ext.pdf")
 
 # ╔═╡ Cell order:
 # ╠═67cb574d-7bd6-40d9-9dc3-d57f4226cc83
@@ -845,23 +907,30 @@ plot(reduce(hcat, [solution[i].u for i in 1:25]); legend=false)
 # ╠═455263ef-2f94-4f3e-8401-f0da7fb3e493
 # ╟─f4651b27-135e-45f1-8647-64ab08c2e8e8
 # ╠═aff1c9d9-b29b-4b2c-b3f1-1e06a9370f64
+# ╠═5d78e254-4134-4c2a-8092-03f6df7d5092
 # ╠═9a5c942f-9e2d-4c6c-9cb1-b0dffd8050a0
 # ╟─da11fb69-a8a1-456d-9ce7-63180ef27a83
 # ╟─8280424c-b86f-49f5-a854-91e7abcf13ec
 # ╟─fdceee23-b91e-4b2e-af78-776c01733de3
 # ╟─97d724c2-24b0-415c-b90f-6a36e877e9d1
 # ╟─d81ccb5f-de1c-4a01-93ce-3e7302caedc0
+# ╟─6489b190-e08f-466c-93c4-92a723f8e594
 # ╟─b5721107-7cf5-4da3-b22a-552e3d56bcfa
+# ╟─9382314d-c076-4b95-8171-71d903bb9271
+# ╟─ad6247f6-6cb9-4a57-92d3-6328cbd84ecd
 # ╟─fe749caf-393f-45b0-98e5-5d10c1821a9d
 # ╟─60b5397d-7350-460b-9117-319dc127cc7e
 # ╟─16c12354-5ab6-4c0e-833d-265642119ed2
 # ╟─f12633b6-c770-439d-939f-c41b74a5c309
 # ╟─3c630a3a-7714-41c7-8cc3-601cd6efbceb
+# ╟─7c23c32f-97bc-4c8d-ac54-42753be61345
+# ╟─64e7bba4-fb17-4ed8-851f-de9204f0f42d
+# ╟─33d53264-3c8f-4f63-9dd2-46ebd00f4e28
 # ╟─8bb3084f-5fde-413e-b0fe-8b2e19673fae
 # ╟─2c64b173-d4ad-477d-afde-5f3916e922ef
 # ╟─9767a8ea-bdda-43fc-b636-8681d150d29f
 # ╟─3db229f0-0e13-4d80-8680-58b89161db35
-# ╠═2bb433bb-17df-4a34-9ccf-58c0cf8b4dd3
+# ╟─2bb433bb-17df-4a34-9ccf-58c0cf8b4dd3
 # ╟─db88cae4-cb25-4628-9298-5a694c4b29ef
 # ╟─86620e12-9631-4156-8b1c-60545b8a8352
 # ╟─0c0e5a95-195e-4057-bcba-f1d92d75cbab
@@ -933,11 +1002,19 @@ plot(reduce(hcat, [solution[i].u for i in 1:25]); legend=false)
 # ╟─78a74e8f-f0a3-4cf2-aecc-4ba56ca5cf7f
 # ╟─47b2ec07-40f4-480d-b650-fbf1b44b7527
 # ╟─14f9a62d-9caa-40e9-8502-d2a27b9c950e
-# ╟─b7acea88-c9a8-4fdf-b3b2-c74b25f9dd93
-# ╟─1ad4db6e-19ba-42a3-b023-32b902beb9fd
+# ╠═b7acea88-c9a8-4fdf-b3b2-c74b25f9dd93
+# ╠═797ea98e-a690-43a8-b212-0c3a9484e2da
+# ╠═25638805-7c33-4b91-846d-0dc893acea56
+# ╠═1ad4db6e-19ba-42a3-b023-32b902beb9fd
 # ╟─300da269-58f1-402b-88de-9c60b8c2dd9d
 # ╠═f62e09f3-2d12-4bea-b7d9-02edd4418330
 # ╠═667da247-9664-4621-8e90-84e0515e5edb
 # ╠═e4ecb1ad-fef2-4450-82ff-240e076727bd
+# ╠═b9fb2abc-31a0-48bb-b41d-665f8b3512e5
 # ╠═ddafd313-823a-43c2-99c9-7e22660d5f58
 # ╠═3ed1236e-a805-48c5-9250-def2cdaab2cb
+# ╠═cad2efa8-c434-4661-8dd4-2e2ebd66ee09
+# ╠═975d41c9-caed-47df-a870-c587c775aa03
+# ╠═5c18b3e0-0209-4468-a720-af6972bce28e
+# ╠═84d0265b-c26a-4561-a24a-396da3c6157d
+# ╠═4219497d-9cf6-420f-975d-241259de5e1f
