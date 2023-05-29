@@ -774,6 +774,8 @@ gifplot()
 recorded_loss
 
 # ╔═╡ 38716b5c-fe06-488c-b6ed-d2e28bd3d397
+# ╠═╡ disabled = true
+#=╠═╡
 begin
 	if enabletraining
 		opt_state = Optimisers.setup(Optimisers.Adam(), ps)
@@ -785,6 +787,7 @@ begin
 	end
 end
 
+  ╠═╡ =#
 
 # ╔═╡ 8880282e-1b5a-4c85-95ef-699ccf8d4203
 md"""
