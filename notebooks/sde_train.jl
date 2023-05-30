@@ -679,7 +679,7 @@ function plotlearning()
 		plot(map(x -> max(1e-8, x+100.0), recorded_loss), legend=false, title="loss", yscale=:log10)
 		plot(map(x -> max(1e-8, -x+100.0), recorded_likelihood), legend=false, title="-loglike", yscale=:log10)
 		plot(recorded_kl, legend=false, title="kl-divergence")
-		plot(recorded_eta, legend=false, title="eta")
+		plot(recorded_eta, legend=false, title="beta")
 	]	
 
 	
@@ -753,9 +753,12 @@ end
 begin
 	if !(@isdefined PlutoRunner) && enabletraining  # running as job
 		opt_state_job = Optimisers.setup(Optimisers.Adam(), ps)
+		# precompile exportresults because there are some memory problems
+		exportresults(0)
 		for epoch in 1:100
 			train(learning_rate, 250, opt_state_job; sched=sched)
 			exportresults(epoch)
+			sleep(10.0)
 		end
 	end
 end
