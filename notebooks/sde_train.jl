@@ -708,7 +708,7 @@ function train(learning_rate, num_steps, opt_state; sched=Loop(x -> eta, 1))
 		push!(recorded_eta, eta)
 		push!(recorded_lr, learning_rate)
 		
-		dps = Zygote.gradient(ps -> loss(ps, minibatch, eta)[1], ps)
+		@time dps = Zygote.gradient(ps -> loss(ps, minibatch, eta)[1], ps)
 		println("Loss: $l")
 		Optimisers.update!(opt_state, ps, dps[1])
 	end
@@ -758,6 +758,7 @@ begin
 		for epoch in 1:100
 			train(learning_rate, 250, opt_state_job; sched=sched)
 			exportresults(epoch)
+			GC.gc()
 			sleep(10.0)
 		end
 	end
