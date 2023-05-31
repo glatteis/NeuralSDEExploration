@@ -371,10 +371,10 @@ CLI arg: `--backsolve`
 
 # ╔═╡ 2bb433bb-17df-4a34-9ccf-58c0cf8b4dd3
 (sense, noise) = if backsolve
-	bridge = BrownianBridge(tspan_start_model, tspan_end_model, 0f0, 0f0)
 	(
 		BacksolveAdjoint(autojacvec=ZygoteVJP(), checkpointing=true),
-		(seed) -> bridge
+		#(seed) -> VirtualBrownianTree(0f0, 0f0, tend=tspan_model[2], tree_depth=2)
+		(seed) -> nothing,
 	)
 else
 	(
@@ -937,7 +937,7 @@ savefig(p_hist, "~/Downloads/histogram_ext.pdf")
 # ╟─2c64b173-d4ad-477d-afde-5f3916e922ef
 # ╟─9767a8ea-bdda-43fc-b636-8681d150d29f
 # ╟─3db229f0-0e13-4d80-8680-58b89161db35
-# ╟─2bb433bb-17df-4a34-9ccf-58c0cf8b4dd3
+# ╠═2bb433bb-17df-4a34-9ccf-58c0cf8b4dd3
 # ╟─db88cae4-cb25-4628-9298-5a694c4b29ef
 # ╟─86620e12-9631-4156-8b1c-60545b8a8352
 # ╟─0c0e5a95-195e-4057-bcba-f1d92d75cbab
