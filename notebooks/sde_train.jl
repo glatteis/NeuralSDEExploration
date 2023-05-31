@@ -187,7 +187,7 @@ md"""
 elseif model_name == "fhn"
 	(
 		[[0f0, 0f0] for i in 1:n],
-		NeuralSDEExploration.FitzHughNagumoModel()
+		NeuralSDEExploration.FitzHughNagumoModelGamma()
 	)
 elseif model_name == "ou"
 	(
@@ -776,22 +776,6 @@ gifplot()
 
 # ╔═╡ 4f955207-5f7f-4bbf-a738-d518a21b651d
 recorded_loss
-
-# ╔═╡ 38716b5c-fe06-488c-b6ed-d2e28bd3d397
-# ╠═╡ disabled = true
-#=╠═╡
-begin
-	if enabletraining
-		opt_state = Optimisers.setup(Optimisers.Adam(), ps)
-
-		@gif for epoch in 1:30
-			train(learning_rate, 10, opt_state; sched=sched)
-			gifplot()
-		end
-	end
-end
-
-  ╠═╡ =#
 
 # ╔═╡ 8880282e-1b5a-4c85-95ef-699ccf8d4203
 md"""

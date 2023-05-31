@@ -38,18 +38,18 @@ model = NeuralSDEExploration.ZeroDEnergyBalanceModel(0.425, 0.4, 1363, 0.6 * 5.6
   ╠═╡ =#
 
 # ╔═╡ 407b38a5-8e2e-4980-9e8c-25bfd3a0aab5
-model = NeuralSDEExploration.FitzHughNagumoModel()
+model = NeuralSDEExploration.FitzHughNagumoModelGamma()
 
 # ╔═╡ 2ae8f19f-8a70-43ec-b552-d56c1b65d746
 begin
 	n = 2
-    datasize = 625
-    tspan = (0.0, 5.0)
+    datasize = 2000
+    tspan = (0.0, 400.0)
 end
 
 
 # ╔═╡ cbce9923-70fa-4706-ab43-62f2c25ec559
-solution = NeuralSDEExploration.series(model, [[0.0, 0.0]], tspan, datasize; seed=10)
+solution = NeuralSDEExploration.series(model, [[0.0, 0.0]], tspan, datasize; seed=11)
 
 # ╔═╡ d8809ab0-978e-435a-9213-a1d0fcc35331
 solution[1]
@@ -67,7 +67,7 @@ airp = CSV.File(StateSpaceModels.AIR_PASSENGERS) |> DataFrame
 y = map(first, solution[1].u)[1:400]
 
 # ╔═╡ 6a941237-b0d1-490d-81d3-07aa15b1d723
-plot(y)
+plot(y, aspect_ratio=6.0)
 
 # ╔═╡ e816dd26-cf7d-4bcc-abe8-af2fd3fcb9cf
 log_air_passengers = log.(airp.passengers)
@@ -85,7 +85,7 @@ m = SARIMA(log_air_passengers; order = (0, 1, 1), seasonal_order = (0, 1, 1, 12)
   ╠═╡ =#
 
 # ╔═╡ 376c4845-7383-4d0c-8ab6-faecded265c9
-m = auto_ets(log_air_passengers)
+m = auto_arima(y)
 
 # ╔═╡ 1f11e515-ebc5-4088-b84e-15d770454d7d
 fit!(m)
