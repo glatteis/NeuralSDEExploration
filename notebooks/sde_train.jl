@@ -24,7 +24,7 @@ begin
 end
 
 # ╔═╡ b6abba94-db07-4095-98c9-443e31832e7d
-using Optimisers, StatsBase, Zygote, Lux, DifferentialEquations, ComponentArrays, ParameterSchedulers, Random, Distributed, ForwardDiff, LuxCore, Dates, JLD2, SciMLSensitivity
+using Optimisers, StatsBase, Zygote, Lux, DifferentialEquations, ComponentArrays, ParameterSchedulers, Random, Distributed, ForwardDiff, LuxCore, Dates, JLD2, SciMLSensitivity, JLD2
 
 # ╔═╡ d1440209-78f7-4a9a-9101-a06ad2534e5d
 using NeuralSDEExploration, Plots, PlutoUI, PlutoArgs
@@ -724,9 +724,11 @@ function exportresults(epoch)
 
 	folder = homedir() * "/artifacts/$(folder_name)/"
 
+	data = Dict("latent_sde" => latent_sde, "ps" => ps, "st" => st)
+
 	mkpath(folder)
 
-	write(folder * "$(epoch)_params.txt", "$ps")
+	jldsave(folder * "$(epoch).jld"; data)
 	
 	# modelfig = plotmodel()
 	# savefig(modelfig, folder * "$(epoch)_model.pdf")
@@ -736,6 +738,9 @@ function exportresults(epoch)
 	# savefig(learningfig, folder * "$(epoch)_learning.pdf")
 	# savefig(learningfig, folder * "$(epoch)_learning.tex")
 end
+
+# ╔═╡ 8ef7d016-3f38-42c9-a29b-57bab0016b7e
+exportresults(1)
 
 # ╔═╡ 7a7e8e9b-ca89-4826-8a5c-fe51d96152ad
 if enabletraining
@@ -776,6 +781,22 @@ gifplot()
 
 # ╔═╡ 4f955207-5f7f-4bbf-a738-d518a21b651d
 recorded_loss
+
+# ╔═╡ 38716b5c-fe06-488c-b6ed-d2e28bd3d397
+# ╠═╡ disabled = true
+#=╠═╡
+begin
+	if enabletraining
+		opt_state = Optimisers.setup(Optimisers.Adam(), ps)
+
+		@gif for epoch in 1:30
+			train(learning_rate, 10, opt_state; sched=sched)
+			gifplot()
+		end
+	end
+end
+
+  ╠═╡ =#
 
 # ╔═╡ 8880282e-1b5a-4c85-95ef-699ccf8d4203
 md"""
@@ -950,7 +971,7 @@ savefig(p_hist, "~/Downloads/histogram_ext.pdf")
 # ╟─1938e122-2c05-46fc-b179-db38322530ff
 # ╠═05568880-f931-4394-b31e-922850203721
 # ╟─fd10820a-eb9b-4ff0-b66b-2d74ba4f1af3
-# ╟─421ca47e-2d28-4340-97d5-1a31582d4bed
+# ╠═421ca47e-2d28-4340-97d5-1a31582d4bed
 # ╠═375d2d66-a24c-4e1e-9b36-ef70972a0448
 # ╠═dfe0f6ef-ecd5-46a1-a808-77ef9af44b56
 # ╟─cbc85049-9563-4b5d-8d14-a171f4d0d6aa
@@ -982,6 +1003,7 @@ savefig(p_hist, "~/Downloads/histogram_ext.pdf")
 # ╠═f0a34be1-6aa2-4563-abc2-ea163a778752
 # ╠═f4a16e34-669e-4c93-bd83-e3622a747a3a
 # ╠═9789decf-c384-42df-b7aa-3c2137a69a41
+# ╠═8ef7d016-3f38-42c9-a29b-57bab0016b7e
 # ╠═7a7e8e9b-ca89-4826-8a5c-fe51d96152ad
 # ╠═67e5ae14-3062-4a93-9492-fc6e9861577f
 # ╠═78aa72e2-8188-441f-9910-1bc5525fda7a
