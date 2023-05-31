@@ -728,12 +728,12 @@ function exportresults(epoch)
 
 	write(folder * "$(epoch)_params.txt", "$ps")
 	
-	modelfig = plotmodel()
-	savefig(modelfig, folder * "$(epoch)_model.pdf")
+	# modelfig = plotmodel()
+	# savefig(modelfig, folder * "$(epoch)_model.pdf")
 	# savefig(modelfig, folder * "$(epoch)_model.tex")
 	
-	learningfig = plotlearning()
-	savefig(learningfig, folder * "$(epoch)_learning.pdf")
+	# learningfig = plotlearning()
+	# savefig(learningfig, folder * "$(epoch)_learning.pdf")
 	# savefig(learningfig, folder * "$(epoch)_learning.tex")
 end
 
