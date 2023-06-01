@@ -707,7 +707,8 @@ function train(learning_rate, num_steps, opt_state; sched=Loop(x -> eta, 1))
 		push!(recorded_likelihood, likelihood)
 		push!(recorded_eta, eta)
 		push!(recorded_lr, learning_rate)
-		
+
+		println("Computing gradient...")
 		@time dps = Zygote.gradient(ps -> loss(ps, minibatch, eta)[1], ps)
 		println("Loss: $l")
 		Optimisers.update!(opt_state, ps, dps[1])
@@ -724,23 +725,20 @@ function exportresults(epoch)
 
 	folder = homedir() * "/artifacts/$(folder_name)/"
 
-	data = Dict("latent_sde" => latent_sde, "ps" => ps, "st" => st)
+	data = Dict("latent_sde" => latent_sde, "timeseries" => timeseries, "ps" => ps, "st" => st)
 
 	mkpath(folder)
 
 	jldsave(folder * "$(epoch).jld"; data)
 	
-	# modelfig = plotmodel()
-	# savefig(modelfig, folder * "$(epoch)_model.pdf")
+	modelfig = plotmodel()
+	savefig(modelfig, folder * "$(epoch)_model.pdf")
 	# savefig(modelfig, folder * "$(epoch)_model.tex")
 	
-	# learningfig = plotlearning()
-	# savefig(learningfig, folder * "$(epoch)_learning.pdf")
+	learningfig = plotlearning()
+	savefig(learningfig, folder * "$(epoch)_learning.pdf")
 	# savefig(learningfig, folder * "$(epoch)_learning.tex")
 end
-
-# ╔═╡ 8ef7d016-3f38-42c9-a29b-57bab0016b7e
-exportresults(1)
 
 # ╔═╡ 7a7e8e9b-ca89-4826-8a5c-fe51d96152ad
 if enabletraining
@@ -1003,7 +1001,6 @@ savefig(p_hist, "~/Downloads/histogram_ext.pdf")
 # ╠═f0a34be1-6aa2-4563-abc2-ea163a778752
 # ╠═f4a16e34-669e-4c93-bd83-e3622a747a3a
 # ╠═9789decf-c384-42df-b7aa-3c2137a69a41
-# ╠═8ef7d016-3f38-42c9-a29b-57bab0016b7e
 # ╠═7a7e8e9b-ca89-4826-8a5c-fe51d96152ad
 # ╠═67e5ae14-3062-4a93-9492-fc6e9861577f
 # ╠═78aa72e2-8188-441f-9910-1bc5525fda7a
