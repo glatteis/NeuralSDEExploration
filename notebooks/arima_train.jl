@@ -67,7 +67,7 @@ airp = CSV.File(StateSpaceModels.AIR_PASSENGERS) |> DataFrame
 y = map(first, solution[1].u)[1:400]
 
 # ╔═╡ 6a941237-b0d1-490d-81d3-07aa15b1d723
-plot(y, aspect_ratio=6.0)
+plot(y)
 
 # ╔═╡ e816dd26-cf7d-4bcc-abe8-af2fd3fcb9cf
 log_air_passengers = log.(airp.passengers)

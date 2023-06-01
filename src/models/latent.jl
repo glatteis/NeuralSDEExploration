@@ -103,7 +103,8 @@ function (n::LatentSDE)(timeseries::Vector{NamedTuple{(:t, :u), Tuple{Vector{Flo
     noise=(seed) -> nothing,
     stick_landing=false,
     likelihood_dist=Normal,
-    likelihood_scale=0.05f0
+    likelihood_scale=0.05f0,
+    reverse_context=true,
 )
     # We are using matrices with the following dimensions:
     # 1 = latent space dimension
@@ -124,11 +125,17 @@ function (n::LatentSDE)(timeseries::Vector{NamedTuple{(:t, :u), Tuple{Vector{Flo
     # time: dimension 3 => dimension 2
     # batches: dimension 2 => dimension 3
     tsmatrix_flipped = permutedims(tsmatrix, (1, 3, 2))
+    if reverse_context
+        tsmatrix_flipped = reverse(tsmatrix_flipped, dims=2)
+    end
 
     # ## !! LUX.JL BUG WORKAROUND !! (fixed in Lux.jl v0.4.51)
     # tsmatrix_flipped_wrong = hcat(tsmatrix_flipped[:, 1:1, :], reverse(tsmatrix_flipped[:, 2:end, :], dims=2))
 
     context_flipped = n.encoder(tsmatrix_flipped, ps.encoder, st.encoder)[1]
+    if reverse_context
+        context_flipped = reverse(context_flipped)
+    end
 
     # context_flipped is now a vector of 2-dim matrices
     # latent space: dimension 1

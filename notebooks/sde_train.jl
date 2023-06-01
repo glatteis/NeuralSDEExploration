@@ -397,7 +397,7 @@ The encoder takes a timeseries and outputs context that can be passed to the pos
 """
 
 # ╔═╡ 36a0fae8-c384-42fd-a6a0-159ea3664aa1
-encoder = Lux.Recurrence(Lux.LSTMCell(data_dims => context_size); return_sequence=true)
+encoder = Lux.Recurrence(Lux.GRUCell(data_dims => context_size); return_sequence=true)
 
 # ╔═╡ 25558746-2baf-4f46-b21f-178c49106ed1
 md"""
@@ -575,7 +575,7 @@ md"""
 plot(viz_batch, title="Timeseries", label=false)
 
 # ╔═╡ cee607cc-79fb-4aed-9d91-83d3ff683cb5
-example_context, st_ = encoder(permutedims(tsmatrix_batch, (1, 3, 2)), ps.encoder, st.encoder)
+example_context, st_ = encoder(reverse(permutedims(tsmatrix_batch, (1, 3, 2)), dims=2), ps.encoder, st.encoder)
 
 # ╔═╡ 3c163505-22f7-4738-af96-369b30436dd7
 plot(reduce((x,y) -> cat(x, y; dims = 3), example_context)[1, :, :]', title="Context")
@@ -781,8 +781,6 @@ gifplot()
 recorded_loss
 
 # ╔═╡ 38716b5c-fe06-488c-b6ed-d2e28bd3d397
-# ╠═╡ disabled = true
-#=╠═╡
 begin
 	if enabletraining
 		opt_state = Optimisers.setup(Optimisers.Adam(), ps)
@@ -794,7 +792,6 @@ begin
 	end
 end
 
-  ╠═╡ =#
 
 # ╔═╡ 8880282e-1b5a-4c85-95ef-699ccf8d4203
 md"""
