@@ -1,14 +1,15 @@
 using Lux, LuxCore, Distributions, InformationGeometry, Functors, ChainRulesCore, DifferentialEquations
 export LatentSDE, sample_prior
 
-struct LatentSDE{N1,N2,N3,N4,N5,N6,N7,S,T,D,TD,K} <: LuxCore.AbstractExplicitContainerLayer{(:initial_prior, :initial_posterior, :drift_prior, :drift_posterior, :diffusion, :encoder, :projector,)}
+struct LatentSDE{N1,N2,N3,N4,N5,N6,N7,N8,S,T,D,TD,K} <: LuxCore.AbstractExplicitContainerLayer{(:initial_prior, :initial_posterior, :drift_prior, :drift_posterior, :diffusion, :encoder_recurrent, :encoder_net, :projector,)}
     initial_prior::N1
     initial_posterior::N2
     drift_prior::N3
     drift_posterior::N4
     diffusion::N5
-    encoder::N6
-    projector::N7
+    encoder_recurrent::N6
+    encoder_net::N7
+    projector::N8
     solver::S
     tspan::T
     datasize::D
@@ -16,8 +17,8 @@ struct LatentSDE{N1,N2,N3,N4,N5,N6,N7,S,T,D,TD,K} <: LuxCore.AbstractExplicitCon
     kwargs::K
 end
 
-function LatentSDE(initial_prior, initial_posterior, drift_prior, drift_posterior, diffusion, encoder, projector, solver, tspan, datasize; timedependent=false, kwargs...)
-    models = [initial_prior, initial_posterior, drift_prior, drift_posterior, diffusion, encoder, projector]
+function LatentSDE(initial_prior, initial_posterior, drift_prior, drift_posterior, diffusion, encoder_recurrent, encoder_net, projector, solver, tspan, datasize; timedependent=false, kwargs...)
+    models = [initial_prior, initial_posterior, drift_prior, drift_posterior, diffusion, encoder_recurrent, encoder_net, projector]
     LatentSDE{
         [typeof(x) for x in models]...,
         typeof(solver),typeof(tspan),typeof(datasize),typeof(timedependent),typeof(kwargs)
@@ -94,7 +95,6 @@ Autodiff this function to train the Latent SDE.
 - `stick_landing`: Enable a broken implementation of "sticking-the-landing".
 - `likelihood_dist`: Distribution for computing log-likelihoods (as a way of computing distance).
 - `likelihood_scale`: Variance of `likelihood_dist`.
-
 """
 function (n::LatentSDE)(timeseries::Vector{NamedTuple{(:t, :u), Tuple{Vector{Float32}, Vector{Float32}}}}, ps::ComponentVector, st;
     sense=InterpolatingAdjoint(autojacvec=ZygoteVJP(), checkpointing=true),
@@ -104,7 +104,6 @@ function (n::LatentSDE)(timeseries::Vector{NamedTuple{(:t, :u), Tuple{Vector{Flo
     stick_landing=false,
     likelihood_dist=Normal,
     likelihood_scale=0.05f0,
-    reverse_context=true,
 )
     # We are using matrices with the following dimensions:
     # 1 = latent space dimension
@@ -124,18 +123,13 @@ function (n::LatentSDE)(timeseries::Vector{NamedTuple{(:t, :u), Tuple{Vector{Flo
     # Lux recurrent uses batches / time the other way around...
     # time: dimension 3 => dimension 2
     # batches: dimension 2 => dimension 3
-    tsmatrix_flipped = permutedims(tsmatrix, (1, 3, 2))
-    if reverse_context
-        tsmatrix_flipped = reverse(tsmatrix_flipped, dims=2)
-    end
+    tsmatrix_flipped = reverse(permutedims(tsmatrix, (1, 3, 2)), dims=2)
 
     # ## !! LUX.JL BUG WORKAROUND !! (fixed in Lux.jl v0.4.51)
     # tsmatrix_flipped_wrong = hcat(tsmatrix_flipped[:, 1:1, :], reverse(tsmatrix_flipped[:, 2:end, :], dims=2))
 
-    context_flipped = n.encoder(tsmatrix_flipped, ps.encoder, st.encoder)[1]
-    if reverse_context
-        context_flipped = reverse(context_flipped)
-    end
+    precontext_flipped = reverse(n.encoder_recurrent(tsmatrix_flipped, ps.encoder_recurrent, st.encoder_recurrent)[1])
+    context_flipped = [n.encoder_net(x, ps.encoder_net, st.encoder_net)[1] for x in precontext_flipped]
 
     # context_flipped is now a vector of 2-dim matrices
     # latent space: dimension 1
@@ -200,10 +194,13 @@ function (n::LatentSDE)(timeseries::Vector{NamedTuple{(:t, :u), Tuple{Vector{Flo
     end
 
     function prob_func(prob, batch, repeat)
+        noise_instance = ChainRulesCore.ignore_derivatives() do
+            noise(seed)
+        end
         if seed !== nothing
-            return SDEProblem{false}(augmented_drift(batch), augmented_diffusion(batch), augmented_z0[:, batch], n.tspan, ps, seed=seed + Int(batch), noise=noise(seed))
+            return SDEProblem{false}(augmented_drift(batch), augmented_diffusion(batch), augmented_z0[:, batch], n.tspan, ps, seed=seed + Int(batch), noise=noise_instance)
         else
-            return SDEProblem{false}(augmented_drift(batch), augmented_diffusion(batch), augmented_z0[:, batch], n.tspan, ps, noise=noise(nothing))
+            return SDEProblem{false}(augmented_drift(batch), augmented_diffusion(batch), augmented_z0[:, batch], n.tspan, ps, noise=noise_instance)
         end
     end
 

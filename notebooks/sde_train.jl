@@ -373,8 +373,8 @@ CLI arg: `--backsolve`
 (sense, noise) = if backsolve
 	(
 		BacksolveAdjoint(autojacvec=ZygoteVJP(), checkpointing=true),
-		#(seed) -> VirtualBrownianTree(0f0, 0f0, tend=tspan_model[2], tree_depth=2)
-		(seed) -> nothing,
+		#(seed) -> VirtualBrownianTree(-tspan_model[2], 0f0, tend=tspan_model[2], tree_depth=2),
+		(seed) -> VirtualBrownianTree(-1.0, 0f0, tend=tspan_model[2]+1.0),
 	)
 else
 	(
@@ -396,8 +396,11 @@ md"""
 The encoder takes a timeseries and outputs context that can be passed to the posterior SDE, that is, the SDE that has information about the data and encodes $p_\theta(z \mid x)$.
 """
 
+# ╔═╡ 6fb669b6-c05d-4b88-a9fe-f887d90fa01f
+encoder_recurrent = Lux.Recurrence(Lux.GRUCell(data_dims => Int(hidden_size / 4)); return_sequence=true)
+
 # ╔═╡ 36a0fae8-c384-42fd-a6a0-159ea3664aa1
-encoder = Lux.Recurrence(Lux.GRUCell(data_dims => context_size); return_sequence=true)
+encoder_net = Lux.Dense(Int(hidden_size / 4) => context_size)
 
 # ╔═╡ 25558746-2baf-4f46-b21f-178c49106ed1
 md"""
@@ -494,7 +497,8 @@ latent_sde = LatentSDE(
 	drift_prior,
 	drift_posterior,
 	diffusion,
-	encoder,
+	encoder_recurrent,
+	encoder_net,
 	projector,
 	#DRI1(),
 	solver,
@@ -575,10 +579,10 @@ md"""
 plot(viz_batch, title="Timeseries", label=false)
 
 # ╔═╡ cee607cc-79fb-4aed-9d91-83d3ff683cb5
-example_context, st_ = encoder(reverse(permutedims(tsmatrix_batch, (1, 3, 2)), dims=2), ps.encoder, st.encoder)
+# example_context, st_ = encoder(reverse(permutedims(tsmatrix_batch, (1, 3, 2)), dims=2), ps.encoder, st.encoder)
 
 # ╔═╡ 3c163505-22f7-4738-af96-369b30436dd7
-plot(reduce((x,y) -> cat(x, y; dims = 3), example_context)[1, :, :]', title="Context")
+# plot(reduce((x,y) -> cat(x, y; dims = 3), example_context)[1, :, :]', title="Context")
 
 # ╔═╡ 149f32fd-62bc-444d-a771-5f7e27435c73
 md"""
@@ -707,10 +711,11 @@ function train(learning_rate, num_steps, opt_state; sched=Loop(x -> eta, 1))
 		push!(recorded_likelihood, likelihood)
 		push!(recorded_eta, eta)
 		push!(recorded_lr, learning_rate)
-
+		
+		println("Loss: $l")
 		println("Computing gradient...")
 		@time dps = Zygote.gradient(ps -> loss(ps, minibatch, eta)[1], ps)
-		println("Loss: $l")
+		
 		Optimisers.update!(opt_state, ps, dps[1])
 	end
 end
@@ -781,6 +786,8 @@ gifplot()
 recorded_loss
 
 # ╔═╡ 38716b5c-fe06-488c-b6ed-d2e28bd3d397
+# ╠═╡ disabled = true
+#=╠═╡
 begin
 	if enabletraining
 		opt_state = Optimisers.setup(Optimisers.Adam(), ps)
@@ -792,6 +799,7 @@ begin
 	end
 end
 
+  ╠═╡ =#
 
 # ╔═╡ 8880282e-1b5a-4c85-95ef-699ccf8d4203
 md"""
@@ -942,6 +950,7 @@ savefig(p_hist, "~/Downloads/histogram_ext.pdf")
 # ╟─86620e12-9631-4156-8b1c-60545b8a8352
 # ╟─0c0e5a95-195e-4057-bcba-f1d92d75cbab
 # ╟─bec46289-4d61-4b90-bc30-0a86f174a599
+# ╠═6fb669b6-c05d-4b88-a9fe-f887d90fa01f
 # ╠═36a0fae8-c384-42fd-a6a0-159ea3664aa1
 # ╟─25558746-2baf-4f46-b21f-178c49106ed1
 # ╟─0d09a662-78d3-4202-b2be-843a0669fc9f

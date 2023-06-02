@@ -53,6 +53,9 @@ ps = dict["ps"]
 # ╔═╡ 23bc5697-f1ca-4598-92fb-2d43e94ce310
 st = dict["st"]
 
+# ╔═╡ fabc1578-ba35-4c4e-9129-02da3bf43f56
+timeeseries = dict["timeseries"]
+
 # ╔═╡ 5e6398df-a1f5-4cce-a8ba-36c497cd6cda
 plot(sample_prior(latent_sde, ps, st))
 
@@ -65,4 +68,5 @@ plot(sample_prior(latent_sde, ps, st))
 # ╠═9f89a8d9-05e5-4af0-9dd8-1a528ea7e9de
 # ╠═7da4b3b6-3cee-4b93-9359-a2f7e2341da9
 # ╠═23bc5697-f1ca-4598-92fb-2d43e94ce310
+# ╠═fabc1578-ba35-4c4e-9129-02da3bf43f56
 # ╠═5e6398df-a1f5-4cce-a8ba-36c497cd6cda
