@@ -1,0 +1,17 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "julia",
+            "request": "launch",
+            "name": "Train debug",
+            "program": "-t5 notebooks/sde_train.jl -m ou --batch-size 128 --eta 0.1 --learning-rate 0.05 --latent-dims 3 --stick-landing false --kl-rate 5000 --kl-anneal false --tspan-start-data 0.0 --tspan-end-data 20.0 --tspan-start-train 5.0 --tspan-end-train 20.0 --tspan-start-model 0.0 --tspan-end-model 20.0 --dt 0.5 --hidden-size 64 --backsolve true",
+            "stopOnEntry": false,
+            "cwd": "${workspaceFolder}",
+            "juliaEnv": "${command:activeJuliaEnvironment}"
+        }
+    ]
+}

@@ -724,8 +724,7 @@ end
 
 # ╔═╡ 7a7e8e9b-ca89-4826-8a5c-fe51d96152ad
 if enabletraining
-	@time dps = Zygote.gradient(ps -> loss(ps, timeseries[1:batch_size], 1.0, 1)[1], ps)[1]
-end
+	@time dps = Zygote.gradient(ps -> loss(ps, timeseries[1:batch_size], 1.0, rand(rng, UInt16))[1], ps)[1]
 
 # ╔═╡ f4a16e34-669e-4c93-bd83-e3622a747a3a
 function train(learning_rate, num_steps, opt_state; sched=Loop(x -> eta, 1))
