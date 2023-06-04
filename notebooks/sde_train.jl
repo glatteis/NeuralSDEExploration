@@ -697,6 +697,38 @@ function loss(ps, minibatch, eta, seed)
 	return mean(-likelihood .+ (eta * kl_divergence)), mean(kl_divergence), mean(likelihood)
 end
 
+# ╔═╡ f4a16e34-669e-4c93-bd83-e3622a747a3a
+function train(learning_rate, num_steps, opt_state; sched=Loop(x -> eta, 1))
+	for step in 1:num_steps
+		eta = popfirst!(sched)
+		
+		s = sample(rng, 1:size(timeseries)[1], batch_size, replace=false)
+		minibatch = timeseries[s]
+
+		seed = rand(rng, UInt16)
+
+		l, kl_divergence, likelihood = loss(ps, minibatch, eta, seed)
+		# exploding "bad luck" seeds make differentiation run out of memory?
+		if length(recorded_loss) > 0 && l >= 10 * recorded_loss[end]
+			continue
+		end
+		
+		push!(recorded_loss, l)
+		push!(recorded_kl, kl_divergence)
+		push!(recorded_likelihood, likelihood)
+		push!(recorded_eta, eta)
+		push!(recorded_lr, learning_rate)
+
+		println("Loss: $l")
+		println("Computing gradient...")
+		dps = Zygote.gradient(ps -> loss(ps, minibatch, eta, seed)[1], ps)
+		
+		GC.gc(step % 10 == 1)
+		
+		Optimisers.update!(opt_state, ps, dps[1])
+	end
+end
+
 # ╔═╡ 9789decf-c384-42df-b7aa-3c2137a69a41
 function exportresults(epoch)
 	folder_name = if "SLURM_JOB_ID" in keys(ENV)
@@ -725,36 +757,6 @@ end
 # ╔═╡ 7a7e8e9b-ca89-4826-8a5c-fe51d96152ad
 if enabletraining
 	@time dps = Zygote.gradient(ps -> loss(ps, timeseries[1:batch_size], 1.0, rand(rng, UInt16))[1], ps)[1]
-end
-
-# ╔═╡ f4a16e34-669e-4c93-bd83-e3622a747a3a
-function train(learning_rate, num_steps, opt_state; sched=Loop(x -> eta, 1))
-	for step in 1:num_steps
-		eta = popfirst!(sched)
-		
-		s = sample(rng, 1:size(timeseries)[1], batch_size, replace=false)
-		minibatch = timeseries[s]
-
-		seed = rand(rng, UInt16)
-
-		l, kl_divergence, likelihood = loss(ps, minibatch, eta, seed)
-		# exploding "bad luck" seeds make differentiation run out of memory?
-		if length(recorded_loss) > 0 && l >= 10 * recorded_loss[end]
-			continue
-		end
-		
-		push!(recorded_loss, l)
-		push!(recorded_kl, kl_divergence)
-		push!(recorded_likelihood, likelihood)
-		push!(recorded_eta, eta)
-		push!(recorded_lr, learning_rate)
-
-		println("Loss: $l")
-		println("Computing gradient...")
-		@time dps = Zygote.gradient(ps -> loss(ps, minibatch, eta, seed)[1], ps)
-		
-		Optimisers.update!(opt_state, ps, dps[1])
-	end
 end
 
 # ╔═╡ 67e5ae14-3062-4a93-9492-fc6e9861577f
@@ -791,19 +793,6 @@ gifplot()
 
 # ╔═╡ 4f955207-5f7f-4bbf-a738-d518a21b651d
 recorded_loss
-
-# ╔═╡ 38716b5c-fe06-488c-b6ed-d2e28bd3d397
-begin
-	if enabletraining
-		opt_state = Optimisers.setup(Optimisers.Adam(), ps)
-
-		@gif for epoch in 1:5
-			train(learning_rate, 10, opt_state; sched=sched)
-			gifplot()
-		end
-	end
-end
-
 
 # ╔═╡ 8880282e-1b5a-4c85-95ef-699ccf8d4203
 md"""
