@@ -697,31 +697,6 @@ function loss(ps, minibatch, eta, seed)
 	return mean(-likelihood .+ (eta * kl_divergence)), mean(kl_divergence), mean(likelihood)
 end
 
-# ╔═╡ f4a16e34-669e-4c93-bd83-e3622a747a3a
-function train(learning_rate, num_steps, opt_state; sched=Loop(x -> eta, 1))
-	for step in 1:num_steps
-		eta = popfirst!(sched)
-		
-		s = sample(rng, 1:size(timeseries)[1], batch_size, replace=false)
-		minibatch = timeseries[s]
-
-		seed = rand(rng, UInt16)
-
-		l, kl_divergence, likelihood = loss(ps, minibatch, eta, seed)
-		push!(recorded_loss, l)
-		push!(recorded_kl, kl_divergence)
-		push!(recorded_likelihood, likelihood)
-		push!(recorded_eta, eta)
-		push!(recorded_lr, learning_rate)
-		
-		println("Loss: $l")
-		println("Computing gradient...")
-		@time dps = Zygote.gradient(ps -> loss(ps, minibatch, eta, seed)[1], ps)
-		
-		Optimisers.update!(opt_state, ps, dps[1])
-	end
-end
-
 # ╔═╡ 9789decf-c384-42df-b7aa-3c2137a69a41
 function exportresults(epoch)
 	folder_name = if "SLURM_JOB_ID" in keys(ENV)
@@ -752,6 +727,36 @@ if enabletraining
 	@time dps = Zygote.gradient(ps -> loss(ps, timeseries[1:batch_size], 1.0, 1)[1], ps)[1]
 end
 
+# ╔═╡ f4a16e34-669e-4c93-bd83-e3622a747a3a
+function train(learning_rate, num_steps, opt_state; sched=Loop(x -> eta, 1))
+	for step in 1:num_steps
+		eta = popfirst!(sched)
+		
+		s = sample(rng, 1:size(timeseries)[1], batch_size, replace=false)
+		minibatch = timeseries[s]
+
+		seed = rand(rng, UInt16)
+
+		l, kl_divergence, likelihood = loss(ps, minibatch, eta, seed)
+		push!(recorded_loss, l)
+		push!(recorded_kl, kl_divergence)
+		push!(recorded_likelihood, likelihood)
+		push!(recorded_eta, eta)
+		push!(recorded_lr, learning_rate)
+
+		# exploding "bad luck" seeds make differentiation run out of memory?
+		if length(recorded_loss) > 0 && l >= 10 * recorded_loss[end]
+			continue
+		end
+		
+		println("Loss: $l")
+		println("Computing gradient...")
+		@time dps = Zygote.gradient(ps -> loss(ps, minibatch, eta, seed)[1], ps)
+		
+		Optimisers.update!(opt_state, ps, dps[1])
+	end
+end
+
 # ╔═╡ 67e5ae14-3062-4a93-9492-fc6e9861577f
 if kl_anneal
 	sched = Iterators.Stateful(Loop(Sequence([Loop(x -> (eta*x*2)/kl_rate, kl_rate÷2), Loop(x -> eta, kl_rate÷2)], [kl_rate÷2, kl_rate÷2]), kl_rate))
@@ -765,7 +770,7 @@ begin
 		opt_state_job = Optimisers.setup(Optimisers.Adam(), ps)
 		# precompile exportresults because there are some memory problems
 		exportresults(0)
-		for epoch in 1:100
+		for epoch in 1:1000
 			train(learning_rate, 250, opt_state_job; sched=sched)
 			exportresults(epoch)
 			GC.gc()
