@@ -738,17 +738,17 @@ function train(learning_rate, num_steps, opt_state; sched=Loop(x -> eta, 1))
 		seed = rand(rng, UInt16)
 
 		l, kl_divergence, likelihood = loss(ps, minibatch, eta, seed)
+		# exploding "bad luck" seeds make differentiation run out of memory?
+		if length(recorded_loss) > 0 && l >= 10 * recorded_loss[end]
+			continue
+		end
+		
 		push!(recorded_loss, l)
 		push!(recorded_kl, kl_divergence)
 		push!(recorded_likelihood, likelihood)
 		push!(recorded_eta, eta)
 		push!(recorded_lr, learning_rate)
 
-		# exploding "bad luck" seeds make differentiation run out of memory?
-		if length(recorded_loss) > 0 && l >= 10 * recorded_loss[end]
-			continue
-		end
-		
 		println("Loss: $l")
 		println("Computing gradient...")
 		@time dps = Zygote.gradient(ps -> loss(ps, minibatch, eta, seed)[1], ps)
