@@ -692,8 +692,8 @@ function plotlearning()
 end
 
 # ╔═╡ f0a34be1-6aa2-4563-abc2-ea163a778752
-function loss(ps, minibatch, eta)
-	_, _, _, kl_divergence, likelihood = latent_sde(minibatch, ps, st; sense=sense, noise=noise, ensemblemode=ensemblemode, stick_landing=stick_landing, seed=rand(rng, UInt16))
+function loss(ps, minibatch, eta, seed)
+	_, _, _, kl_divergence, likelihood = latent_sde(minibatch, ps, st; sense=sense, noise=noise, ensemblemode=ensemblemode, stick_landing=stick_landing, seed=seed)
 	return mean(-likelihood .+ (eta * kl_divergence)), mean(kl_divergence), mean(likelihood)
 end
 
@@ -705,7 +705,9 @@ function train(learning_rate, num_steps, opt_state; sched=Loop(x -> eta, 1))
 		s = sample(rng, 1:size(timeseries)[1], batch_size, replace=false)
 		minibatch = timeseries[s]
 
-		l, kl_divergence, likelihood = loss(ps, minibatch, eta)
+		seed = rand(rng, UInt16)
+
+		l, kl_divergence, likelihood = loss(ps, minibatch, eta, seed)
 		push!(recorded_loss, l)
 		push!(recorded_kl, kl_divergence)
 		push!(recorded_likelihood, likelihood)
@@ -714,7 +716,7 @@ function train(learning_rate, num_steps, opt_state; sched=Loop(x -> eta, 1))
 		
 		println("Loss: $l")
 		println("Computing gradient...")
-		@time dps = Zygote.gradient(ps -> loss(ps, minibatch, eta)[1], ps)
+		@time dps = Zygote.gradient(ps -> loss(ps, minibatch, eta, seed)[1], ps)
 		
 		Optimisers.update!(opt_state, ps, dps[1])
 	end
@@ -747,7 +749,7 @@ end
 
 # ╔═╡ 7a7e8e9b-ca89-4826-8a5c-fe51d96152ad
 if enabletraining
-	@time dps = Zygote.gradient(ps -> loss(ps, timeseries[1:batch_size], 1.0)[1], ps)[1]
+	@time dps = Zygote.gradient(ps -> loss(ps, timeseries[1:batch_size], 1.0, 1)[1], ps)[1]
 end
 
 # ╔═╡ 67e5ae14-3062-4a93-9492-fc6e9861577f
@@ -786,20 +788,17 @@ gifplot()
 recorded_loss
 
 # ╔═╡ 38716b5c-fe06-488c-b6ed-d2e28bd3d397
-# ╠═╡ disabled = true
-#=╠═╡
 begin
 	if enabletraining
 		opt_state = Optimisers.setup(Optimisers.Adam(), ps)
 
-		@gif for epoch in 1:30
+		@gif for epoch in 1:5
 			train(learning_rate, 10, opt_state; sched=sched)
 			gifplot()
 		end
 	end
 end
 
-  ╠═╡ =#
 
 # ╔═╡ 8880282e-1b5a-4c85-95ef-699ccf8d4203
 md"""
