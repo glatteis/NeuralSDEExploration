@@ -195,7 +195,7 @@ function (n::LatentSDE)(timeseries::Vector{NamedTuple{(:t, :u), Tuple{Vector{Flo
 
     function prob_func(prob, batch, repeat)
         noise_instance = ChainRulesCore.ignore_derivatives() do
-            noise(Int(floor(seed)))
+            noise(Int(floor(seed + batch)))
         end
         if seed !== nothing
             return SDEProblem{false}(augmented_drift(batch), augmented_diffusion(batch), augmented_z0[:, batch], n.tspan, ps, seed=seed + Int(batch), noise=noise_instance)

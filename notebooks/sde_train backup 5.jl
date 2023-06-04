@@ -24,7 +24,7 @@ begin
 end
 
 # ╔═╡ b6abba94-db07-4095-98c9-443e31832e7d
-using Optimisers, StatsBase, Zygote, Lux, DifferentialEquations, ComponentArrays, ParameterSchedulers, Random, Distributed, ForwardDiff, LuxCore, Dates, JLD2, SciMLSensitivity, JLD2, Random123
+using Optimisers, StatsBase, Zygote, Lux, DifferentialEquations, ComponentArrays, ParameterSchedulers, Random, Distributed, ForwardDiff, LuxCore, Dates, JLD2, SciMLSensitivity, JLD2
 
 # ╔═╡ d1440209-78f7-4a9a-9101-a06ad2534e5d
 using NeuralSDEExploration, Plots, PlutoUI, PlutoArgs
@@ -369,20 +369,12 @@ Use backsolve: $(@bind backsolve Arg("backsolve", CheckBox(true), required=false
 CLI arg: `--backsolve`
 """
 
-# ╔═╡ cb1c2b2e-a2a2-45ed-9fc1-655d28f267d1
-md"""
-Brownian tree cache depth: $(@bind tree_depth Arg("tree-depth", NumberField(1:100, 2), required=false))
-CLI arg: `--tree-depth`
-"""
-
 # ╔═╡ 2bb433bb-17df-4a34-9ccf-58c0cf8b4dd3
 (sense, noise) = if backsolve
 	(
 		BacksolveAdjoint(autojacvec=ZygoteVJP(), checkpointing=true),
-		function(seed)
-			rng = Xoshiro(seed)
-			VirtualBrownianTree(-1.0, 0f0, tend=tspan_model[2]+1.0; tree_depth=tree_depth, rng=Threefry4x((rand(rng, Int64), rand(rng, Int64), rand(rng, Int64), rand(rng, Int64))))
-		end,
+		#(seed) -> VirtualBrownianTree(-tspan_model[2], 0f0, tend=tspan_model[2], tree_depth=2),
+		(seed) -> VirtualBrownianTree(-1.0, 0f0, tend=tspan_model[2]+1.0),
 	)
 else
 	(
@@ -650,7 +642,7 @@ function plotmodel()
 	rng = Xoshiro(0)
 	nums = sample(rng,1:length(timeseries),n;replace=false)
 
-	posterior_latent, posterior_data, logterm_, kl_divergence_, distance_ = latent_sde(timeseries[nums], ps, st, seed=seed, noise=noise)
+	posterior_latent, posterior_data, logterm_, kl_divergence_, distance_ = latent_sde(timeseries[nums], ps, st, seed=seed)
 	
 	priorsamples = 25
 	priorplot = plot_prior(priorsamples, rng=rng)
@@ -716,7 +708,11 @@ function train(learning_rate, num_steps, opt_state; sched=Loop(x -> eta, 1))
 		seed = rand(rng, UInt16)
 
 		l, kl_divergence, likelihood = loss(ps, minibatch, eta, seed)
-
+		# exploding "bad luck" seeds make differentiation run out of memory?
+		if length(recorded_loss) > 0 && l >= 10 * recorded_loss[end]
+			continue
+		end
+		
 		push!(recorded_loss, l)
 		push!(recorded_kl, kl_divergence)
 		push!(recorded_likelihood, likelihood)
@@ -760,7 +756,7 @@ end
 
 # ╔═╡ 7a7e8e9b-ca89-4826-8a5c-fe51d96152ad
 if enabletraining
-	@time dps = Zygote.gradient(ps -> loss(ps, timeseries[1:batch_size], 1.0, 10)[1], ps)[1]
+	@time dps = Zygote.gradient(ps -> loss(ps, timeseries[1:batch_size], 1.0, rand(rng, UInt16))[1], ps)[1]
 end
 
 # ╔═╡ 67e5ae14-3062-4a93-9492-fc6e9861577f
@@ -794,6 +790,9 @@ end
 
 # ╔═╡ 763f07e6-dd46-42d6-b57a-8f1994386302
 gifplot()
+
+# ╔═╡ 4f955207-5f7f-4bbf-a738-d518a21b651d
+recorded_loss
 
 # ╔═╡ 8880282e-1b5a-4c85-95ef-699ccf8d4203
 md"""
@@ -939,8 +938,7 @@ savefig(p_hist, "~/Downloads/histogram_ext.pdf")
 # ╟─2c64b173-d4ad-477d-afde-5f3916e922ef
 # ╟─9767a8ea-bdda-43fc-b636-8681d150d29f
 # ╟─3db229f0-0e13-4d80-8680-58b89161db35
-# ╟─cb1c2b2e-a2a2-45ed-9fc1-655d28f267d1
-# ╟─2bb433bb-17df-4a34-9ccf-58c0cf8b4dd3
+# ╠═2bb433bb-17df-4a34-9ccf-58c0cf8b4dd3
 # ╟─db88cae4-cb25-4628-9298-5a694c4b29ef
 # ╟─86620e12-9631-4156-8b1c-60545b8a8352
 # ╟─0c0e5a95-195e-4057-bcba-f1d92d75cbab
@@ -1007,6 +1005,8 @@ savefig(p_hist, "~/Downloads/histogram_ext.pdf")
 # ╠═78aa72e2-8188-441f-9910-1bc5525fda7a
 # ╠═830f7e7a-71d0-43c8-8e74-d1709b8a6707
 # ╠═763f07e6-dd46-42d6-b57a-8f1994386302
+# ╠═4f955207-5f7f-4bbf-a738-d518a21b651d
+# ╠═38716b5c-fe06-488c-b6ed-d2e28bd3d397
 # ╟─8880282e-1b5a-4c85-95ef-699ccf8d4203
 # ╟─78a74e8f-f0a3-4cf2-aecc-4ba56ca5cf7f
 # ╟─47b2ec07-40f4-480d-b650-fbf1b44b7527
