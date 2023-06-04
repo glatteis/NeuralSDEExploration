@@ -693,7 +693,7 @@ end
 
 # ╔═╡ f0a34be1-6aa2-4563-abc2-ea163a778752
 function loss(ps, minibatch, eta)
-	_, _, _, kl_divergence, likelihood = latent_sde(minibatch, ps, st; sense=sense, noise=noise, ensemblemode=ensemblemode, stick_landing=stick_landing, seed=abs(rand(rng, Int)))
+	_, _, _, kl_divergence, likelihood = latent_sde(minibatch, ps, st; sense=sense, noise=noise, ensemblemode=ensemblemode, stick_landing=stick_landing, seed=rand(rng, UInt16))
 	return mean(-likelihood .+ (eta * kl_divergence)), mean(kl_divergence), mean(likelihood)
 end
 
