@@ -126,6 +126,11 @@ end
 # ╔═╡ 0dc46a16-e26d-4ec2-a74e-675e83959ab2
 loss(ps, viz_batch, 1.0, seed)
 
+# ╔═╡ 96c0423f-214e-4995-a2e4-fe5c84d5a7c3
+md"""
+Histogram span: $(@bind hspan RangeSlider(1:datasize))
+"""
+
 # ╔═╡ Cell order:
 # ╠═7a6bbfd6-ffb7-11ed-39d7-5b673fe4cdae
 # ╠═6995cd16-0c69-49c7-9523-4c842c0db339
@@ -147,3 +152,4 @@ loss(ps, viz_batch, 1.0, seed)
 # ╠═6c06ef9d-d3b4-4917-89f6-af0a3e72b4d1
 # ╠═2a1ca1d0-163d-41b8-9f2d-8a3a475cc75d
 # ╠═0dc46a16-e26d-4ec2-a74e-675e83959ab2
+# ╠═96c0423f-214e-4995-a2e4-fe5c84d5a7c3

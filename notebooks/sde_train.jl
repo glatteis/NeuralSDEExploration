@@ -749,7 +749,7 @@ function exportresults(epoch)
 
 	folder = homedir() * "/artifacts/$(folder_name)/"
 
-	data = Dict("latent_sde" => latent_sde, "timeseries" => timeseries, "ps" => ps, "st" => st, "noise" => noise)
+	data = Dict("latent_sde" => latent_sde, "timeseries" => timeseries, "ps" => ps, "st" => st, "noise" => noise, "tspan_train" => tspan_train, "tspan_data" => tspan_data, "tspan_model" => tspan_model)
 
 	mkpath(folder)
 
@@ -1028,7 +1028,7 @@ savefig(p_hist, "~/Downloads/histogram_ext.pdf")
 # ╠═763f07e6-dd46-42d6-b57a-8f1994386302
 # ╠═655877c5-d636-4c1c-85c6-82129c1a4999
 # ╟─8880282e-1b5a-4c85-95ef-699ccf8d4203
-# ╟─78a74e8f-f0a3-4cf2-aecc-4ba56ca5cf7f
+# ╠═78a74e8f-f0a3-4cf2-aecc-4ba56ca5cf7f
 # ╟─47b2ec07-40f4-480d-b650-fbf1b44b7527
 # ╟─14f9a62d-9caa-40e9-8502-d2a27b9c950e
 # ╠═b7acea88-c9a8-4fdf-b3b2-c74b25f9dd93
