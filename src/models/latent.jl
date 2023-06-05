@@ -38,7 +38,7 @@ function get_distributions(model, model_p, st, context)
     return hcat([reshape([Normal{Float32}(normsandvars[2*i-1, j], exp(0.5f0 * normsandvars[2*i, j])) for i in halfindices], :, 1) for j in batch_indices]...)
 end
 
-function sample_prior(n::LatentSDE, ps, st; b=1, seed=nothing, noise=(seed) -> nothing)
+function sample_prior(n::LatentSDE, ps, st; b=1, seed=nothing, noise=(seed) -> nothing, tspan=n.tspan, datasize=n.datasize)
     if seed !== nothing
         Random.seed!(seed)
     end
@@ -61,15 +61,15 @@ function sample_prior(n::LatentSDE, ps, st; b=1, seed=nothing, noise=(seed) -> n
             noise(Int(floor(seed + batch)))
         end
         if seed !== nothing
-            return SDEProblem{false}(dudt_prior, dudw_diffusion, z0[:, batch], n.tspan, ps, seed=seed + batch, noise=noise_instance)
+            return SDEProblem{false}(dudt_prior, dudw_diffusion, z0[:, batch], tspan, ps, seed=seed + batch, noise=noise_instance)
         else
-            return SDEProblem{false}(dudt_prior, dudw_diffusion, z0[:, batch], n.tspan, ps, noise=noise_instance)
+            return SDEProblem{false}(dudt_prior, dudw_diffusion, z0[:, batch], tspan, ps, noise=noise_instance)
         end
     end
 
     ensemble = EnsembleProblem(nothing, output_func=(sol, i) -> (sol, false), prob_func=prob_func)
 
-    return solve(ensemble, n.solver, trajectories=b; saveat=range(n.tspan[1], n.tspan[end], n.datasize), dt=(n.tspan[end] / n.datasize), n.kwargs...)
+    return solve(ensemble, n.solver, trajectories=b; saveat=range(tspan[1], tspan[end], datasize), dt=(tspan[end] / datasize), n.kwargs...)
 end
 
 # from https://github.com/google-research/torchsde/blob/master/examples/latent_sde.py

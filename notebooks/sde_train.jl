@@ -1030,7 +1030,7 @@ savefig(p_hist, "~/Downloads/histogram_ext.pdf")
 # ╟─8880282e-1b5a-4c85-95ef-699ccf8d4203
 # ╠═78a74e8f-f0a3-4cf2-aecc-4ba56ca5cf7f
 # ╟─47b2ec07-40f4-480d-b650-fbf1b44b7527
-# ╟─14f9a62d-9caa-40e9-8502-d2a27b9c950e
+# ╠═14f9a62d-9caa-40e9-8502-d2a27b9c950e
 # ╠═b7acea88-c9a8-4fdf-b3b2-c74b25f9dd93
 # ╠═797ea98e-a690-43a8-b212-0c3a9484e2da
 # ╠═25638805-7c33-4b91-846d-0dc893acea56

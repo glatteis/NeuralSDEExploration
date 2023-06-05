@@ -4,6 +4,16 @@
 using Markdown
 using InteractiveUtils
 
+# This Pluto notebook uses @bind for interactivity. When running this notebook outside of Pluto, the following 'mock version' of @bind gives bound variables a default value (instead of an error).
+macro bind(def, element)
+    quote
+        local iv = try Base.loaded_modules[Base.PkgId(Base.UUID("6e696c72-6542-2067-7265-42206c756150"), "AbstractPlutoDingetjes")].Bonds.initial_value catch; b -> missing; end
+        local el = $(esc(element))
+        global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : iv(el)
+        el
+    end
+end
+
 # ╔═╡ 68c8b576-e29e-11ed-2ad2-afc5ee52401a
 begin
 	if @isdefined PlutoRunner  # running inside Pluto
@@ -15,7 +25,7 @@ end
 
 
 # ╔═╡ 1071dc36-2fb4-4027-8304-cf4b7c6a962e
-using NeuralSDEExploration, StateSpaceModels, Plots, PlutoUI, DataFrames, CSV
+using NeuralSDEExploration, StateSpaceModels, Plots, PlutoUI, DataFrames, CSV, StatsBase
 
 # ╔═╡ 7bf385b4-69cf-4e42-a8e9-2b12e57846ae
 begin
@@ -28,28 +38,28 @@ end
 
 
 # ╔═╡ dd48a285-e40e-468a-b5af-5518351128e9
-noise = 0.135
+noise = 0.2
 
 # ╔═╡ ab5de288-e73a-48f2-b8c6-478d74700f6a
-# ╠═╡ disabled = true
-#=╠═╡
 model = NeuralSDEExploration.ZeroDEnergyBalanceModel(0.425, 0.4, 1363, 0.6 * 5.67e-8, noise)
 
-  ╠═╡ =#
 
 # ╔═╡ 407b38a5-8e2e-4980-9e8c-25bfd3a0aab5
+# ╠═╡ disabled = true
+#=╠═╡
 model = NeuralSDEExploration.FitzHughNagumoModelGamma()
+  ╠═╡ =#
 
 # ╔═╡ 2ae8f19f-8a70-43ec-b552-d56c1b65d746
 begin
 	n = 2
-    datasize = 2000
+    datasize = 10000
     tspan = (0.0, 400.0)
 end
 
 
 # ╔═╡ cbce9923-70fa-4706-ab43-62f2c25ec559
-solution = NeuralSDEExploration.series(model, [[0.0, 0.0]], tspan, datasize; seed=11)
+solution = NeuralSDEExploration.series(model, 290.0, tspan, datasize; seed=11)
 
 # ╔═╡ d8809ab0-978e-435a-9213-a1d0fcc35331
 solution[1]
@@ -64,7 +74,7 @@ solution[1].u
 airp = CSV.File(StateSpaceModels.AIR_PASSENGERS) |> DataFrame
 
 # ╔═╡ 58f08340-c39e-433e-ac63-3a3b89d475a7
-y = map(first, solution[1].u)[1:400]
+y = map(first, solution[1].u)
 
 # ╔═╡ 6a941237-b0d1-490d-81d3-07aa15b1d723
 plot(y)
@@ -87,14 +97,47 @@ m = SARIMA(log_air_passengers; order = (0, 1, 1), seasonal_order = (0, 1, 1, 12)
 # ╔═╡ 376c4845-7383-4d0c-8ab6-faecded265c9
 m = auto_arima(y)
 
+# ╔═╡ ce690e6c-96e5-4fb3-8426-a52bcec08ceb
+scenario_length = 3000
+
 # ╔═╡ 1f11e515-ebc5-4088-b84e-15d770454d7d
-fit!(m)
+StateSpaceModels.fit!(m)
 
 # ╔═╡ 9fdcf593-afb5-43fa-b928-99d5b42ebe81
-f = forecast(m, 200)
+f = forecast(m, scenario_length)
 
 # ╔═╡ 2f2ae3a7-2386-4db6-a450-6fdd18fd116e
 plot(m, f)
+
+# ╔═╡ 95e6c78e-0a0c-43ae-9775-a225b053a426
+scenarios = simulate_scenarios(m, 1000, 10)
+
+# ╔═╡ cffd7ab6-8eaa-4c4a-a952-d4f51bb10b19
+md"""
+Histogram span: $(@bind hspan RangeSlider(1:min(datasize, scenario_length)))
+"""
+
+# ╔═╡ f7c5e60a-8aaa-48f3-a902-4aaae07b19fc
+begin
+	ts = y[hspan]
+	histogram_data = fit(Histogram, ts, 200.0:2.0:350.0)
+end
+
+# ╔═╡ 336bcb98-5f03-4133-a3d0-eba7336febe3
+begin
+	histogram_arima = fit(Histogram, vcat(scenarios[hspan, 1, 1]...), 200.0:2.0:350.0)
+end
+
+# ╔═╡ 959e21b2-d51d-4ba8-bd26-40cb4aab7f85
+plot(scenarios[:, 1, :])
+
+# ╔═╡ 534b6091-9e34-454c-aec8-e5bb354c1404
+begin
+	p_hist = plot([
+		histogram_data,
+		histogram_arima,
+	], alpha=0.5, labels=["data" "prior"], title="marginal probabilities")
+end
 
 # ╔═╡ Cell order:
 # ╠═68c8b576-e29e-11ed-2ad2-afc5ee52401a
@@ -115,6 +158,13 @@ plot(m, f)
 # ╠═51ecdc84-4603-4994-acd0-2fd6a57861ca
 # ╠═1ee5a51c-c624-4451-8372-f29a8552a19e
 # ╠═376c4845-7383-4d0c-8ab6-faecded265c9
+# ╠═ce690e6c-96e5-4fb3-8426-a52bcec08ceb
 # ╠═1f11e515-ebc5-4088-b84e-15d770454d7d
 # ╠═9fdcf593-afb5-43fa-b928-99d5b42ebe81
 # ╠═2f2ae3a7-2386-4db6-a450-6fdd18fd116e
+# ╠═95e6c78e-0a0c-43ae-9775-a225b053a426
+# ╟─cffd7ab6-8eaa-4c4a-a952-d4f51bb10b19
+# ╠═f7c5e60a-8aaa-48f3-a902-4aaae07b19fc
+# ╠═336bcb98-5f03-4133-a3d0-eba7336febe3
+# ╠═959e21b2-d51d-4ba8-bd26-40cb4aab7f85
+# ╠═534b6091-9e34-454c-aec8-e5bb354c1404

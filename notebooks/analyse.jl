@@ -56,12 +56,6 @@ st = dict["st"]
 # ╔═╡ fabc1578-ba35-4c4e-9129-02da3bf43f56
 timeseries = dict["timeseries"]
 
-# ╔═╡ b5a4ca1c-0458-4fdb-b2eb-b29967c02158
-noise = function(seed)
-	rng = Xoshiro(seed)
-	VirtualBrownianTree(-1f0, 0f0, tend=timeseries[1].t[end]+1f0; tree_depth=0, rng=Threefry4x((rand(rng, Int64), rand(rng, Int64), rand(rng, Int64), rand(rng, Int64))))
-end
-
 # ╔═╡ af3619b0-f9be-40f2-8027-77e435f8e4e5
 md"""
 Select timeseries to do some simulations on: $(@bind ti RangeSlider(1:100; default=1:4))
@@ -69,6 +63,12 @@ Select timeseries to do some simulations on: $(@bind ti RangeSlider(1:100; defau
 
 # ╔═╡ 69459a5f-75b7-4c33-a489-bf4d4411c1ec
 seed = 547842378
+
+# ╔═╡ b5a4ca1c-0458-4fdb-b2eb-b29967c02158
+noise = function(seed; tend=timeseries[1].t[end]+1f0)
+	rng = Xoshiro(seed)
+	VirtualBrownianTree(-1f0, 0f0, tend=tend; tree_depth=0, rng=Threefry4x((rand(rng, Int64), rand(rng, Int64), rand(rng, Int64), rand(rng, Int64))))
+end
 
 # ╔═╡ e0afda9e-0b17-4e7e-9d1e-d0f05df6fa4e
 viz_batch = shuffle(Xoshiro(seed), timeseries)[ti]
@@ -80,8 +80,8 @@ posterior_latent, posterior_data, logterm_, kl_divergence_, distance_ = latent_s
 plot(logterm_[1, :, :]', title="KL-Divergence")
 
 # ╔═╡ 63213503-ab28-4158-b522-efd0b0139b6d
-function plot_prior(priorsamples; rng=rng)
-	prior_latent = NeuralSDEExploration.sample_prior(latent_sde,ps,st;seed=abs(rand(rng, Int)),b=priorsamples, noise=noise)
+function plot_prior(priorsamples; rng=rng, tspan=latent_sde.tspan, datasize=latent_sde.datasize)
+	prior_latent = NeuralSDEExploration.sample_prior(latent_sde,ps,st;seed=abs(rand(rng, Int)),b=priorsamples, noise=(seed) -> noise(seed; tend=tspan[2]), tspan=tspan, datasize=datasize)
 	projected_prior = reduce(hcat, [reduce(vcat, [latent_sde.projector(u, ps.projector, st.projector)[1] for u in batch.u]) for batch in prior_latent.u])
 	priorplot = plot(projected_prior, linewidth=.5,color=:black,legend=false,title="projected prior")
 	return priorplot
@@ -93,17 +93,17 @@ function plotmodel()
 	priors = []
 	posterior_latent = nothing
 	datas = []
-	n = 5
+	#n = 5
 	rng = Xoshiro(0)
-	nums = sample(rng,1:length(timeseries),n;replace=false)
+	#nums = sample(rng,1:length(timeseries),n;replace=false)
 
-	posterior_latent, posterior_data, logterm_, kl_divergence_, distance_ = latent_sde(timeseries[nums], ps, st, seed=seed, noise=noise)
+	posterior_latent, posterior_data, logterm_, kl_divergence_, distance_ = latent_sde(timeseries[ti], ps, st, seed=seed, noise=noise)
 	
 	priorsamples = 25
 	priorplot = plot_prior(priorsamples, rng=rng)
 
 	posteriorplot = plot(posterior_data[1, :,:]',linewidth=2,legend=false,title="projected posterior")
-	dataplot = plot(timeseries[nums],linewidth=2,legend=false,title="data")
+	dataplot = plot(timeseries[ti],linewidth=2,legend=false,title="data")
 	
 	timeseriesplot = plot(sample(rng, timeseries, priorsamples),linewidth=.5,color=:black,legend=false,title="data")
 	
@@ -128,8 +128,32 @@ loss(ps, viz_batch, 1.0, seed)
 
 # ╔═╡ 96c0423f-214e-4995-a2e4-fe5c84d5a7c3
 md"""
-Histogram span: $(@bind hspan RangeSlider(1:datasize))
+Histogram span: $(@bind hspan RangeSlider(1:20))
 """
+
+# ╔═╡ a09063de-3002-400a-af89-233eb0822041
+begin
+	prior_latent = NeuralSDEExploration.sample_prior(latent_sde,ps,st;b=length(timeseries),seed=0,noise=noise)
+	projected_prior = vcat(reduce(vcat, [latent_sde.projector(x[hspan], ps.projector, st.projector)[1] for x in prior_latent.u])...)
+	histogram_prior = fit(Histogram, projected_prior, 0.0:0.01:1.0)
+end
+
+# ╔═╡ fe157d5e-eead-4921-a310-467e56e33fb7
+begin
+	ts = vcat(reduce(vcat, [s.u[hspan] for s in timeseries])...)
+	histogram_data = fit(Histogram, ts, 0.0:0.01:1.0)
+end
+
+# ╔═╡ 2812e069-6bf9-4c80-91d7-f7fcf6c338fb
+begin
+	p_hist = plot([
+		histogram_data,
+		histogram_prior,
+	], alpha=0.5, labels=["data" "prior"], title="marginal probabilities")
+end
+
+# ╔═╡ fe1ae4b3-2f1f-4b6c-a076-0d215f222e6c
+plot_prior(25, rng=Xoshiro(), tspan=(0f0, 100f0), datasize=300)
 
 # ╔═╡ Cell order:
 # ╠═7a6bbfd6-ffb7-11ed-39d7-5b673fe4cdae
@@ -152,4 +176,8 @@ Histogram span: $(@bind hspan RangeSlider(1:datasize))
 # ╠═6c06ef9d-d3b4-4917-89f6-af0a3e72b4d1
 # ╠═2a1ca1d0-163d-41b8-9f2d-8a3a475cc75d
 # ╠═0dc46a16-e26d-4ec2-a74e-675e83959ab2
-# ╠═96c0423f-214e-4995-a2e4-fe5c84d5a7c3
+# ╟─96c0423f-214e-4995-a2e4-fe5c84d5a7c3
+# ╠═a09063de-3002-400a-af89-233eb0822041
+# ╠═fe157d5e-eead-4921-a310-467e56e33fb7
+# ╠═2812e069-6bf9-4c80-91d7-f7fcf6c338fb
+# ╠═fe1ae4b3-2f1f-4b6c-a076-0d215f222e6c
