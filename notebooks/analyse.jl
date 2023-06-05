@@ -97,13 +97,13 @@ function plotmodel()
 	rng = Xoshiro(0)
 	nums = sample(rng,1:length(timeseries),n;replace=false)
 
-	posterior_latent, posterior_data, logterm_, kl_divergence_, distance_ = latent_sde(timeseries[ti], ps, st, seed=seed, noise=noise)
+	posterior_latent, posterior_data, logterm_, kl_divergence_, distance_ = latent_sde(timeseries[nums], ps, st, seed=seed, noise=noise)
 	
 	priorsamples = 25
 	priorplot = plot_prior(priorsamples, rng=rng)
 
 	posteriorplot = plot(posterior_data[1, :,:]',linewidth=2,legend=false,title="projected posterior")
-	dataplot = plot(timeseries[ti],linewidth=2,legend=false,title="data")
+	dataplot = plot(timeseries[nums],linewidth=2,legend=false,title="data")
 	
 	timeseriesplot = plot(sample(rng, timeseries, priorsamples),linewidth=.5,color=:black,legend=false,title="data")
 	

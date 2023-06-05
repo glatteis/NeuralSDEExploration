@@ -387,7 +387,6 @@ CLI arg: `--tree-depth`
 	(
 		BacksolveAdjoint(autojacvec=ZygoteVJP(), checkpointing=true),
 		function(seed)
-			println("Brownian tree seed: $seed")
 			rng = Xoshiro(seed)
 			VirtualBrownianTree(-1f0, 0f0, tend=tspan_model[2]+1f0; tree_depth=tree_depth, rng=Threefry4x((rand(rng, UInt32), rand(rng, UInt32), rand(rng, UInt32), rand(rng, UInt32))))
 		end,
@@ -638,7 +637,7 @@ md"""
 """
 
 # ╔═╡ 2827fe3a-3ecd-4662-a2d3-c980f1e1cd84
-[x for x in NeuralSDEExploration.sample_prior(latent_sde, ps, st; b=5).u[3]]
+[x for x in NeuralSDEExploration.sample_prior(latent_sde, ps, st; b=5, seed=0, noise=noise).u[3]]
 
 # ╔═╡ 3ab9a483-08f2-4767-8bd5-ae1375a62dbe
 function plot_prior(priorsamples; rng=rng)
