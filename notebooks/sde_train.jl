@@ -320,6 +320,13 @@ $(@bind eta Arg("eta", NumberField(0.1:1000.0, 1.0), required=false)).
 CLI arg: `--eta`
 """
 
+# ╔═╡ d3536bc6-683e-416b-89ae-c94be05112d8
+md"""
+Likelihood scale
+$(@bind scale Arg("scale", NumberField(0.001:1.0, 0.05), required=false)).
+CLI arg: `--scale`
+"""
+
 # ╔═╡ 3c630a3a-7714-41c7-8cc3-601cd6efbceb
 md"""
 Learning rate
@@ -701,7 +708,7 @@ end
 
 # ╔═╡ f0a34be1-6aa2-4563-abc2-ea163a778752
 function loss(ps, minibatch, eta, seed)
-	_, _, _, kl_divergence, likelihood = latent_sde(minibatch, ps, st; sense=sense, noise=noise, ensemblemode=ensemblemode, stick_landing=stick_landing, seed=seed)
+	_, _, _, kl_divergence, likelihood = latent_sde(minibatch, ps, st; sense=sense, noise=noise, ensemblemode=ensemblemode, stick_landing=stick_landing, seed=seed, likelihood_scale=scale)
 	return mean(-likelihood .+ (eta * kl_divergence)), mean(kl_divergence), mean(likelihood)
 end
 
@@ -931,6 +938,7 @@ savefig(p_hist, "~/Downloads/histogram_ext.pdf")
 # ╟─60b5397d-7350-460b-9117-319dc127cc7e
 # ╟─16c12354-5ab6-4c0e-833d-265642119ed2
 # ╟─f12633b6-c770-439d-939f-c41b74a5c309
+# ╟─d3536bc6-683e-416b-89ae-c94be05112d8
 # ╟─3c630a3a-7714-41c7-8cc3-601cd6efbceb
 # ╟─7c23c32f-97bc-4c8d-ac54-42753be61345
 # ╟─64e7bba4-fb17-4ed8-851f-de9204f0f42d
