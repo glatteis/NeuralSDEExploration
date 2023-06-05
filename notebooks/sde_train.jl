@@ -387,8 +387,9 @@ CLI arg: `--tree-depth`
 	(
 		BacksolveAdjoint(autojacvec=ZygoteVJP(), checkpointing=true),
 		function(seed)
+			println("Brownian tree seed: $seed")
 			rng = Xoshiro(seed)
-			VirtualBrownianTree(-1.0, 0f0, tend=tspan_model[2]+1.0; tree_depth=tree_depth, rng=Threefry4x((rand(rng, Int64), rand(rng, Int64), rand(rng, Int64), rand(rng, Int64))))
+			VirtualBrownianTree(-1f0, 0f0, tend=tspan_model[2]+1f0; tree_depth=tree_depth, rng=Threefry4x((rand(rng, UInt32), rand(rng, UInt32), rand(rng, UInt32), rand(rng, UInt32))))
 		end,
 	)
 else
@@ -412,7 +413,7 @@ The encoder takes a timeseries and outputs context that can be passed to the pos
 """
 
 # ╔═╡ 6fb669b6-c05d-4b88-a9fe-f887d90fa01f
-encoder_recurrent = Lux.Recurrence(Lux.GRUCell(data_dims => Int(hidden_size / 4)); return_sequence=true)
+encoder_recurrent = Lux.Recurrence(Lux.LSTMCell(data_dims => Int(hidden_size / 4)); return_sequence=true)
 
 # ╔═╡ 36a0fae8-c384-42fd-a6a0-159ea3664aa1
 encoder_net = Lux.Dense(Int(hidden_size / 4) => context_size)
@@ -641,7 +642,7 @@ md"""
 
 # ╔═╡ 3ab9a483-08f2-4767-8bd5-ae1375a62dbe
 function plot_prior(priorsamples; rng=rng)
-	prior_latent = NeuralSDEExploration.sample_prior(latent_sde,ps,st;seed=abs(rand(rng, Int)),b=priorsamples)
+	prior_latent = NeuralSDEExploration.sample_prior(latent_sde,ps,st;seed=abs(rand(rng, Int)),b=priorsamples, noise=noise)
 	projected_prior = reduce(hcat, [reduce(vcat, [latent_sde.projector(u, ps.projector, st.projector)[1] for u in batch.u]) for batch in prior_latent.u])
 	priorplot = plot(projected_prior, linewidth=.5,color=:black,legend=false,title="projected prior")
 	return priorplot
@@ -720,7 +721,7 @@ function train(learning_rate, num_steps, opt_state; sched=Loop(x -> eta, 1))
 		s = sample(rng, 1:size(timeseries)[1], batch_size, replace=false)
 		minibatch = timeseries[s]
 
-		seed = rand(rng, UInt16)
+		seed = rand(rng, UInt32)
 
 		l, kl_divergence, likelihood = loss(ps, minibatch, eta, seed)
 
@@ -730,8 +731,7 @@ function train(learning_rate, num_steps, opt_state; sched=Loop(x -> eta, 1))
 		push!(recorded_eta, eta)
 		push!(recorded_lr, learning_rate)
 
-		println("Loss: $l")
-		println("Computing gradient...")
+		println("Loss: $l, KL: $kl_divergence")
 		dps = Zygote.gradient(ps -> loss(ps, minibatch, eta, seed)[1], ps)
 		
 		GC.gc(step % 10 == 1)
@@ -750,7 +750,7 @@ function exportresults(epoch)
 
 	folder = homedir() * "/artifacts/$(folder_name)/"
 
-	data = Dict("latent_sde" => latent_sde, "timeseries" => timeseries, "ps" => ps, "st" => st)
+	data = Dict("latent_sde" => latent_sde, "timeseries" => timeseries, "ps" => ps, "st" => st, "noise" => noise)
 
 	mkpath(folder)
 
@@ -801,6 +801,18 @@ end
 
 # ╔═╡ 763f07e6-dd46-42d6-b57a-8f1994386302
 gifplot()
+
+# ╔═╡ 655877c5-d636-4c1c-85c6-82129c1a4999
+begin
+	if enabletraining
+		opt_state = Optimisers.setup(Optimisers.Adam(), ps)
+
+		@gif for epoch in 1:10
+			train(learning_rate, 10, opt_state; sched=sched)
+			gifplot()
+		end
+	end
+end
 
 # ╔═╡ 8880282e-1b5a-4c85-95ef-699ccf8d4203
 md"""
@@ -948,7 +960,7 @@ savefig(p_hist, "~/Downloads/histogram_ext.pdf")
 # ╟─9767a8ea-bdda-43fc-b636-8681d150d29f
 # ╟─3db229f0-0e13-4d80-8680-58b89161db35
 # ╟─cb1c2b2e-a2a2-45ed-9fc1-655d28f267d1
-# ╟─2bb433bb-17df-4a34-9ccf-58c0cf8b4dd3
+# ╠═2bb433bb-17df-4a34-9ccf-58c0cf8b4dd3
 # ╟─db88cae4-cb25-4628-9298-5a694c4b29ef
 # ╟─86620e12-9631-4156-8b1c-60545b8a8352
 # ╟─0c0e5a95-195e-4057-bcba-f1d92d75cbab
@@ -1015,6 +1027,7 @@ savefig(p_hist, "~/Downloads/histogram_ext.pdf")
 # ╠═78aa72e2-8188-441f-9910-1bc5525fda7a
 # ╠═830f7e7a-71d0-43c8-8e74-d1709b8a6707
 # ╠═763f07e6-dd46-42d6-b57a-8f1994386302
+# ╠═655877c5-d636-4c1c-85c6-82129c1a4999
 # ╟─8880282e-1b5a-4c85-95ef-699ccf8d4203
 # ╟─78a74e8f-f0a3-4cf2-aecc-4ba56ca5cf7f
 # ╟─47b2ec07-40f4-480d-b650-fbf1b44b7527

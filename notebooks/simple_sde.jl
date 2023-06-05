@@ -33,6 +33,11 @@ Revise.retry()
 # ╔═╡ 9e4de245-815a-4d38-bb14-7b7b29da24cf
 rng = Xoshiro()
 
+# ╔═╡ e6a96c38-cc43-4f1a-8281-a3bd9e7d12c3
+function steps(tspan, dt)
+	return Int(ceil((tspan[2] - tspan[1]) / dt))
+end
+
 # ╔═╡ c56ceab4-6ca7-4ea8-a905-24b5e9d8f0e1
 begin
 	initial_prior = Lux.Dense(1 => 4; bias=false, init_weight=zeros)
@@ -41,6 +46,7 @@ begin
     drift_posterior = Lux.Dense(3 => 2; init_weight=ones, bias=false)
 	diffusion = Lux.Parallel(nothing, [Lux.Dense(1 => 1; init_weight=zeros, init_bias=ones) for i in 1:2]...)
     encoder = Lux.Recurrence(Lux.RNNCell(1 => 1, identity; init_weight=ones, init_state=zeros, init_bias=zeros); return_sequence=true)
+	encoder_net = Lux.Dense(1 => 1; bias=false, init_weight=ones)
     projector = Lux.Dense(2 => 1; bias=false, init_weight=ones)
 
     tspan = (0.0, 5.0)
@@ -53,11 +59,12 @@ begin
         drift_posterior,
         diffusion,
         encoder,
+		encoder_net,
         projector,
 		EulerHeun(),
-        tspan;
+        tspan,
+		datasize;
         saveat=range(tspan[1], tspan[end], datasize),
-        dt=(tspan[end]/datasize),
     )
 	ps__, st = Lux.setup(rng, latent_sde)
 	ps_ = (initial_prior = (weight = [0.0; 0.0; 0.0; 0.0;;],), initial_posterior = (weight = [1.0; 1.0; 1.0; 1.0;;],), drift_prior = (weight = [1.0, 1.0],), drift_posterior = (weight = [1.0 1.0 1.0; 1.0 1.0 1.0],), diffusion = (layer_1 = (weight = [0.0;;], bias = [1.0;;]), layer_2 = (weight = [0.0;;], bias = [1.0;;])), encoder = (weight_ih = [1.0;;], weight_hh = [1.0;;], bias = [0.0]), projector = (weight = [1.0 1.0],))
@@ -256,6 +263,7 @@ println(dps_flux)
 # ╠═9f89ad4a-4ffc-4cc8-bd7d-916ff6d6fa10
 # ╠═682a8844-d1a8-4919-8a57-41b942b7da25
 # ╠═9e4de245-815a-4d38-bb14-7b7b29da24cf
+# ╠═e6a96c38-cc43-4f1a-8281-a3bd9e7d12c3
 # ╠═c56ceab4-6ca7-4ea8-a905-24b5e9d8f0e1
 # ╠═02b7abfe-e12a-41d5-a407-a249323ddb3e
 # ╠═9d2a583f-e285-41d0-8911-19aa8dff73aa

@@ -38,7 +38,7 @@ function get_distributions(model, model_p, st, context)
     return hcat([reshape([Normal{Float32}(normsandvars[2*i-1, j], exp(0.5f0 * normsandvars[2*i, j])) for i in halfindices], :, 1) for j in batch_indices]...)
 end
 
-function sample_prior(n::LatentSDE, ps, st; b=1, seed=nothing)
+function sample_prior(n::LatentSDE, ps, st; b=1, seed=nothing, noise=(seed) -> nothing)
     if seed !== nothing
         Random.seed!(seed)
     end
@@ -57,10 +57,13 @@ function sample_prior(n::LatentSDE, ps, st; b=1, seed=nothing)
     z0 = hcat([reshape([x.μ + ep * x.σ for x in initialdists_prior], :, 1) for ep in eps[1, :]]...)
 
     function prob_func(prob, batch, repeat)
+        noise_instance = ChainRulesCore.ignore_derivatives() do
+            noise(Int(floor(seed + batch)))
+        end
         if seed !== nothing
-            return SDEProblem{false}(dudt_prior, dudw_diffusion, z0[:, batch], n.tspan, ps, seed=seed + batch)
+            return SDEProblem{false}(dudt_prior, dudw_diffusion, z0[:, batch], n.tspan, ps, seed=seed + batch, noise=noise_instance)
         else
-            return SDEProblem{false}(dudt_prior, dudw_diffusion, z0[:, batch], n.tspan, ps)
+            return SDEProblem{false}(dudt_prior, dudw_diffusion, z0[:, batch], n.tspan, ps, noise=noise_instance)
         end
     end
 
