@@ -655,10 +655,11 @@ function plotlearning()
 		plot(map(x -> max(1e-8, -x+100.0), recorded_likelihood), legend=false, title="-loglike", yscale=:log10)
 		plot(recorded_kl, legend=false, title="kl-divergence")
 		plot(recorded_eta, legend=false, title="beta")
+		plot(recorded_lr, legend=false, title="learning rate")
 	]	
 
 	
-	l = @layout [a b ; c d]
+	l = @layout [a ; b c; d e]
 	plot(plots...; layout=l)
 end
 
