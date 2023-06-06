@@ -24,7 +24,7 @@ begin
 end
 
 # ╔═╡ ae7d6e11-55da-44a2-a5b6-60d11caa9dbf
-using NeuralSDEExploration, Plots, PlutoUI, PlutoArgs, JLD2, Random, StatsBase, Random123, DiffEqNoiseProcess
+using NeuralSDEExploration, Plots, PlutoUI, PlutoArgs, JLD2, Random, StatsBase, Random123, DiffEqNoiseProcess, Distributions
 
 # ╔═╡ 6995cd16-0c69-49c7-9523-4c842c0db339
 begin
@@ -119,6 +119,15 @@ end
 # ╔═╡ 6c06ef9d-d3b4-4917-89f6-af0a3e72b4d1
 plotmodel()
 
+# ╔═╡ 54b04849-1a9f-4838-aca3-337b7ca27997
+likelihood_dist = Normal
+
+# ╔═╡ d971d6c9-6b1d-4c77-aa3c-5f7f3993e4b3
+logp(x, y) = loglikelihood(likelihood_dist(y, 0.01f0), x)
+
+# ╔═╡ 33e0b4be-9ad0-4d07-b401-29eaf9a936a0
+logp(0.62322444, 0.6431513)
+
 # ╔═╡ 2a1ca1d0-163d-41b8-9f2d-8a3a475cc75d
 function loss(ps, minibatch, eta, seed)
 	_, _, _, kl_divergence, likelihood = latent_sde(minibatch, ps, st, seed=seed, noise=noise)
@@ -176,6 +185,9 @@ plot_prior(25, rng=Xoshiro(), tspan=(0f0, 100f0), datasize=300)
 # ╠═63213503-ab28-4158-b522-efd0b0139b6d
 # ╠═0b47115c-0561-439b-be7b-78195da6215e
 # ╠═6c06ef9d-d3b4-4917-89f6-af0a3e72b4d1
+# ╠═54b04849-1a9f-4838-aca3-337b7ca27997
+# ╠═d971d6c9-6b1d-4c77-aa3c-5f7f3993e4b3
+# ╠═33e0b4be-9ad0-4d07-b401-29eaf9a936a0
 # ╠═2a1ca1d0-163d-41b8-9f2d-8a3a475cc75d
 # ╠═0dc46a16-e26d-4ec2-a74e-675e83959ab2
 # ╟─96c0423f-214e-4995-a2e4-fe5c84d5a7c3

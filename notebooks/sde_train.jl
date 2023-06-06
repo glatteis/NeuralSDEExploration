@@ -24,7 +24,7 @@ begin
 end
 
 # ╔═╡ b6abba94-db07-4095-98c9-443e31832e7d
-using Optimisers, StatsBase, Zygote, Lux, DifferentialEquations, ComponentArrays, ParameterSchedulers, Random, Distributed, ForwardDiff, LuxCore, Dates, JLD2, SciMLSensitivity, JLD2, Random123
+using Optimisers, StatsBase, Zygote, Lux, DifferentialEquations, ComponentArrays, ParameterSchedulers, Random, Distributed, ForwardDiff, LuxCore, Dates, JLD2, SciMLSensitivity, JLD2, Random123, Distributions
 
 # ╔═╡ d1440209-78f7-4a9a-9101-a06ad2534e5d
 using NeuralSDEExploration, Plots, PlutoUI, PlutoArgs
@@ -105,22 +105,29 @@ Timespan end of data generation: $(@bind tspan_end_data Arg("tspan-end-data", Nu
 
 # ╔═╡ bae92e09-2e87-4a1e-aa2e-906f33985f6d
 md"""
-Timespan start of training data: $(@bind tspan_start_train Arg("tspan-start-train", NumberField(0.5f0:100f0, 0.5f0), required=false)), CLI arg: `--tspan-start-train`
+Timespan start of training data: $(@bind tspan_start_train Arg("tspan-start-train", NumberField(0.5f0:100f0, tspan_start_data), required=false)), CLI arg: `--tspan-start-train`
 """
 
 # ╔═╡ bd7acf1a-c09a-4531-ad2c-b5e7e28af382
 md"""
-Timespan end of training data: $(@bind tspan_end_train Arg("tspan-end-train", NumberField(0.5f0:100f0, 1f0), required=false)), CLI arg: `--tspan-end-train`
+Timespan end of training data: $(@bind tspan_end_train Arg("tspan-end-train", NumberField(0.5f0:100f0, tspan_end_data), required=false)), CLI arg: `--tspan-end-train`
 """
 
 # ╔═╡ 42ece6c1-9e8a-45e7-adf4-6f353da6a4e5
 md"""
-Timespan start of model: $(@bind tspan_start_model Arg("tspan-start-model", NumberField(0.5f0:100.0f0, 0.3f0), required=false)), CLI arg: `--tspan-start-model`
+Timespan start of model: $(@bind tspan_start_model Arg("tspan-start-model", NumberField(0.5f0:100.0f0, tspan_start_train), required=false)), CLI arg: `--tspan-start-model`
 """
 
 # ╔═╡ 3665efa6-6527-4771-82fd-285c3c0f8b41
 md"""
-Timespan end of model: $(@bind tspan_end_model Arg("tspan-end-model", NumberField(0.5f0:100f0, 1.0f0), required=false)), CLI arg: `--tspan-end-model`
+Timespan end of model: $(@bind tspan_end_model Arg("tspan-end-model", NumberField(0.5f0:100f0, tspan_end_train), required=false)), CLI arg: `--tspan-end-model`
+"""
+
+# ╔═╡ 10c206ef-2321-4c64-bdf4-7f4e9934d911
+md"""
+Likelihood scale
+$(@bind scale Arg("scale", NumberField(0.001:1.0, 0.01), required=false)).
+CLI arg: `--scale`
 """
 
 # ╔═╡ fe7e2889-88de-49b3-b20b-342357596bfc
@@ -140,39 +147,6 @@ function steps(tspan, dt)
 	return Int(ceil((tspan[2] - tspan[1]) / dt))
 end
 
-# ╔═╡ d052d6c0-2065-4ae1-acf7-fbe90ff1cb02
-begin
-	struct BroadcastLayer{T <: NamedTuple} <: 	LuxCore.AbstractExplicitContainerLayer{(:layers,)}
-    layers::T
-	end
-	function BroadcastLayer(layers...)
-	    for l in layers
-	        if !iszero(LuxCore.statelength(l))
-	            throw(ArgumentError("Stateful layer `$l` are not supported for `BroadcastLayer`."))
-	        end
-	    end
-	    names = ntuple(i -> Symbol("layer_$i"), length(layers))
-	    return BroadcastLayer(NamedTuple{names}(layers))
-	end
-	
-	BroadcastLayer(; kwargs...) = BroadcastLayer(connection, (; kwargs...))
-	
-	function (m::BroadcastLayer)(x, ps, st::NamedTuple{names}) where {names}
-		println(values(ps))
-		println(ps)
-		println(values(collect(ps)))
-		println(values(m.layers))
-
-	    results = (first ∘ Lux.apply).(values(m.layers), x, values(collect(ps)), values(st))
-	    return results, st
-	end
-		
-	Base.keys(m::BroadcastLayer) = Base.keys(getfield(m, :layers))
-end
-
-# ╔═╡ 5d020072-8a2e-438d-8e7a-330cca97964b
-LuxCore.initialparameters(rng::Random.AbstractRNG, l::BroadcastLayer) = NamedTuple{keys(l.layers)}(LuxCore.initialparameters.((rng, ), (values(l.layers))),)
-
 # ╔═╡ 7e6256ef-6a0a-40cc-aa0a-c467b3a524c4
 md"""
 ### Data Generation
@@ -181,7 +155,7 @@ md"""
 # ╔═╡ 2da6bbd4-8036-471c-b94e-10182cf8a834
 (initial_condition, model) = if model_name == "sun"
 	(
-		range(210f0, 350f0, n),
+		[only(rand(Normal(260f0, 20f0), 1)) for i in 1:n],
 		NeuralSDEExploration.ZeroDEnergyBalanceModel(0.425, 0.4, 1363, 0.6 * 5.67e-8, noise_term)
 	)
 elseif model_name == "fhn"
@@ -239,8 +213,13 @@ end
 # ╔═╡ 5d78e254-4134-4c2a-8092-03f6df7d5092
 println((datamin=datamin, datamax=datamax))
 
+# ╔═╡ c79a3a3a-5599-4585-83a4-c7b6bc017436
+function corrupt(value)
+	value + only(rand(Normal{Float32}(0f0, Float32(scale)), 1))
+end
+
 # ╔═╡ 9a5c942f-9e2d-4c6c-9cb1-b0dffd8050a0
-timeseries = [(t=ts.t, u=map(normalize, ts.u)) for ts in solution]
+timeseries = [(t=ts.t, u=map(x -> corrupt(normalize(x)), ts.u)) for ts in solution]
 
 # ╔═╡ da11fb69-a8a1-456d-9ce7-63180ef27a83
 md"""
@@ -323,13 +302,6 @@ md"""
 Eta
 $(@bind eta Arg("eta", NumberField(0.1:1000.0, 1.0), required=false)).
 CLI arg: `--eta`
-"""
-
-# ╔═╡ d3536bc6-683e-416b-89ae-c94be05112d8
-md"""
-Likelihood scale
-$(@bind scale Arg("scale", NumberField(0.001:1.0, 0.01), required=false)).
-CLI arg: `--scale`
 """
 
 # ╔═╡ 3c630a3a-7714-41c7-8cc3-601cd6efbceb
@@ -543,26 +515,8 @@ else
 	Lux.setup(rng, latent_sde)
 end
 
-# ╔═╡ fd10820a-eb9b-4ff0-b66b-2d74ba4f1af3
-md"""
-### Load from file
-"""
-
-# ╔═╡ 421ca47e-2d28-4340-97d5-1a31582d4bed
-md"""
-Load parameters from file (random if no file selected): $(@bind ps_file FilePicker())
-"""
-
-# ╔═╡ 375d2d66-a24c-4e1e-9b36-ef70972a0448
-ps_data = ps_file === nothing ? nothing : String(ps_file["data"])
-
-# ╔═╡ dfe0f6ef-ecd5-46a1-a808-77ef9af44b56
-ps = if ps_data !== nothing
-	parsed_array = Meta.parse(replace(ps_data, ")" => ",)"))
-	ComponentArray(eval(parsed_array))
-else
-	ComponentArray{Float32}(ps_)
-end
+# ╔═╡ b0692162-bdd2-4cb8-b99c-1ebd2177a3fd
+ps = ComponentArray{Float32}(ps_)
 
 # ╔═╡ cbc85049-9563-4b5d-8d14-a171f4d0d6aa
 md"""
@@ -926,13 +880,12 @@ savefig(p_hist, "~/Downloads/histogram_ext.pdf")
 # ╟─bd7acf1a-c09a-4531-ad2c-b5e7e28af382
 # ╟─42ece6c1-9e8a-45e7-adf4-6f353da6a4e5
 # ╟─3665efa6-6527-4771-82fd-285c3c0f8b41
+# ╟─10c206ef-2321-4c64-bdf4-7f4e9934d911
 # ╟─fe7e2889-88de-49b3-b20b-342357596bfc
 # ╟─de70d89a-275d-49d2-9da4-4470c869e56e
 # ╟─986c442a-d02e-42d4-bda4-f66a1c92f799
 # ╟─9a89a97c-da03-4887-ac8c-ef1f5264436e
 # ╠═c441712f-e4b2-4f4a-83e1-aad558685288
-# ╟─d052d6c0-2065-4ae1-acf7-fbe90ff1cb02
-# ╟─5d020072-8a2e-438d-8e7a-330cca97964b
 # ╟─7e6256ef-6a0a-40cc-aa0a-c467b3a524c4
 # ╠═2da6bbd4-8036-471c-b94e-10182cf8a834
 # ╠═c00a97bf-5e10-4168-8d58-f4f9270258ac
@@ -943,6 +896,7 @@ savefig(p_hist, "~/Downloads/histogram_ext.pdf")
 # ╟─f4651b27-135e-45f1-8647-64ab08c2e8e8
 # ╠═aff1c9d9-b29b-4b2c-b3f1-1e06a9370f64
 # ╠═5d78e254-4134-4c2a-8092-03f6df7d5092
+# ╠═c79a3a3a-5599-4585-83a4-c7b6bc017436
 # ╠═9a5c942f-9e2d-4c6c-9cb1-b0dffd8050a0
 # ╟─da11fb69-a8a1-456d-9ce7-63180ef27a83
 # ╟─8280424c-b86f-49f5-a854-91e7abcf13ec
@@ -957,7 +911,6 @@ savefig(p_hist, "~/Downloads/histogram_ext.pdf")
 # ╟─60b5397d-7350-460b-9117-319dc127cc7e
 # ╟─16c12354-5ab6-4c0e-833d-265642119ed2
 # ╟─f12633b6-c770-439d-939f-c41b74a5c309
-# ╟─d3536bc6-683e-416b-89ae-c94be05112d8
 # ╟─3c630a3a-7714-41c7-8cc3-601cd6efbceb
 # ╟─7c23c32f-97bc-4c8d-ac54-42753be61345
 # ╟─64e7bba4-fb17-4ed8-851f-de9204f0f42d
@@ -996,10 +949,7 @@ savefig(p_hist, "~/Downloads/histogram_ext.pdf")
 # ╠═0f6f4520-576f-42d3-9126-2076a51a6e22
 # ╟─1938e122-2c05-46fc-b179-db38322530ff
 # ╠═05568880-f931-4394-b31e-922850203721
-# ╟─fd10820a-eb9b-4ff0-b66b-2d74ba4f1af3
-# ╠═421ca47e-2d28-4340-97d5-1a31582d4bed
-# ╠═375d2d66-a24c-4e1e-9b36-ef70972a0448
-# ╠═dfe0f6ef-ecd5-46a1-a808-77ef9af44b56
+# ╠═b0692162-bdd2-4cb8-b99c-1ebd2177a3fd
 # ╟─cbc85049-9563-4b5d-8d14-a171f4d0d6aa
 # ╟─f5734b1a-4258-44ae-ac00-9520170997bc
 # ╟─5f56cc7c-861e-41a4-b783-848623b94bf9

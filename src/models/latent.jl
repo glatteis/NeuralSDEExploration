@@ -104,7 +104,7 @@ function (n::LatentSDE)(timeseries::Vector{NamedTuple{(:t, :u), Tuple{Vector{Flo
     noise=(seed) -> nothing,
     stick_landing=false,
     likelihood_dist=Normal,
-    likelihood_scale=0.05f0,
+    likelihood_scale=0.01f0,
 )
     # We are using matrices with the following dimensions:
     # 1 = latent space dimension
