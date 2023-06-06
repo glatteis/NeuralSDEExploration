@@ -677,9 +677,9 @@ function train(lr_sched, num_steps, opt_state; kl_sched=Loop(x -> eta, 1))
 
 		seed = rand(rng, UInt32)
 
-		l, kl_divergence, likelihood = loss(ps, minibatch, eta, seed)
-
 		eta = popfirst!(kl_sched)
+
+		l, kl_divergence, likelihood = loss(ps, minibatch, eta, seed)
 
 		push!(recorded_loss, l)
 		push!(recorded_kl, kl_divergence)
