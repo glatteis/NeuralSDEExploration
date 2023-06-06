@@ -678,6 +678,7 @@ function train(lr_sched, num_steps, opt_state; kl_sched=Loop(x -> eta, 1))
 		seed = rand(rng, UInt32)
 
 		eta = popfirst!(kl_sched)
+		lr = popfirst!(lr_sched)
 
 		l, kl_divergence, likelihood = loss(ps, minibatch, eta, seed)
 
@@ -685,7 +686,7 @@ function train(lr_sched, num_steps, opt_state; kl_sched=Loop(x -> eta, 1))
 		push!(recorded_kl, kl_divergence)
 		push!(recorded_likelihood, likelihood)
 		push!(recorded_eta, eta)
-		push!(recorded_lr, learning_rate)
+		push!(recorded_lr, lr)
 
 		println("Loss: $l, KL: $kl_divergence")
 		dps = Zygote.gradient(ps -> loss(ps, minibatch, eta, seed)[1], ps)
@@ -693,7 +694,7 @@ function train(lr_sched, num_steps, opt_state; kl_sched=Loop(x -> eta, 1))
 		GC.gc(step % 10 == 1)
 		
 		Optimisers.update!(opt_state, ps, dps[1])
-		Optimisers.adjust!(opt_state, popfirst!(lr_sched))
+		Optimisers.adjust!(opt_state, lr)
 	end
 end
 
