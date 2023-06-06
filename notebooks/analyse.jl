@@ -94,7 +94,7 @@ function plotmodel()
 	posterior_latent = nothing
 	datas = []
 	#n = 5
-	rng = Xoshiro(0)
+	rng = Xoshiro()
 	#nums = sample(rng,1:length(timeseries),n;replace=false)
 
 	posterior_latent, posterior_data, logterm_, kl_divergence_, distance_ = latent_sde(timeseries[ti], ps, st, noise=noise)

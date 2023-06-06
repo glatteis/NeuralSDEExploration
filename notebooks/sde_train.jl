@@ -155,7 +155,7 @@ md"""
 # ╔═╡ 2da6bbd4-8036-471c-b94e-10182cf8a834
 (initial_condition, model) = if model_name == "sun"
 	(
-		[only(rand(Normal(260f0, 20f0), 1)) for i in 1:n],
+		[only(rand(Normal(260f0, 50f0), 1)) for i in 1:n],
 		NeuralSDEExploration.ZeroDEnergyBalanceModel(0.425, 0.4, 1363, 0.6 * 5.67e-8, noise_term)
 	)
 elseif model_name == "fhn"
