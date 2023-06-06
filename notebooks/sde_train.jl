@@ -24,7 +24,7 @@ begin
 end
 
 # ╔═╡ b6abba94-db07-4095-98c9-443e31832e7d
-using Optimisers, StatsBase, Zygote, Lux, DifferentialEquations, ComponentArrays, ParameterSchedulers, Random, Distributed, ForwardDiff, LuxCore, Dates, JLD2, SciMLSensitivity, JLD2, Random123, Distributions
+using Optimisers, StatsBase, Zygote, Lux, DifferentialEquations, ComponentArrays, ParameterSchedulers, Random, Distributed, ForwardDiff, LuxCore, Dates, JLD2, SciMLSensitivity, JLD2, Random123, Distributions, DiffEqBase
 
 # ╔═╡ d1440209-78f7-4a9a-9101-a06ad2534e5d
 using NeuralSDEExploration, Plots, PlutoUI, PlutoArgs
@@ -155,7 +155,7 @@ md"""
 # ╔═╡ 2da6bbd4-8036-471c-b94e-10182cf8a834
 (initial_condition, model) = if model_name == "sun"
 	(
-		[only(rand(Normal(290f0, 40f0), 1)) for i in 1:n],
+		[only(rand(Normal(260f0, 20f0), 1)) for i in 1:n],
 		NeuralSDEExploration.ZeroDEnergyBalanceModel(0.425, 0.4, 1363, 0.6 * 5.67e-8, noise_term)
 	)
 elseif model_name == "fhn"
@@ -678,7 +678,6 @@ function train(lr_sched, num_steps, opt_state; kl_sched=Loop(x -> eta, 1))
 		seed = rand(rng, UInt32)
 
 		eta = popfirst!(kl_sched)
-		lr = popfirst!(lr_sched)
 
 		l, kl_divergence, likelihood = loss(ps, minibatch, eta, seed)
 
@@ -686,7 +685,7 @@ function train(lr_sched, num_steps, opt_state; kl_sched=Loop(x -> eta, 1))
 		push!(recorded_kl, kl_divergence)
 		push!(recorded_likelihood, likelihood)
 		push!(recorded_eta, eta)
-		push!(recorded_lr, lr)
+		push!(recorded_lr, learning_rate)
 
 		println("Loss: $l, KL: $kl_divergence")
 		dps = Zygote.gradient(ps -> loss(ps, minibatch, eta, seed)[1], ps)
@@ -694,7 +693,7 @@ function train(lr_sched, num_steps, opt_state; kl_sched=Loop(x -> eta, 1))
 		GC.gc(step % 10 == 1)
 		
 		Optimisers.update!(opt_state, ps, dps[1])
-		Optimisers.adjust!(opt_state, lr)
+		Optimisers.adjust!(opt_state, popfirst!(lr_sched))
 	end
 end
 
@@ -730,7 +729,7 @@ end
 
 # ╔═╡ 67e5ae14-3062-4a93-9492-fc6e9861577f
 kl_sched = if kl_anneal
-	Iterators.Stateful(Loop(Sequence([Loop(x -> (eta*x*2)/kl_rate, kl_rate÷2), Loop(x -> eta, kl_rate÷2)], [kl_rate÷2, kl_rate÷2]), kl_rate))
+	Iterators.Stateful(Loop(Sequence([Loop(x -> (eta*x)/kl_rate, kl_rate), Loop(x -> eta, kl_rate*3)], [kl_rate, kl_rate*3]), kl_rate*4))
 else
 	Iterators.Stateful(Loop(x -> eta, 1))
 end
@@ -768,6 +767,8 @@ end
 gifplot()
 
 # ╔═╡ 655877c5-d636-4c1c-85c6-82129c1a4999
+# ╠═╡ disabled = true
+#=╠═╡
 begin
 	if enabletraining
 		opt_state = Optimisers.setup(Optimisers.Adam(), ps)
@@ -778,6 +779,7 @@ begin
 		end
 	end
 end
+  ╠═╡ =#
 
 # ╔═╡ 8880282e-1b5a-4c85-95ef-699ccf8d4203
 md"""

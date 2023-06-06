@@ -67,7 +67,7 @@ seed = 321321
 # ╔═╡ b5a4ca1c-0458-4fdb-b2eb-b29967c02158
 noise = function(seed; tend=timeseries[1].t[end]+1f0)
 	rng = Xoshiro(seed)
-	VirtualBrownianTree(-1f0, 0f0, tend=tend; tree_depth=0, rng=Threefry4x((rand(rng, Int64), rand(rng, Int64), rand(rng, Int64), rand(rng, Int64))))
+	VirtualBrownianTree(-1f0, 0f0, tend=tend+1f0; tree_depth=0, rng=Threefry4x((rand(rng, Int64), rand(rng, Int64), rand(rng, Int64), rand(rng, Int64))))
 end
 
 # ╔═╡ e0afda9e-0b17-4e7e-9d1e-d0f05df6fa4e
