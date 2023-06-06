@@ -678,6 +678,8 @@ function train(lr_sched, num_steps, opt_state; kl_sched=Loop(x -> eta, 1))
 
 		l, kl_divergence, likelihood = loss(ps, minibatch, eta, seed)
 
+		eta = popfirst!(kl_sched)
+
 		push!(recorded_loss, l)
 		push!(recorded_kl, kl_divergence)
 		push!(recorded_likelihood, likelihood)
@@ -685,7 +687,7 @@ function train(lr_sched, num_steps, opt_state; kl_sched=Loop(x -> eta, 1))
 		push!(recorded_lr, learning_rate)
 
 		println("Loss: $l, KL: $kl_divergence")
-		dps = Zygote.gradient(ps -> loss(ps, minibatch, popfirst!(kl_sched), seed)[1], ps)
+		dps = Zygote.gradient(ps -> loss(ps, minibatch, eta, seed)[1], ps)
 		
 		GC.gc(step % 10 == 1)
 		
@@ -987,7 +989,7 @@ savefig(p_hist, "~/Downloads/histogram_ext.pdf")
 # ╠═655877c5-d636-4c1c-85c6-82129c1a4999
 # ╟─8880282e-1b5a-4c85-95ef-699ccf8d4203
 # ╠═78a74e8f-f0a3-4cf2-aecc-4ba56ca5cf7f
-# ╟─47b2ec07-40f4-480d-b650-fbf1b44b7527
+# ╠═47b2ec07-40f4-480d-b650-fbf1b44b7527
 # ╠═14f9a62d-9caa-40e9-8502-d2a27b9c950e
 # ╠═b7acea88-c9a8-4fdf-b3b2-c74b25f9dd93
 # ╠═797ea98e-a690-43a8-b212-0c3a9484e2da
