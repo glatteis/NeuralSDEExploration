@@ -39,10 +39,12 @@ function get_distributions(model, model_p, st, context)
 end
 
 function sample_prior(n::LatentSDE, ps, st; b=1, seed=nothing, noise=(seed) -> nothing, tspan=n.tspan, datasize=n.datasize)
-    if seed !== nothing
-        Random.seed!(seed)
+    (eps, seed) = ChainRulesCore.ignore_derivatives() do
+        if seed !== nothing
+            Random.seed!(seed)
+        end
+        (reshape([only(rand(Normal{Float32}(0.0f0, 1.0f0), 1)) for i in 1:b], 1, :), rand(UInt32))
     end
-    eps = reshape([only(rand(Normal{Float32}(0.0f0, 1.0f0), 1)) for i in 1:b], 1, :)
 
     function dudt_prior(u, p, t) 
         time_or_empty = n.timedependent ? [t] : []
@@ -60,11 +62,7 @@ function sample_prior(n::LatentSDE, ps, st; b=1, seed=nothing, noise=(seed) -> n
         noise_instance = ChainRulesCore.ignore_derivatives() do
             noise(Int(floor(seed + batch)))
         end
-        if seed !== nothing
-            return SDEProblem{false}(dudt_prior, dudw_diffusion, z0[:, batch], tspan, ps, seed=seed + batch, noise=noise_instance)
-        else
-            return SDEProblem{false}(dudt_prior, dudw_diffusion, z0[:, batch], tspan, ps, noise=noise_instance)
-        end
+        return SDEProblem{false}(dudt_prior, dudw_diffusion, z0[:, batch], tspan, ps, seed=seed + batch, noise=noise_instance)
     end
 
     ensemble = EnsembleProblem(nothing, output_func=(sol, i) -> (sol, false), prob_func=prob_func)
@@ -112,11 +110,11 @@ function (n::LatentSDE)(timeseries::Vector{NamedTuple{(:t, :u), Tuple{Vector{Flo
     # 1 = latent space dimension
     # 2 = batch number
     # 3 = time step
-    eps = ChainRulesCore.ignore_derivatives() do
+    (eps, seed) = ChainRulesCore.ignore_derivatives() do
         if seed !== nothing
             Random.seed!(seed)
         end
-        reshape([only(rand(Normal{Float32}(0.0f0, 1.0f0), 1)) for i in eachindex(timeseries)], 1, :)
+        (reshape([only(rand(Normal{Float32}(0.0f0, 1.0f0), 1)) for i in eachindex(timeseries)], 1, :), rand(UInt32))
     end
 
     tsmatrix = reduce(hcat, [reshape(ts.u, 1, 1, :) for ts in timeseries])
@@ -200,11 +198,7 @@ function (n::LatentSDE)(timeseries::Vector{NamedTuple{(:t, :u), Tuple{Vector{Flo
         noise_instance = ChainRulesCore.ignore_derivatives() do
             noise(Int(floor(seed + batch)))
         end
-        if seed !== nothing
-            return SDEProblem{false}(augmented_drift(batch), augmented_diffusion(batch), augmented_z0[:, batch], n.tspan, ps, seed=seed + Int(batch), noise=noise_instance)
-        else
-            return SDEProblem{false}(augmented_drift(batch), augmented_diffusion(batch), augmented_z0[:, batch], n.tspan, ps, noise=noise_instance)
-        end
+        return SDEProblem{false}(augmented_drift(batch), augmented_diffusion(batch), augmented_z0[:, batch], n.tspan, ps, seed=seed + Int(batch), noise=noise_instance)
     end
 
     ensemble = EnsembleProblem(nothing, output_func=(sol, i) -> (sol, false), prob_func=prob_func)

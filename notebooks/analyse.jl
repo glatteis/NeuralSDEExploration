@@ -62,7 +62,7 @@ Select timeseries to do some simulations on: $(@bind ti RangeSlider(1:100; defau
 """
 
 # ╔═╡ 69459a5f-75b7-4c33-a489-bf4d4411c1ec
-seed = 547842378
+seed = 321321
 
 # ╔═╡ b5a4ca1c-0458-4fdb-b2eb-b29967c02158
 noise = function(seed; tend=timeseries[1].t[end]+1f0)
@@ -97,7 +97,9 @@ function plotmodel()
 	rng = Xoshiro(0)
 	#nums = sample(rng,1:length(timeseries),n;replace=false)
 
-	posterior_latent, posterior_data, logterm_, kl_divergence_, distance_ = latent_sde(timeseries[ti], ps, st, seed=seed, noise=noise)
+	posterior_latent, posterior_data, logterm_, kl_divergence_, distance_ = latent_sde(timeseries[ti], ps, st, noise=noise)
+
+	println(distance_)
 	
 	priorsamples = 25
 	priorplot = plot_prior(priorsamples, rng=rng)

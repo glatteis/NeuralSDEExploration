@@ -44,12 +44,6 @@ noise = 0.2
 model = NeuralSDEExploration.ZeroDEnergyBalanceModel(0.425, 0.4, 1363, 0.6 * 5.67e-8, noise)
 
 
-# ╔═╡ 407b38a5-8e2e-4980-9e8c-25bfd3a0aab5
-# ╠═╡ disabled = true
-#=╠═╡
-model = NeuralSDEExploration.FitzHughNagumoModelGamma()
-  ╠═╡ =#
-
 # ╔═╡ 2ae8f19f-8a70-43ec-b552-d56c1b65d746
 begin
 	n = 2
@@ -81,18 +75,6 @@ plot(y)
 
 # ╔═╡ e816dd26-cf7d-4bcc-abe8-af2fd3fcb9cf
 log_air_passengers = log.(airp.passengers)
-
-# ╔═╡ 51ecdc84-4603-4994-acd0-2fd6a57861ca
-# ╠═╡ disabled = true
-#=╠═╡
-m = auto_arima(log_air_passengers; seasonal=12)
-  ╠═╡ =#
-
-# ╔═╡ 1ee5a51c-c624-4451-8372-f29a8552a19e
-# ╠═╡ disabled = true
-#=╠═╡
-m = SARIMA(log_air_passengers; order = (0, 1, 1), seasonal_order = (0, 1, 1, 12))
-  ╠═╡ =#
 
 # ╔═╡ 376c4845-7383-4d0c-8ab6-faecded265c9
 m = auto_arima(y)

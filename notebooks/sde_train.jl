@@ -75,7 +75,7 @@ md"""
 
 # ╔═╡ cb3a270e-0f2a-4be3-9ab3-ea5e4c56d0e7
 md"""
-Used model: $(@bind model_name Arg("model", Select(["sun", "fhn", "ou"]), short_name="m")), CLI arg: `--model`, `-m` (required!)
+Used model: $(@bind model_name Arg("model", Select(["sun", "fhn", "ou", "ouli"]), short_name="m")), CLI arg: `--model`, `-m` (required!)
 """
 
 # ╔═╡ 95bdd676-d8df-4fef-bdd7-cce85b717018
@@ -194,6 +194,11 @@ elseif model_name == "ou"
 		[0f0 for i in 1:n],
 		NeuralSDEExploration.OrnsteinUhlenbeck()
 	)
+elseif model_name == "ouli"
+	(
+		[0f0 for i in 1:n],
+		NeuralSDEExploration.OrnsteinUhlenbeck(0.0, 1.0, 0.5)
+	)
 else
 	@error "Invalid model name!"
 	nothing
@@ -214,7 +219,7 @@ Let's also plot some example trajectories:
 """
 
 # ╔═╡ 455263ef-2f94-4f3e-8401-f0da7fb3e493
-plot(reduce(hcat, [solution[i].u for i in 1:10]); legend=false)
+plot(reduce(hcat, [solution[i].u for i in 1:20]); legend=false)
 
 # ╔═╡ f4651b27-135e-45f1-8647-64ab08c2e8e8
 md"""
@@ -255,7 +260,7 @@ md"""
 # ╔═╡ 97d724c2-24b0-415c-b90f-6a36e877e9d1
 md"""
 The size of the context given to the posterior SDE:
-$(@bind context_size Arg("context-size", NumberField(1:100, 8), required=false)).
+$(@bind context_size Arg("context-size", NumberField(1:100, 2), required=false)).
 CLI arg: `--context-size`
 """
 
@@ -323,7 +328,7 @@ CLI arg: `--eta`
 # ╔═╡ d3536bc6-683e-416b-89ae-c94be05112d8
 md"""
 Likelihood scale
-$(@bind scale Arg("scale", NumberField(0.001:1.0, 0.05), required=false)).
+$(@bind scale Arg("scale", NumberField(0.001:1.0, 0.01), required=false)).
 CLI arg: `--scale`
 """
 
@@ -387,8 +392,8 @@ CLI arg: `--tree-depth`
 	(
 		BacksolveAdjoint(autojacvec=ZygoteVJP(), checkpointing=true),
 		function(seed)
-			rng = Xoshiro(seed)
-			VirtualBrownianTree(-1f0, 0f0, tend=tspan_model[2]+1f0; tree_depth=tree_depth, rng=Threefry4x((rand(rng, UInt32), rand(rng, UInt32), rand(rng, UInt32), rand(rng, UInt32))))
+			rng_tree = Xoshiro(seed)
+			VirtualBrownianTree(-1f0, 0f0, tend=tspan_model[2]+1f0; tree_depth=tree_depth, rng=Threefry4x((rand(rng_tree, UInt32), rand(rng_tree, UInt32), rand(rng_tree, UInt32), rand(rng_tree, UInt32))))
 		end,
 	)
 else
@@ -412,10 +417,10 @@ The encoder takes a timeseries and outputs context that can be passed to the pos
 """
 
 # ╔═╡ 6fb669b6-c05d-4b88-a9fe-f887d90fa01f
-encoder_recurrent = Lux.Recurrence(Lux.LSTMCell(data_dims => Int(hidden_size / 4)); return_sequence=true)
+encoder_recurrent = Lux.Recurrence(Lux.GRUCell(data_dims => context_size); return_sequence=true)
 
 # ╔═╡ 36a0fae8-c384-42fd-a6a0-159ea3664aa1
-encoder_net = Lux.Dense(Int(hidden_size / 4) => context_size)
+encoder_net = Lux.Dense(context_size => context_size)
 
 # ╔═╡ 25558746-2baf-4f46-b21f-178c49106ed1
 md"""
@@ -628,9 +633,6 @@ Latent posterior plot for: $(@bind latent_posterior_i Slider(1:length(ti), show_
 # ╔═╡ 08021ed6-ac31-4829-9f21-f046af73d5a3
 plot(posterior_latent[:, latent_posterior_i, :]')
 
-# ╔═╡ 3d889727-ae6d-4fa0-98ae-d3ae73fb6a3c
-plot(NeuralSDEExploration.sample_prior(latent_sde, ps, st; seed=seed+1))
-
 # ╔═╡ 590a0541-e6bf-4bd5-9bf5-1ef9931e60fb
 md"""
 ### Simulation of Prior
@@ -654,18 +656,18 @@ function plotmodel()
 	posterior_latent = nothing
 	datas = []
 	n = 5
-	rng = Xoshiro(0)
-	nums = sample(rng,1:length(timeseries),n;replace=false)
+	rng_plot = Xoshiro(0)
+	nums = sample(rng_plot,1:length(timeseries),n;replace=false)
 
 	posterior_latent, posterior_data, logterm_, kl_divergence_, distance_ = latent_sde(timeseries[nums], ps, st, seed=seed, noise=noise)
 	
 	priorsamples = 25
-	priorplot = plot_prior(priorsamples, rng=rng)
+	priorplot = plot_prior(priorsamples, rng=rng_plot)
 
 	posteriorplot = plot(posterior_data[1, :,:]',linewidth=2,legend=false,title="projected posterior")
 	dataplot = plot(timeseries[nums],linewidth=2,legend=false,title="data")
 	
-	timeseriesplot = plot(sample(rng, timeseries, priorsamples),linewidth=.5,color=:black,legend=false,title="data")
+	timeseriesplot = plot(sample(rng_plot, timeseries, priorsamples),linewidth=.5,color=:black,legend=false,title="data")
 	
 	l = @layout [a b ; c d]
 	p = plot(dataplot, posteriorplot, timeseriesplot, priorplot, layout=l)
@@ -713,12 +715,10 @@ function loss(ps, minibatch, eta, seed)
 end
 
 # ╔═╡ f4a16e34-669e-4c93-bd83-e3622a747a3a
-function train(learning_rate, num_steps, opt_state; sched=Loop(x -> eta, 1))
+function train(lr_sched, num_steps, opt_state; kl_sched=Loop(x -> eta, 1))
 	for step in 1:num_steps
-		eta = popfirst!(sched)
-		
 		s = sample(rng, 1:size(timeseries)[1], batch_size, replace=false)
-		minibatch = timeseries[s]
+		minibatch = repeat(timeseries[s], 8)
 
 		seed = rand(rng, UInt32)
 
@@ -731,11 +731,12 @@ function train(learning_rate, num_steps, opt_state; sched=Loop(x -> eta, 1))
 		push!(recorded_lr, learning_rate)
 
 		println("Loss: $l, KL: $kl_divergence")
-		dps = Zygote.gradient(ps -> loss(ps, minibatch, eta, seed)[1], ps)
+		dps = Zygote.gradient(ps -> loss(ps, minibatch, popfirst!(kl_sched), seed)[1], ps)
 		
 		GC.gc(step % 10 == 1)
 		
 		Optimisers.update!(opt_state, ps, dps[1])
+		Optimisers.adjust!(opt_state, popfirst!(lr_sched))
 	end
 end
 
@@ -770,10 +771,17 @@ if enabletraining
 end
 
 # ╔═╡ 67e5ae14-3062-4a93-9492-fc6e9861577f
-if kl_anneal
-	sched = Iterators.Stateful(Loop(Sequence([Loop(x -> (eta*x*2)/kl_rate, kl_rate÷2), Loop(x -> eta, kl_rate÷2)], [kl_rate÷2, kl_rate÷2]), kl_rate))
+kl_sched = if kl_anneal
+	Iterators.Stateful(Loop(Sequence([Loop(x -> (eta*x*2)/kl_rate, kl_rate÷2), Loop(x -> eta, kl_rate÷2)], [kl_rate÷2, kl_rate÷2]), kl_rate))
 else
-	sched = Iterators.Stateful(Loop(x -> eta, 1))
+	Iterators.Stateful(Loop(x -> eta, 1))
+end
+
+# ╔═╡ da2df05a-5d40-4293-98e0-abd20d6dcd2a
+lr_sched = if lr_cycle
+	error("LR Cycle not implemented yet")
+else
+	Iterators.Stateful(Exp(λ = learning_rate, γ = 0.999))
 end
 
 # ╔═╡ 78aa72e2-8188-441f-9910-1bc5525fda7a
@@ -783,7 +791,7 @@ begin
 		# precompile exportresults because there are some memory problems
 		exportresults(0)
 		for epoch in 1:1000
-			train(learning_rate, 250, opt_state_job; sched=sched)
+			train(lr_sched, 100, opt_state_job; kl_sched=kl_sched)
 			exportresults(epoch)
 			GC.gc()
 			sleep(10.0)
@@ -807,7 +815,7 @@ begin
 		opt_state = Optimisers.setup(Optimisers.Adam(), ps)
 
 		@gif for epoch in 1:10
-			train(learning_rate, 10, opt_state; sched=sched)
+			train(lr_sched, 100, opt_state; kl_sched=kl_sched)
 			gifplot()
 		end
 	end
@@ -1009,7 +1017,6 @@ savefig(p_hist, "~/Downloads/histogram_ext.pdf")
 # ╠═38324c42-e5c7-4b59-8129-0e4c17ab5bf1
 # ╟─3d31519c-0ef6-4b89-82ba-71931c5f47b8
 # ╠═08021ed6-ac31-4829-9f21-f046af73d5a3
-# ╠═3d889727-ae6d-4fa0-98ae-d3ae73fb6a3c
 # ╟─590a0541-e6bf-4bd5-9bf5-1ef9931e60fb
 # ╠═2827fe3a-3ecd-4662-a2d3-c980f1e1cd84
 # ╠═3ab9a483-08f2-4767-8bd5-ae1375a62dbe
@@ -1023,6 +1030,7 @@ savefig(p_hist, "~/Downloads/histogram_ext.pdf")
 # ╠═9789decf-c384-42df-b7aa-3c2137a69a41
 # ╠═7a7e8e9b-ca89-4826-8a5c-fe51d96152ad
 # ╠═67e5ae14-3062-4a93-9492-fc6e9861577f
+# ╠═da2df05a-5d40-4293-98e0-abd20d6dcd2a
 # ╠═78aa72e2-8188-441f-9910-1bc5525fda7a
 # ╠═830f7e7a-71d0-43c8-8e74-d1709b8a6707
 # ╠═763f07e6-dd46-42d6-b57a-8f1994386302
