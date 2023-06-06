@@ -672,7 +672,7 @@ end
 function train(lr_sched, num_steps, opt_state; kl_sched=Loop(x -> eta, 1))
 	for step in 1:num_steps
 		s = sample(rng, 1:size(timeseries)[1], batch_size, replace=false)
-		minibatch = repeat(timeseries[s], 8)
+		minibatch = timeseries[s]
 
 		seed = rand(rng, UInt32)
 
