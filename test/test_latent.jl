@@ -1,55 +1,54 @@
-using Flux
+using Lux
 using DifferentialEquations
 using Functors
 using Plots
 using ComponentArrays
 using Zygote
+using Random
+using FiniteDiff
+using SciMLSensitivity
+using DiffEqNoiseProcess
+using Random123
 
 @testset "Latent SDE" begin
-    initial_prior = Flux.Dense(1 => 4; bias=false, init=zeros) |> f64
-    initial_posterior = Flux.Dense(1 => 4; bias=false, init=zeros) |> f64
-    drift_prior = Flux.Scale([1.0, 1.0], false) |> f64
-    drift_posterior = Flux.Dense(ones(2, 3), false) |> f64
-    diffusion = [Flux.Dense(1 => 1, bias=[0.01], init=zeros) |> f64 for i in 1:2]
-    encoder = Flux.RNN(1 => 1, (x) -> x; init=ones) |> f64
-    projector = Flux.Dense(2 => 1; bias=false, init=ones) |> f64
-
-    tspan = (0.0, 5.0)
+    solver = EM()
+    tspan = (0f0, 5f0)
     datasize = 50
-
-    latent_sde = LatentSDE(
-        initial_prior,
-        initial_posterior,
-        drift_prior,
-        drift_posterior,
-        diffusion,
-        encoder,
-        projector,
-        tspan,
-        EulerHeun();
-        saveat=range(tspan[1], tspan[end], datasize),
-        dt=(tspan[end]/datasize),
-    )
-    ps_, re = Functors.functor(latent_sde)
-    ps = ComponentArray(ps_)
-
-    input1 = (t=range(tspan[1],tspan[end],datasize),u=repeat([1.0], datasize))
-    input2 = (t=range(tspan[1],tspan[end],datasize),u=repeat([0.5], datasize))
     
-    seed = 0
+    rng = Xoshiro()
 
-    posterior_latent, posterior_data, logterm_, kl_divergence_, distance_ = NeuralSDEExploration.pass(latent_sde, ps, [input1, input2], seed=seed)
+    latent_sde = StandardLatentSDE(solver, tspan, datasize, prior_size=2, posterior_size=2, diffusion_size=2)
+    ps_, st = Lux.setup(rng, latent_sde)
+    ps = ComponentArray{Float32}(ps_)
+
+    input1 = (t=collect(range(tspan[1],tspan[end],datasize)),u=collect(repeat([1f0], datasize)))
+    input2 = (t=collect(range(tspan[1],tspan[end],datasize)),u=collect(repeat([0.5f0], datasize)))
+    
+    seed = 1
+
+    posterior_latent, posterior_data, logterm_, kl_divergence_, distance_ = latent_sde([input1, input2], ps, st, seed=seed)
     
     # p = plot(posterior_latent)
     # savefig(p, "posterior_latent.pdf")
+    # 
+    sense = BacksolveAdjoint(autojacvec=ZygoteVJP(), checkpointing=true)
+    # noise = function(seed)
+    #     rng_tree = Xoshiro(seed)
+    #     VirtualBrownianTree(-5f0, 0f0, tend=tspan[end]+5f0; rng=Threefry4x((rand(rng_tree, UInt32), rand(rng_tree, UInt32), rand(rng_tree, UInt32), rand(rng_tree, UInt32))))
+    # end
     
-    println(kl_divergence_)
-
     function loss(ps)
-        sum(NeuralSDEExploration.loss(latent_sde, ps, [input, input, input, input, input], 30.0, seed=seed))
+        sum(NeuralSDEExploration.loss(latent_sde, [input1, input1, input2, input2], ps, st, 1f0; seed=seed, sense=sense))
     end
     
-    grads = Zygote.gradient(loss, ps)[1]
+    @test loss(ps) == loss(ps)
     
-    println(grads)
+    grads_zygote_1 = Zygote.gradient(loss, ps)[1]
+    @time grads_zygote_2 = Zygote.gradient(loss, ps)[1]
+    grads_finitediff_1 = FiniteDiff.finite_difference_gradient(loss, ps) 
+    @time grads_finitediff_2 = FiniteDiff.finite_difference_gradient(loss, ps) 
+
+    @test grads_zygote_1 == grads_zygote_2
+    @test grads_finitediff_1 == grads_finitediff_2
+    @test isapprox(grads_zygote_1, grads_finitediff_1, rtol=0.1)
 end

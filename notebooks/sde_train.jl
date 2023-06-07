@@ -313,9 +313,9 @@ CLI arg: `--learning-rate`
 
 # ╔═╡ 7c23c32f-97bc-4c8d-ac54-42753be61345
 md"""
-Max learning rate
-$(@bind max_learning_rate Arg("max-learning-rate", NumberField(0.02:1000.0, 0.06), required=false)).
-CLI arg: `--max-learning-rate`
+Learning rate decay
+$(@bind decay Arg("decay", NumberField(0.0001:2.0, 0.999), required=false)).
+CLI arg: `--decay`
 """
 
 # ╔═╡ 64e7bba4-fb17-4ed8-851f-de9204f0f42d
@@ -378,95 +378,6 @@ end
 # ╔═╡ db88cae4-cb25-4628-9298-5a694c4b29ef
 println((context_size=context_size, hidden_size=hidden_size, latent_dims=latent_dims, data_dims=data_dims, stick_landing=stick_landing, batch_size=batch_size))
 
-# ╔═╡ 0c0e5a95-195e-4057-bcba-f1d92d75cbab
-md"""
-### Encoder
-"""
-
-# ╔═╡ bec46289-4d61-4b90-bc30-0a86f174a599
-md"""
-The encoder takes a timeseries and outputs context that can be passed to the posterior SDE, that is, the SDE that has information about the data and encodes $p_\theta(z \mid x)$.
-"""
-
-# ╔═╡ 6fb669b6-c05d-4b88-a9fe-f887d90fa01f
-encoder_recurrent = Lux.Recurrence(Lux.GRUCell(data_dims => context_size); return_sequence=true)
-
-# ╔═╡ 36a0fae8-c384-42fd-a6a0-159ea3664aa1
-encoder_net = Lux.Dense(context_size => context_size)
-
-# ╔═╡ 25558746-2baf-4f46-b21f-178c49106ed1
-md"""
-### Initial Values
-"""
-
-# ╔═╡ 0d09a662-78d3-4202-b2be-843a0669fc9f
-md"""
-The `initial_posterior` net is the posterior for the initial state. It takes the context and outputs a mean and standard devation for the position zero of the posterior. The `initial_prior` is a fixed gaussian distribution.
-"""
-
-# ╔═╡ cdebb87f-9759-4e6b-a00a-d764b3c7fbf8
-initial_posterior = Lux.Dense(context_size => latent_dims + latent_dims; init_weight=zeros)
-
-# ╔═╡ 3ec28482-2d6c-4125-8d85-4fb46b130677
-initial_prior = Lux.Dense(1 => latent_dims + latent_dims) 
-
-# ╔═╡ 8d2616e0-190c-4e98-92d0-18d5312569d6
-md"""
-### Latent Drifts
-"""
-
-# ╔═╡ 8b283d5e-1ce7-4deb-b382-6fa8e5612ef1
-md"""
-Drift of prior. This is just an SDE drift in the latent space
-"""
-
-# ╔═╡ c14806bd-42cf-480b-b618-bfe72183feb3
-drift_prior = Lux.Chain(
-	Lux.Dense(in_dims => prior_size, tanh),
-	Lux.Dense(prior_size => prior_size, tanh),
-	Lux.Dense(prior_size => latent_dims, tanh),
-	Lux.Scale(latent_dims)
-)
-
-# ╔═╡ 64dc2da0-48cc-4242-bb17-449a300688c7
-md"""
-Drift of posterior. This is the term of an SDE when fed with the context.
-"""
-
-# ╔═╡ df2034fd-560d-4529-836a-13745f976c1f
-drift_posterior = Lux.Chain(
-	Lux.Dense(in_dims + context_size => hidden_size, tanh),
-	Lux.Dense(hidden_size => hidden_size, tanh),
-	Lux.Dense(hidden_size => latent_dims, tanh),
-	Lux.Scale(latent_dims)
-)
-
-# ╔═╡ 27ce1274-6731-4587-a603-83beee226476
-md"""
-### Shared Diffusion
-"""
-
-# ╔═╡ 4a97576c-96de-458e-b881-3f5dd140fa6a
-md"""
-Diffusion. Prior and posterior share the same diffusion (they are not actually evaluated seperately while training, only their KL divergence). This is a diagonal diffusion, i.e. every term in the latent space has its own independent Wiener process.
-"""
-
-# ╔═╡ a1cb11fb-ec69-4ba2-9ed1-2d1a6d24ccd9
-diffusion = Lux.Parallel(nothing, [Lux.Chain(Lux.Dense((time_dependence ? 2 : 1) => hidden_size, Lux.tanh), Lux.Dense(hidden_size => 1, Lux.sigmoid_fast), Lux.Scale(1, init_weight=ones, init_bias=ones)) for i in 1:latent_dims]...)
-
-# ╔═╡ b0421c4a-f243-4d39-8cca-a29ea140486d
-md"""
-### Projector
-"""
-
-# ╔═╡ bfabcd80-fb62-410f-8710-f577852c77df
-md"""
-The projector will transform the latent space back into data space.
-"""
-
-# ╔═╡ f0486891-b8b3-4a39-91df-1389d6f799e1
-projector = Lux.Dense(latent_dims => data_dims)
-
 # ╔═╡ b8b2f4b5-e90c-4066-8dad-27e8dfa1d7c5
 md"""
 ### Latent SDE Model
@@ -474,7 +385,7 @@ md"""
 
 # ╔═╡ 08759cda-2a2a-41ff-af94-5b1000c9e53f
 solver = if gpu
-	GPUEM()
+	GPUEulerHeun()
 else
 	EulerHeun()
 end
@@ -483,19 +394,20 @@ end
 println("Steps that will be derived: $(steps(tspan_model, dt))")
 
 # ╔═╡ 001c318e-b7a6-48a5-bfd5-6dd0368873ac
-latent_sde = LatentSDE(
-	initial_prior,
-	initial_posterior,
-	drift_prior,
-	drift_posterior,
-	diffusion,
-	encoder_recurrent,
-	encoder_net,
-	projector,
-	#DRI1(),
+latent_sde = StandardLatentSDE(
 	solver,
 	tspan_model,
 	steps(tspan_model, dt);
+	data_dims=data_dims,
+	latent_dims=latent_dims,
+	prior_size=prior_size,
+	posterior_size=hidden_size,
+	diffusion_size=Int(floor(hidden_size/latent_dims)),
+	depth=1,
+	rnn_size=context_size,
+	context_size=context_size,
+	hidden_activation=tanh,
+    final_activation=tanh,
 	timedependent=time_dependence,
 	adaptive=false
 )
@@ -649,7 +561,6 @@ end
 
 # ╔═╡ fa43f63d-8293-43cc-b099-3b69dbbf4b6a
 function plotlearning()
-
 	plots = [
 		plot(map(x -> max(1e-8, x+100.0), recorded_loss), legend=false, title="loss", yscale=:log10)
 		plot(map(x -> max(1e-8, -x+100.0), recorded_likelihood), legend=false, title="-loglike", yscale=:log10)
@@ -739,7 +650,7 @@ end
 lr_sched = if lr_cycle
 	error("LR Cycle not implemented yet")
 else
-	Iterators.Stateful(Exp(λ = learning_rate, γ = 0.999))
+	Iterators.Stateful(Exp(λ = learning_rate, γ = decay))
 end
 
 # ╔═╡ 78aa72e2-8188-441f-9910-1bc5525fda7a
@@ -768,8 +679,6 @@ end
 gifplot()
 
 # ╔═╡ 655877c5-d636-4c1c-85c6-82129c1a4999
-# ╠═╡ disabled = true
-#=╠═╡
 begin
 	if enabletraining
 		opt_state = Optimisers.setup(Optimisers.Adam(), ps)
@@ -780,7 +689,6 @@ begin
 		end
 	end
 end
-  ╠═╡ =#
 
 # ╔═╡ 8880282e-1b5a-4c85-95ef-699ccf8d4203
 md"""
@@ -930,25 +838,6 @@ savefig(p_hist, "~/Downloads/histogram_ext.pdf")
 # ╠═2bb433bb-17df-4a34-9ccf-58c0cf8b4dd3
 # ╟─db88cae4-cb25-4628-9298-5a694c4b29ef
 # ╟─86620e12-9631-4156-8b1c-60545b8a8352
-# ╟─0c0e5a95-195e-4057-bcba-f1d92d75cbab
-# ╟─bec46289-4d61-4b90-bc30-0a86f174a599
-# ╠═6fb669b6-c05d-4b88-a9fe-f887d90fa01f
-# ╠═36a0fae8-c384-42fd-a6a0-159ea3664aa1
-# ╟─25558746-2baf-4f46-b21f-178c49106ed1
-# ╟─0d09a662-78d3-4202-b2be-843a0669fc9f
-# ╠═cdebb87f-9759-4e6b-a00a-d764b3c7fbf8
-# ╠═3ec28482-2d6c-4125-8d85-4fb46b130677
-# ╟─8d2616e0-190c-4e98-92d0-18d5312569d6
-# ╟─8b283d5e-1ce7-4deb-b382-6fa8e5612ef1
-# ╠═c14806bd-42cf-480b-b618-bfe72183feb3
-# ╟─64dc2da0-48cc-4242-bb17-449a300688c7
-# ╠═df2034fd-560d-4529-836a-13745f976c1f
-# ╟─27ce1274-6731-4587-a603-83beee226476
-# ╟─4a97576c-96de-458e-b881-3f5dd140fa6a
-# ╠═a1cb11fb-ec69-4ba2-9ed1-2d1a6d24ccd9
-# ╟─b0421c4a-f243-4d39-8cca-a29ea140486d
-# ╟─bfabcd80-fb62-410f-8710-f577852c77df
-# ╠═f0486891-b8b3-4a39-91df-1389d6f799e1
 # ╟─b8b2f4b5-e90c-4066-8dad-27e8dfa1d7c5
 # ╠═08759cda-2a2a-41ff-af94-5b1000c9e53f
 # ╟─ec41b765-2f73-43a5-a575-c97a5a107c4e

@@ -1,5 +1,5 @@
 using Lux, LuxCore, Distributions, InformationGeometry, Functors, ChainRulesCore, DifferentialEquations
-export LatentSDE, sample_prior
+export LatentSDE, StandardLatentSDE, sample_prior
 
 struct LatentSDE{N1,N2,N3,N4,N5,N6,N7,N8,S,T,D,TD,K} <: LuxCore.AbstractExplicitContainerLayer{(:initial_prior, :initial_posterior, :drift_prior, :drift_posterior, :diffusion, :encoder_recurrent, :encoder_net, :projector,)}
     initial_prior::N1
@@ -26,6 +26,89 @@ function LatentSDE(initial_prior, initial_posterior, drift_prior, drift_posterio
         models...,
         solver, tspan, datasize, timedependent, kwargs
     )
+end
+
+"""
+    StandardLatentSDE(solver, tspan, datasize)
+    
+Constructs a "standard" latent sde - so you don't need to construct all of the neural nets.
+
+## Arguments
+
+- `solver`: SDE solver.
+- `tspan`: SDE timespan.
+- `datasize`: SDE timesteps.
+
+## Keyword Arguments
+
+- `data_dims`: Dimension of the data space.
+- `latent_dims`: Dimension of the latent space.
+- `prior_size`: Size of the prior net hidden layers.
+- `posterior_size`: Size of the posterior net hidden layers.
+- `diffusion_size`: Size of the diffusion hidden layers. The diffusion is not
+    super configurable. Please just swap it out if you need a different one. Prior
+- `depth`: Depth of the prior and posterior nets.
+- `hidden_activation`: Activation of the hidden layers of the neural nets.
+- `final_activation`: Activation of the final layers of the neural nets. There's a scale layer after them, so it's fine to take a bounded activation.
+- `rnn_size`: Size of the RNN's output. There's a neural net after the RNN that goes to `context_size`.
+- `context_size`: Size of the context vector.
+- `timedependent`: Whether time is an input to prior drift, posterior drift and diffusion.
+"""
+# TODO Make Networks replacable here
+function StandardLatentSDE(solver, tspan, datasize;
+        data_dims=1,
+        latent_dims=2,
+        prior_size=128,
+        posterior_size=128,
+        diffusion_size=16,
+        depth=1,
+        rnn_size=2,
+        context_size=2,
+        hidden_activation=tanh,
+        final_activation=tanh,
+        timedependent=false,
+        kwargs...
+    )
+    encoder_recurrent = Lux.Recurrence(Lux.GRUCell(data_dims => rnn_size); return_sequence=true)
+
+    encoder_net = Lux.Dense(rnn_size => context_size)
+
+    # The initial_posterior net is the posterior for the initial state. It
+    # takes the context and outputs a mean and standard devation for the
+    # position zero of the posterior. The initial_prior is a fixed gaussian
+    # distribution.
+    initial_posterior = Lux.Dense(context_size => latent_dims + latent_dims; init_weight=zeros)
+    initial_prior = Lux.Dense(1 => latent_dims + latent_dims) 
+    
+    in_dims = latent_dims + (timedependent ? 1 : 0)
+    # Drift of prior. This is just an SDE drift in the latent space
+    drift_prior = Lux.Chain(
+        Lux.Dense(in_dims => prior_size, hidden_activation),
+        repeat([Lux.Dense(prior_size => prior_size, hidden_activation)], depth)...,
+        Lux.Dense(prior_size => latent_dims, final_activation),
+        Lux.Scale(latent_dims)
+    )
+    # Drift of posterior. This is the term of an SDE when fed with the context.
+    drift_posterior = Lux.Chain(
+        Lux.Dense(in_dims + context_size => posterior_size, hidden_activation),
+        repeat([Lux.Dense(posterior_size => posterior_size, hidden_activation)], depth)...,
+        Lux.Dense(posterior_size => latent_dims, final_activation),
+        Lux.Scale(latent_dims)
+    )
+    # Prior and posterior share the same diffusion (they are not actually evaluated
+    # seperately while training, only their KL divergence). This is a diagonal
+    # diffusion, i.e. every term in the latent space has its own independent
+    # Wiener process.
+    diffusion = Lux.Parallel(nothing, [
+            Lux.Chain(Lux.Dense((timedependent ? 2 : 1) => diffusion_size, tanh),
+            Lux.Dense(diffusion_size => 1, Lux.sigmoid_fast),
+            Lux.Scale(1, init_weight=ones, init_bias=ones))
+        for i in 1:latent_dims]...
+    )
+    # The projector will transform the latent space back into data space.
+    projector = Lux.Dense(latent_dims => data_dims)
+    
+    return LatentSDE(initial_prior, initial_posterior, drift_prior, drift_posterior, diffusion, encoder_recurrent, encoder_net, projector, solver, tspan, datasize; kwargs...)
 end
 
 function get_distributions(model, model_p, st, context)
@@ -105,6 +188,7 @@ function (n::LatentSDE)(timeseries::Vector{NamedTuple{(:t, :u), Tuple{Vector{Flo
     stick_landing=false,
     likelihood_dist=Normal,
     likelihood_scale=0.01f0,
+    buffer_context=true, # TODO
 )
     # We are using matrices with the following dimensions:
     # 1 = latent space dimension
@@ -157,10 +241,17 @@ function (n::LatentSDE)(timeseries::Vector{NamedTuple{(:t, :u), Tuple{Vector{Flo
             # Get the context for the posterior at the current time
             # initial state evolve => get the posterior at future start time
             time_index = max(1, searchsortedlast(timeseries[1].t, t))
-            timedctx = context[:, batch, time_index]
+            timedctx_check = context[:, batch, time_index] # check if the context is correct, but we need to re-compute it here...
+            # tsmatrix_flipped has the batch / time indices the other way around
+            # and it has the time reversed
+            precontext_flipped_local = n.encoder_recurrent(tsmatrix_flipped[:, 1:end - time_index + 1, batch:batch], p.encoder_recurrent, st.encoder_recurrent)[1]
+            
+            timedctx = n.encoder_net(precontext_flipped_local[end], p.encoder_net, st.encoder_net)[1]
+            
+            @assert vec(timedctx) == vec(timedctx_check)
             
             # The posterior gets u and the context as information
-            posterior_net_input = vcat(u, timedctx)
+            posterior_net_input = vcat(u, vec(timedctx))
 
             prior = n.drift_prior(u, p.drift_prior, st.drift_prior)[1]
             posterior = n.drift_posterior(posterior_net_input, p.drift_posterior, st.drift_posterior)[1]
@@ -231,7 +322,7 @@ function (n::LatentSDE)(timeseries::Vector{NamedTuple{(:t, :u), Tuple{Vector{Flo
     return posterior_latent, projected_ts, logterm, kl_divergence, likelihoods
 end
 
-function loss(n::LatentSDE, ps, timeseries, st, beta; kwargs...)
-    posterior, projected_ts, logterm, kl_divergence, distance = pass(n, ps, timeseries, st; kwargs...)
+function loss(n::LatentSDE, timeseries, ps, st, beta; kwargs...)
+    posterior, projected_ts, logterm, kl_divergence, distance = n(timeseries, ps, st; kwargs...)
     return -distance .+ (beta * kl_divergence)
 end
