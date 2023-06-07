@@ -365,7 +365,7 @@ CLI arg: `--tree-depth`
 		BacksolveAdjoint(autojacvec=ZygoteVJP(), checkpointing=true),
 		function(seed)
 			rng_tree = Xoshiro(seed)
-			VirtualBrownianTree(-1f0, 0f0, tend=tspan_model[2]+1f0; tree_depth=tree_depth, rng=Threefry4x((rand(rng_tree, UInt32), rand(rng_tree, UInt32), rand(rng_tree, UInt32), rand(rng_tree, UInt32))))
+			VirtualBrownianTree(-3f0, 0f0, tend=tspan_model[2]*1.5f0; tree_depth=tree_depth, rng=Threefry4x((rand(rng_tree, UInt32), rand(rng_tree, UInt32), rand(rng_tree, UInt32), rand(rng_tree, UInt32))))
 		end,
 	)
 else

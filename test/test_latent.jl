@@ -11,7 +11,7 @@ using DiffEqNoiseProcess
 using Random123
 
 @testset "Latent SDE" begin
-    solver = EM()
+    solver = EulerHeun()
     tspan = (0f0, 5f0)
     datasize = 50
     
@@ -32,10 +32,10 @@ using Random123
     # savefig(p, "posterior_latent.pdf")
     # 
     sense = BacksolveAdjoint(autojacvec=ZygoteVJP(), checkpointing=true)
-    # noise = function(seed)
-    #     rng_tree = Xoshiro(seed)
-    #     VirtualBrownianTree(-5f0, 0f0, tend=tspan[end]+5f0; rng=Threefry4x((rand(rng_tree, UInt32), rand(rng_tree, UInt32), rand(rng_tree, UInt32), rand(rng_tree, UInt32))))
-    # end
+    noise = function(seed)
+        rng_tree = Xoshiro(seed)
+        VirtualBrownianTree(-5f0, 0f0, tend=tspan[end]+5f0; rng=Threefry4x((rand(rng_tree, UInt32), rand(rng_tree, UInt32), rand(rng_tree, UInt32), rand(rng_tree, UInt32))))
+    end
     
     function loss(ps)
         sum(NeuralSDEExploration.loss(latent_sde, [input1, input1, input2, input2], ps, st, 1f0; seed=seed, sense=sense))
@@ -50,5 +50,8 @@ using Random123
 
     @test grads_zygote_1 == grads_zygote_2
     @test grads_finitediff_1 == grads_finitediff_2
-    @test isapprox(grads_zygote_1, grads_finitediff_1, rtol=0.1)
+    @test isapprox(grads_zygote_1, grads_finitediff_1, rtol=0.05)
+    println("Please check the grads manually:")
+    println(grads_zygote_1)
+    println(grads_finitediff_1)
 end
