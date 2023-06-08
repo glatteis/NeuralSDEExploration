@@ -40,6 +40,10 @@ end
 # ╔═╡ dd48a285-e40e-468a-b5af-5518351128e9
 noise = 0.2
 
+# ╔═╡ ab5de288-e73a-48f2-b8c6-478d74700f6a
+model = NeuralSDEExploration.ZeroDEnergyBalanceModel(0.425, 0.4, 1363, 0.6 * 5.67e-8, noise)
+
+
 # ╔═╡ 2ae8f19f-8a70-43ec-b552-d56c1b65d746
 begin
 	n = 2
@@ -117,23 +121,13 @@ begin
 	], alpha=0.5, labels=["data" "prior"], title="marginal probabilities")
 end
 
-# ╔═╡ ab5de288-e73a-48f2-b8c6-478d74700f6a
-# ╠═╡ disabled = true
-#=╠═╡
-model = NeuralSDEExploration.ZeroDEnergyBalanceModel(0.425, 0.4, 1363, 0.6 * 5.67e-8, noise)
-
-  ╠═╡ =#
-
-# ╔═╡ 534b4e0a-ff36-452f-997c-3623f07e877e
-model = NeuralSDEExploration.FitzHughNagumoModelGamma()
-
 # ╔═╡ Cell order:
 # ╠═68c8b576-e29e-11ed-2ad2-afc5ee52401a
 # ╠═7bf385b4-69cf-4e42-a8e9-2b12e57846ae
 # ╠═1071dc36-2fb4-4027-8304-cf4b7c6a962e
 # ╠═dd48a285-e40e-468a-b5af-5518351128e9
 # ╠═ab5de288-e73a-48f2-b8c6-478d74700f6a
-# ╠═534b4e0a-ff36-452f-997c-3623f07e877e
+# ╠═407b38a5-8e2e-4980-9e8c-25bfd3a0aab5
 # ╠═2ae8f19f-8a70-43ec-b552-d56c1b65d746
 # ╠═cbce9923-70fa-4706-ab43-62f2c25ec559
 # ╠═d8809ab0-978e-435a-9213-a1d0fcc35331
@@ -143,6 +137,8 @@ model = NeuralSDEExploration.FitzHughNagumoModelGamma()
 # ╠═58f08340-c39e-433e-ac63-3a3b89d475a7
 # ╠═6a941237-b0d1-490d-81d3-07aa15b1d723
 # ╠═e816dd26-cf7d-4bcc-abe8-af2fd3fcb9cf
+# ╠═51ecdc84-4603-4994-acd0-2fd6a57861ca
+# ╠═1ee5a51c-c624-4451-8372-f29a8552a19e
 # ╠═376c4845-7383-4d0c-8ab6-faecded265c9
 # ╠═ce690e6c-96e5-4fb3-8426-a52bcec08ceb
 # ╠═1f11e515-ebc5-4088-b84e-15d770454d7d

@@ -108,7 +108,20 @@ function StandardLatentSDE(solver, tspan, datasize;
     # The projector will transform the latent space back into data space.
     projector = Lux.Dense(latent_dims => data_dims)
     
-    return LatentSDE(initial_prior, initial_posterior, drift_prior, drift_posterior, diffusion, encoder_recurrent, encoder_net, projector, solver, tspan, datasize; kwargs...)
+    return LatentSDE(
+        haskey(kwargs, :initial_prior) ? kwargs[:initial_prior] : initial_prior,
+        haskey(kwargs, :initial_posterior) ? kwargs[:initial_posterior] : initial_posterior, 
+        haskey(kwargs, :drift_prior) ? kwargs[:drift_prior] : drift_prior,
+        haskey(kwargs, :drift_posterior) ? kwargs[:drift_posterior] : drift_posterior,
+        haskey(kwargs, :diffusion) ? kwargs[:diffusion] : diffusion,
+        haskey(kwargs, :encoder_recurrent) ? kwargs[:encoder_recurrent] : encoder_recurrent,
+        haskey(kwargs, :encoder_net) ? kwargs[:encoder_net] : encoder_net, 
+        haskey(kwargs, :projector) ? kwargs[:projector] : projector,
+        solver,
+        tspan,
+        datasize;
+        kwargs...
+    )
 end
 
 function get_distributions(model, model_p, st, context)

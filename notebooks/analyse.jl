@@ -68,6 +68,7 @@ seed = 321321
 noise = function(seed; tend=timeseries[1].t[end]+1f0)
 	rng = Xoshiro(seed)
 	VirtualBrownianTree(-1f0, 0f0, tend=tend+1f0; tree_depth=0, rng=Threefry4x((rand(rng, Int64), rand(rng, Int64), rand(rng, Int64), rand(rng, Int64))))
+	return nothing
 end
 
 # ╔═╡ e0afda9e-0b17-4e7e-9d1e-d0f05df6fa4e
@@ -119,15 +120,6 @@ end
 # ╔═╡ 6c06ef9d-d3b4-4917-89f6-af0a3e72b4d1
 plotmodel()
 
-# ╔═╡ 54b04849-1a9f-4838-aca3-337b7ca27997
-likelihood_dist = Normal
-
-# ╔═╡ d971d6c9-6b1d-4c77-aa3c-5f7f3993e4b3
-logp(x, y) = loglikelihood(likelihood_dist(y, 0.01f0), x)
-
-# ╔═╡ 33e0b4be-9ad0-4d07-b401-29eaf9a936a0
-logp(0.62322444, 0.6431513)
-
 # ╔═╡ 2a1ca1d0-163d-41b8-9f2d-8a3a475cc75d
 function loss(ps, minibatch, eta, seed)
 	_, _, _, kl_divergence, likelihood = latent_sde(minibatch, ps, st, seed=seed, noise=noise)
@@ -164,7 +156,7 @@ begin
 end
 
 # ╔═╡ fe1ae4b3-2f1f-4b6c-a076-0d215f222e6c
-plot_prior(25, rng=Xoshiro(), tspan=(0f0, 100f0), datasize=300)
+plot_prior(25, rng=Xoshiro(), tspan=(0f0, 10f0), datasize=300)
 
 # ╔═╡ Cell order:
 # ╠═7a6bbfd6-ffb7-11ed-39d7-5b673fe4cdae
@@ -185,9 +177,6 @@ plot_prior(25, rng=Xoshiro(), tspan=(0f0, 100f0), datasize=300)
 # ╠═63213503-ab28-4158-b522-efd0b0139b6d
 # ╠═0b47115c-0561-439b-be7b-78195da6215e
 # ╠═6c06ef9d-d3b4-4917-89f6-af0a3e72b4d1
-# ╠═54b04849-1a9f-4838-aca3-337b7ca27997
-# ╠═d971d6c9-6b1d-4c77-aa3c-5f7f3993e4b3
-# ╠═33e0b4be-9ad0-4d07-b401-29eaf9a936a0
 # ╠═2a1ca1d0-163d-41b8-9f2d-8a3a475cc75d
 # ╠═0dc46a16-e26d-4ec2-a74e-675e83959ab2
 # ╟─96c0423f-214e-4995-a2e4-fe5c84d5a7c3

@@ -160,12 +160,12 @@ md"""
 	)
 elseif model_name == "fhn"
 	(
-		[[0f0, 0f0] for i in 1:n],
+		[[only(rand(Normal(0f0, 2f0), 1)), only(rand(Normal(0f0, 0.1f0), 1))] for i in 1:n],
 		NeuralSDEExploration.FitzHughNagumoModelGamma()
 	)
 elseif model_name == "ou"
 	(
-		[0f0 for i in 1:n],
+		[only(rand(Normal(0f0, 1f0), 1)) for i in 1:n],
 		NeuralSDEExploration.OrnsteinUhlenbeck()
 	)
 elseif model_name == "ouli"
@@ -307,8 +307,15 @@ CLI arg: `--eta`
 # ╔═╡ 3c630a3a-7714-41c7-8cc3-601cd6efbceb
 md"""
 Learning rate
-$(@bind learning_rate Arg("learning-rate", NumberField(0.02:1000.0, 0.03), required=false)).
+$(@bind learning_rate Arg("learning-rate", NumberField(0.0001:1000.0, 0.03), required=false)).
 CLI arg: `--learning-rate`
+"""
+
+# ╔═╡ 2961879e-cb52-4980-931b-6f8de1f26fa4
+md"""
+Max learning rate
+$(@bind max_learning_rate Arg("max-learning-rate", NumberField(0.0001:1000.0, 2*learning_rate), required=false)).
+CLI arg: `--max-learning-rate`
 """
 
 # ╔═╡ 7c23c32f-97bc-4c8d-ac54-42753be61345
@@ -327,7 +334,7 @@ CLI arg: `--lr-cycle`
 # ╔═╡ 33d53264-3c8f-4f63-9dd2-46ebd00f4e28
 md"""
 LR oscillation time
-$(@bind lr_rate Arg("lr-rate", NumberField(1:100000, 1000), required=false)).
+$(@bind lr_rate Arg("lr-rate", NumberField(1:100000, 50), required=false)).
 CLI arg: `--lr-rate`
 """
 
@@ -583,7 +590,7 @@ end
 # ╔═╡ f4a16e34-669e-4c93-bd83-e3622a747a3a
 function train(lr_sched, num_steps, opt_state; kl_sched=Loop(x -> eta, 1))
 	for step in 1:num_steps
-		s = sample(rng, 1:size(timeseries)[1], batch_size, replace=false)
+		s = sample(rng, 1:size(timeseries)[1], batch_size)
 		minibatch = timeseries[s]
 
 		seed = rand(rng, UInt32)
@@ -648,7 +655,7 @@ end
 
 # ╔═╡ da2df05a-5d40-4293-98e0-abd20d6dcd2a
 lr_sched = if lr_cycle
-	error("LR Cycle not implemented yet")
+	Iterators.Stateful(CosAnneal(learning_rate, max_learning_rate, lr_rate))
 else
 	Iterators.Stateful(Exp(λ = learning_rate, γ = decay))
 end
@@ -684,7 +691,7 @@ begin
 		opt_state = Optimisers.setup(Optimisers.Adam(), ps)
 
 		@gif for epoch in 1:10
-			train(lr_sched, 100, opt_state; kl_sched=kl_sched)
+			train(lr_sched, 10, opt_state; kl_sched=kl_sched)
 			gifplot()
 		end
 	end
@@ -827,6 +834,7 @@ savefig(p_hist, "~/Downloads/histogram_ext.pdf")
 # ╟─16c12354-5ab6-4c0e-833d-265642119ed2
 # ╟─f12633b6-c770-439d-939f-c41b74a5c309
 # ╟─3c630a3a-7714-41c7-8cc3-601cd6efbceb
+# ╟─2961879e-cb52-4980-931b-6f8de1f26fa4
 # ╟─7c23c32f-97bc-4c8d-ac54-42753be61345
 # ╟─64e7bba4-fb17-4ed8-851f-de9204f0f42d
 # ╟─33d53264-3c8f-4f63-9dd2-46ebd00f4e28
