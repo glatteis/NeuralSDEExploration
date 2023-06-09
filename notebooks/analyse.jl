@@ -75,10 +75,13 @@ end
 viz_batch = shuffle(Xoshiro(seed), timeseries)[ti]
 
 # ╔═╡ 9c5f37b0-9998-4879-85d0-f540089e1ca8
-posterior_latent, posterior_data, logterm_, kl_divergence_, distance_ = latent_sde(viz_batch, ps, st; seed=seed, noise=noise)
+posterior_latent, posterior_data, logterm_, kl_divergence_, distance_ = latent_sde(viz_batch, ps, st; noise=noise)
 
 # ╔═╡ 8f38bdbc-8b22-46c5-bbf4-d38d277b000f
-plot(logterm_[1, :, :]', title="KL-Divergence")
+plot(logterm_[1, :, :]', title="KL-Divergence", linewidth=2)
+
+# ╔═╡ 2f6d198e-4cae-40cd-8624-6aab867fee0b
+plot(posterior_data[1, :,:]',linewidth=2,legend=false,title="projected posterior")
 
 # ╔═╡ 63213503-ab28-4158-b522-efd0b0139b6d
 function plot_prior(priorsamples; rng=rng, tspan=latent_sde.tspan, datasize=latent_sde.datasize)
@@ -126,8 +129,14 @@ function loss(ps, minibatch, eta, seed)
 	return mean(-likelihood .+ (eta * kl_divergence)), mean(kl_divergence), mean(likelihood)
 end
 
+# ╔═╡ bf819c97-3ed9-484c-a499-7449244cb840
+function kl_loss(ps, minibatch, eta, seed)
+	_, _, _, kl_divergence, likelihood = latent_sde(minibatch, ps, st, seed=seed, noise=noise)
+	return mean(kl_divergence), mean(kl_divergence), mean(likelihood)
+end
+
 # ╔═╡ 0dc46a16-e26d-4ec2-a74e-675e83959ab2
-loss(ps, viz_batch, 1.0, seed)
+loss(ps, viz_batch, 10.0, seed)
 
 # ╔═╡ 96c0423f-214e-4995-a2e4-fe5c84d5a7c3
 md"""
@@ -140,6 +149,9 @@ begin
 	projected_prior = vcat(reduce(vcat, [latent_sde.projector(x[hspan], ps.projector, st.projector)[1] for x in prior_latent.u])...)
 	histogram_prior = fit(Histogram, projected_prior, 0.0:0.01:1.0)
 end
+
+# ╔═╡ 0d74625b-edf2-45a7-9b16-08fc29d83eb0
+kl_loss(ps, timeseries[ti], 1.0, rand(UInt32))
 
 # ╔═╡ fe157d5e-eead-4921-a310-467e56e33fb7
 begin
@@ -174,13 +186,16 @@ plot_prior(25, rng=Xoshiro(), tspan=(0f0, 10f0), datasize=300)
 # ╠═e0afda9e-0b17-4e7e-9d1e-d0f05df6fa4e
 # ╠═9c5f37b0-9998-4879-85d0-f540089e1ca8
 # ╠═8f38bdbc-8b22-46c5-bbf4-d38d277b000f
+# ╠═2f6d198e-4cae-40cd-8624-6aab867fee0b
 # ╠═63213503-ab28-4158-b522-efd0b0139b6d
 # ╠═0b47115c-0561-439b-be7b-78195da6215e
 # ╠═6c06ef9d-d3b4-4917-89f6-af0a3e72b4d1
 # ╠═2a1ca1d0-163d-41b8-9f2d-8a3a475cc75d
+# ╠═bf819c97-3ed9-484c-a499-7449244cb840
 # ╠═0dc46a16-e26d-4ec2-a74e-675e83959ab2
 # ╟─96c0423f-214e-4995-a2e4-fe5c84d5a7c3
 # ╠═a09063de-3002-400a-af89-233eb0822041
+# ╠═0d74625b-edf2-45a7-9b16-08fc29d83eb0
 # ╠═fe157d5e-eead-4921-a310-467e56e33fb7
 # ╠═2812e069-6bf9-4c80-91d7-f7fcf6c338fb
 # ╠═fe1ae4b3-2f1f-4b6c-a076-0d215f222e6c

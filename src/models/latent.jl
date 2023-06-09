@@ -259,12 +259,12 @@ function (n::LatentSDE)(timeseries::Vector{NamedTuple{(:t, :u), Tuple{Vector{Flo
             # and it has the time reversed
             precontext_flipped_local = n.encoder_recurrent(tsmatrix_flipped[:, 1:end - time_index + 1, batch:batch], p.encoder_recurrent, st.encoder_recurrent)[1]
             
-            timedctx = n.encoder_net(precontext_flipped_local[end], p.encoder_net, st.encoder_net)[1]
+            timedctx = n.encoder_net(precontext_flipped_local[end], p.encoder_net, st.encoder_net)[1][:, 1]
             
-            @assert vec(timedctx) == vec(timedctx_check)
+            @assert timedctx == timedctx_check
             
             # The posterior gets u and the context as information
-            posterior_net_input = vcat(u, vec(timedctx))
+            posterior_net_input = vcat(u, timedctx)
 
             prior = n.drift_prior(u, p.drift_prior, st.drift_prior)[1]
             posterior = n.drift_posterior(posterior_net_input, p.drift_posterior, st.drift_posterior)[1]

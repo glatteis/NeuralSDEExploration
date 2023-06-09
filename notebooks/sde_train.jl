@@ -246,7 +246,7 @@ CLI arg: `--context-size`
 # ╔═╡ d81ccb5f-de1c-4a01-93ce-3e7302caedc0
 md"""
 The hidden layer size for the ANNs:
-$(@bind hidden_size Arg("hidden-size", NumberField(1:1000000, 128), required=false)).
+$(@bind hidden_size Arg("hidden-size", NumberField(1:1000000, 64), required=false)).
 CLI arg: `--hidden-size`
 """
 
@@ -262,6 +262,13 @@ md"""
 Dimensions of the latent space:
 $(@bind latent_dims Arg("latent-dims", NumberField(1:100, 2), required=false)).
 CLI arg: `--latent-dims`
+"""
+
+# ╔═╡ efd438bc-13cc-457f-82c1-c6e0711079b3
+md"""
+Neural network depth:
+$(@bind depth Arg("depth", NumberField(1:100, 2), required=false)).
+CLI arg: `--depth`
 """
 
 # ╔═╡ 9382314d-c076-4b95-8171-71d903bb9271
@@ -284,11 +291,6 @@ md"""
 Use GPU: $(@bind gpu Arg("gpu", CheckBox(), required=false))
 CLI arg: `--gpu`
 """
-
-# ╔═╡ 86620e12-9631-4156-8b1c-60545b8a8352
-if gpu
-	using CUDA, DiffEqGPU
-end
 
 # ╔═╡ 16c12354-5ab6-4c0e-833d-265642119ed2
 md"""
@@ -334,7 +336,7 @@ CLI arg: `--lr-cycle`
 # ╔═╡ 33d53264-3c8f-4f63-9dd2-46ebd00f4e28
 md"""
 LR oscillation time
-$(@bind lr_rate Arg("lr-rate", NumberField(1:100000, 50), required=false)).
+$(@bind lr_rate Arg("lr-rate", NumberField(1:100000, 500), required=false)).
 CLI arg: `--lr-rate`
 """
 
@@ -410,7 +412,7 @@ latent_sde = StandardLatentSDE(
 	prior_size=prior_size,
 	posterior_size=hidden_size,
 	diffusion_size=Int(floor(hidden_size/latent_dims)),
-	depth=1,
+	depth=depth,
 	rnn_size=context_size,
 	context_size=context_size,
 	hidden_activation=tanh,
@@ -420,7 +422,9 @@ latent_sde = StandardLatentSDE(
 )
 
 # ╔═╡ 0f6f4520-576f-42d3-9126-2076a51a6e22
-rng = Xoshiro()
+begin
+	rng = Xoshiro()
+end
 
 # ╔═╡ 1938e122-2c05-46fc-b179-db38322530ff
 md"""
@@ -435,87 +439,25 @@ else
 end
 
 # ╔═╡ b0692162-bdd2-4cb8-b99c-1ebd2177a3fd
-ps = ComponentArray{Float32}(ps_)
-
-# ╔═╡ cbc85049-9563-4b5d-8d14-a171f4d0d6aa
-md"""
-# Example Simulations
-"""
-
-# ╔═╡ f5734b1a-4258-44ae-ac00-9520170997bc
-md"""
-### Select Examples
-"""
-
-# ╔═╡ 5f56cc7c-861e-41a4-b783-848623b94bf9
-md"""
-Select timeseries to do some simulations on: $(@bind ti RangeSlider(1:20; default=1:4))
-"""
+begin
+	ps = ComponentArray{Float32}(ps_)
+end
 
 # ╔═╡ ee3d4a2e-0960-430e-921a-17d340af497c
 md"""
 Select a seed: $(@bind seed Scrubbable(481283))
 """
 
-# ╔═╡ 34a3f397-287e-4f43-b76a-3efde5625f90
-viz_batch = shuffle(Xoshiro(seed), timeseries)[ti]
-
-# ╔═╡ cde87244-b6dd-4a1e-8114-5a130fabbe0a
-tsmatrix_batch = reduce(hcat, [reshape(ts.u, 1, 1, :) for ts in viz_batch]);
-
-# ╔═╡ a40ba796-e959-4402-8851-7334e13fc90f
-md"""
-### Timeseries and Context
-"""
-
-# ╔═╡ 77b41b7d-deee-4eca-8ead-f7af03ece23d
-plot(viz_batch, title="Timeseries", label=false)
-
-# ╔═╡ cee607cc-79fb-4aed-9d91-83d3ff683cb5
-# example_context, st_ = encoder(reverse(permutedims(tsmatrix_batch, (1, 3, 2)), dims=2), ps.encoder, st.encoder)
-
-# ╔═╡ 3c163505-22f7-4738-af96-369b30436dd7
-# plot(reduce((x,y) -> cat(x, y; dims = 3), example_context)[1, :, :]', title="Context")
-
-# ╔═╡ 149f32fd-62bc-444d-a771-5f7e27435c73
-md"""
-### Latent SDE Pass
-"""
-
 # ╔═╡ 1af41258-0c18-464d-af91-036f5a4c074c
 ensemblemode = if gpu
-	EnsembleGPUKernel(0.0)
+	EnsembleGPUKernel(CUDA.CUDABackend())
 else
 	EnsembleThreads()
 end
 
-# ╔═╡ 88fa1b08-f0d4-4fcf-89c2-8a9f33710d4c
-posterior_latent, posterior_data, logterm_, kl_divergence_, distance_ = latent_sde(viz_batch, ps, st; seed=seed, ensemblemode=ensemblemode)
-
-# ╔═╡ dabf2a1f-ec78-4942-973f-4dbf9037ee7b
-plot(logterm_[1, :, :]', title="KL-Divergence")
-
-# ╔═╡ 38324c42-e5c7-4b59-8129-0e4c17ab5bf1
-plot(posterior_data[1, :, :]', label="posterior")
-
-# ╔═╡ 3d31519c-0ef6-4b89-82ba-71931c5f47b8
-md"""
-Latent posterior plot for: $(@bind latent_posterior_i Slider(1:length(ti), show_value=true))
-"""
-
-# ╔═╡ 08021ed6-ac31-4829-9f21-f046af73d5a3
-plot(posterior_latent[:, latent_posterior_i, :]')
-
-# ╔═╡ 590a0541-e6bf-4bd5-9bf5-1ef9931e60fb
-md"""
-### Simulation of Prior
-"""
-
-# ╔═╡ 2827fe3a-3ecd-4662-a2d3-c980f1e1cd84
-[x for x in NeuralSDEExploration.sample_prior(latent_sde, ps, st; b=5, seed=0, noise=noise).u[3]]
-
 # ╔═╡ 3ab9a483-08f2-4767-8bd5-ae1375a62dbe
 function plot_prior(priorsamples; rng=rng)
+	println("Sampling prior")
 	prior_latent = NeuralSDEExploration.sample_prior(latent_sde,ps,st;seed=abs(rand(rng, Int)),b=priorsamples, noise=noise)
 	projected_prior = reduce(hcat, [reduce(vcat, [latent_sde.projector(u, ps.projector, st.projector)[1] for u in batch.u]) for batch in prior_latent.u])
 	priorplot = plot(projected_prior, linewidth=.5,color=:black,legend=false,title="projected prior")
@@ -526,12 +468,12 @@ end
 function plotmodel()
 	posteriors = []
 	priors = []
-	posterior_latent = nothing
 	datas = []
 	n = 5
 	rng_plot = Xoshiro(0)
-	nums = sample(rng_plot,1:length(timeseries),n;replace=false)
+	nums = sample(rng_plot, 1:length(timeseries), n; replace=false)
 
+	println("Sampling posterior")
 	posterior_latent, posterior_data, logterm_, kl_divergence_, distance_ = latent_sde(timeseries[nums], ps, st, seed=seed, noise=noise)
 	
 	priorsamples = 25
@@ -550,7 +492,7 @@ function plotmodel()
 end
 
 # ╔═╡ 025b33d9-7473-4a54-a3f1-787a8650f9e7
-plotmodel()
+# plotmodel()
 
 # ╔═╡ 225791b1-0ffc-48e2-8131-7f54848d8d83
 md"""
@@ -827,6 +769,7 @@ savefig(p_hist, "~/Downloads/histogram_ext.pdf")
 # ╟─d81ccb5f-de1c-4a01-93ce-3e7302caedc0
 # ╟─6489b190-e08f-466c-93c4-92a723f8e594
 # ╟─b5721107-7cf5-4da3-b22a-552e3d56bcfa
+# ╟─efd438bc-13cc-457f-82c1-c6e0711079b3
 # ╟─9382314d-c076-4b95-8171-71d903bb9271
 # ╟─ad6247f6-6cb9-4a57-92d3-6328cbd84ecd
 # ╟─fe749caf-393f-45b0-98e5-5d10c1821a9d
@@ -845,7 +788,6 @@ savefig(p_hist, "~/Downloads/histogram_ext.pdf")
 # ╟─cb1c2b2e-a2a2-45ed-9fc1-655d28f267d1
 # ╠═2bb433bb-17df-4a34-9ccf-58c0cf8b4dd3
 # ╟─db88cae4-cb25-4628-9298-5a694c4b29ef
-# ╟─86620e12-9631-4156-8b1c-60545b8a8352
 # ╟─b8b2f4b5-e90c-4066-8dad-27e8dfa1d7c5
 # ╠═08759cda-2a2a-41ff-af94-5b1000c9e53f
 # ╟─ec41b765-2f73-43a5-a575-c97a5a107c4e
@@ -854,25 +796,8 @@ savefig(p_hist, "~/Downloads/histogram_ext.pdf")
 # ╟─1938e122-2c05-46fc-b179-db38322530ff
 # ╠═05568880-f931-4394-b31e-922850203721
 # ╠═b0692162-bdd2-4cb8-b99c-1ebd2177a3fd
-# ╟─cbc85049-9563-4b5d-8d14-a171f4d0d6aa
-# ╟─f5734b1a-4258-44ae-ac00-9520170997bc
-# ╟─5f56cc7c-861e-41a4-b783-848623b94bf9
 # ╟─ee3d4a2e-0960-430e-921a-17d340af497c
-# ╟─34a3f397-287e-4f43-b76a-3efde5625f90
-# ╟─cde87244-b6dd-4a1e-8114-5a130fabbe0a
-# ╟─a40ba796-e959-4402-8851-7334e13fc90f
-# ╟─77b41b7d-deee-4eca-8ead-f7af03ece23d
-# ╠═cee607cc-79fb-4aed-9d91-83d3ff683cb5
-# ╟─3c163505-22f7-4738-af96-369b30436dd7
-# ╟─149f32fd-62bc-444d-a771-5f7e27435c73
 # ╠═1af41258-0c18-464d-af91-036f5a4c074c
-# ╠═88fa1b08-f0d4-4fcf-89c2-8a9f33710d4c
-# ╟─dabf2a1f-ec78-4942-973f-4dbf9037ee7b
-# ╠═38324c42-e5c7-4b59-8129-0e4c17ab5bf1
-# ╟─3d31519c-0ef6-4b89-82ba-71931c5f47b8
-# ╠═08021ed6-ac31-4829-9f21-f046af73d5a3
-# ╟─590a0541-e6bf-4bd5-9bf5-1ef9931e60fb
-# ╠═2827fe3a-3ecd-4662-a2d3-c980f1e1cd84
 # ╠═3ab9a483-08f2-4767-8bd5-ae1375a62dbe
 # ╠═b5c6d43c-8252-4602-8232-b3d1b0bcee33
 # ╠═025b33d9-7473-4a54-a3f1-787a8650f9e7
