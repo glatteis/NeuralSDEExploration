@@ -40,16 +40,26 @@ end
 # ╔═╡ dd48a285-e40e-468a-b5af-5518351128e9
 noise = 0.2
 
+# ╔═╡ ab5de288-e73a-48f2-b8c6-478d74700f6a
+# ╠═╡ disabled = true
+#=╠═╡
+model = NeuralSDEExploration.ZeroDEnergyBalanceModel(0.425, 0.4, 1363, 0.6 * 5.67e-8, noise)
+
+  ╠═╡ =#
+
+# ╔═╡ 534b4e0a-ff36-452f-997c-3623f07e877e
+model = NeuralSDEExploration.FitzHughNagumoModelGamma()
+
 # ╔═╡ 2ae8f19f-8a70-43ec-b552-d56c1b65d746
 begin
 	n = 2
     datasize = 10000
-    tspan = (0.0, 400.0)
+    tspan = (0.0, 200.0)
 end
 
 
 # ╔═╡ cbce9923-70fa-4706-ab43-62f2c25ec559
-solution = NeuralSDEExploration.series(model, 290.0, tspan, datasize; seed=11)
+solution = NeuralSDEExploration.series(model, [[0.0, 0.0]], tspan, datasize; seed=11)
 
 # ╔═╡ d8809ab0-978e-435a-9213-a1d0fcc35331
 solution[1]
@@ -73,7 +83,7 @@ plot(y)
 log_air_passengers = log.(airp.passengers)
 
 # ╔═╡ 376c4845-7383-4d0c-8ab6-faecded265c9
-m = auto_arima(y)
+m = auto_arima(y; max_p=10, max_q=10)
 
 # ╔═╡ ce690e6c-96e5-4fb3-8426-a52bcec08ceb
 scenario_length = 3000
@@ -88,7 +98,7 @@ f = forecast(m, scenario_length)
 plot(m, f)
 
 # ╔═╡ 95e6c78e-0a0c-43ae-9775-a225b053a426
-scenarios = simulate_scenarios(m, 1000, 10)
+scenarios = simulate_scenarios(m, 100, 100)
 
 # ╔═╡ cffd7ab6-8eaa-4c4a-a952-d4f51bb10b19
 md"""
@@ -97,13 +107,13 @@ Histogram span: $(@bind hspan RangeSlider(1:min(datasize, scenario_length)))
 
 # ╔═╡ f7c5e60a-8aaa-48f3-a902-4aaae07b19fc
 begin
-	ts = y[hspan]
-	histogram_data = fit(Histogram, ts, 200.0:2.0:350.0)
+	#ts = y[hspan]
+	histogram_data = fit(Histogram, y, -5.0:0.15:5.0)
 end
 
 # ╔═╡ 336bcb98-5f03-4133-a3d0-eba7336febe3
 begin
-	histogram_arima = fit(Histogram, vcat(scenarios[hspan, 1, 1]...), 200.0:2.0:350.0)
+	histogram_arima = fit(Histogram, vcat(scenarios[hspan, :, :]...), -5.0:0.15:5.0)
 end
 
 # ╔═╡ 959e21b2-d51d-4ba8-bd26-40cb4aab7f85
@@ -116,16 +126,6 @@ begin
 		histogram_arima,
 	], alpha=0.5, labels=["data" "prior"], title="marginal probabilities")
 end
-
-# ╔═╡ ab5de288-e73a-48f2-b8c6-478d74700f6a
-# ╠═╡ disabled = true
-#=╠═╡
-model = NeuralSDEExploration.ZeroDEnergyBalanceModel(0.425, 0.4, 1363, 0.6 * 5.67e-8, noise)
-
-  ╠═╡ =#
-
-# ╔═╡ 534b4e0a-ff36-452f-997c-3623f07e877e
-model = NeuralSDEExploration.FitzHughNagumoModelGamma()
 
 # ╔═╡ Cell order:
 # ╠═68c8b576-e29e-11ed-2ad2-afc5ee52401a

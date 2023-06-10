@@ -168,7 +168,11 @@ begin
 end
 
 # ╔═╡ fe1ae4b3-2f1f-4b6c-a076-0d215f222e6c
-plot_prior(25, rng=Xoshiro(), tspan=(0f0, 10f0), datasize=300)
+plot_prior(25, rng=Xoshiro(), tspan=(0f0, 10f0), datasize=100)
+
+# ╔═╡ ff5519b9-2a69-41aa-8f55-fc63fa176d3f
+ plot(sample(timeseries, 25),linewidth=.5,color=:black,legend=false,title="data")
+
 
 # ╔═╡ Cell order:
 # ╠═7a6bbfd6-ffb7-11ed-39d7-5b673fe4cdae
@@ -199,3 +203,4 @@ plot_prior(25, rng=Xoshiro(), tspan=(0f0, 10f0), datasize=300)
 # ╠═fe157d5e-eead-4921-a310-467e56e33fb7
 # ╠═2812e069-6bf9-4c80-91d7-f7fcf6c338fb
 # ╠═fe1ae4b3-2f1f-4b6c-a076-0d215f222e6c
+# ╠═ff5519b9-2a69-41aa-8f55-fc63fa176d3f

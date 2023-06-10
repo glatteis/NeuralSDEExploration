@@ -219,7 +219,7 @@ function corrupt(value)
 end
 
 # ╔═╡ 9a5c942f-9e2d-4c6c-9cb1-b0dffd8050a0
-timeseries = [(t=ts.t, u=map(x -> corrupt(normalize(x)), ts.u)) for ts in solution]
+timeseries = [(t=ts.t, u=map(x -> normalize(x), ts.u)) for ts in solution]
 
 # ╔═╡ da11fb69-a8a1-456d-9ce7-63180ef27a83
 md"""
