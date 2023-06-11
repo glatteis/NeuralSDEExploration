@@ -35,7 +35,7 @@ using JLD2
     sense = BacksolveAdjoint(autojacvec=ZygoteVJP(), checkpointing=true)
     noise = function(seed)
         rng_tree = Xoshiro(seed)
-        VirtualBrownianTree(-5f0, 0f0, tend=tspan[end]+5f0; rng=Threefry4x((rand(rng_tree, UInt32), rand(rng_tree, UInt32), rand(rng_tree, UInt32), rand(rng_tree, UInt32))))
+        VirtualBrownianTree(-5f0, fill(0f0, 2+1), tend=tspan[end]+5f0; rng=Threefry4x((rand(rng_tree, UInt32), rand(rng_tree, UInt32), rand(rng_tree, UInt32), rand(rng_tree, UInt32))))
     end
     
     function loss(ps)

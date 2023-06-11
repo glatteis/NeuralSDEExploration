@@ -374,7 +374,7 @@ CLI arg: `--tree-depth`
 		BacksolveAdjoint(autojacvec=ZygoteVJP(), checkpointing=true),
 		function(seed)
 			rng_tree = Xoshiro(seed)
-			VirtualBrownianTree(-3f0, 0f0, tend=tspan_model[2]*2f0; tree_depth=tree_depth, rng=Threefry4x((rand(rng_tree, UInt32), rand(rng_tree, UInt32), rand(rng_tree, UInt32), rand(rng_tree, UInt32))))
+			VirtualBrownianTree(-3f0, fill(0f0, latent_dims + 1), tend=tspan_model[2]*2f0; tree_depth=tree_depth, rng=Threefry4x((rand(rng_tree, UInt32), rand(rng_tree, UInt32), rand(rng_tree, UInt32), rand(rng_tree, UInt32))))
 		end,
 	)
 else
@@ -456,10 +456,9 @@ else
 end
 
 # ╔═╡ 3ab9a483-08f2-4767-8bd5-ae1375a62dbe
-function plot_prior(priorsamples; rng=rng)
-	println("Sampling prior")
-	prior_latent = NeuralSDEExploration.sample_prior(latent_sde,ps,st;seed=abs(rand(rng, Int)),b=priorsamples, noise=noise)
-	projected_prior = reduce(hcat, [reduce(vcat, [latent_sde.projector(u, ps.projector, st.projector)[1] for u in batch.u]) for batch in prior_latent.u])
+function plot_prior(priorsamples; rng=rng, tspan=latent_sde.tspan, datasize=latent_sde.datasize)
+	prior_latent = NeuralSDEExploration.sample_prior(latent_sde,ps,st;seed=abs(rand(rng, Int)),b=priorsamples, noise=(seed) -> noise(seed), tspan=tspan, datasize=datasize)
+	projected_prior = reduce(hcat, [reduce(vcat, [latent_sde.projector(u[1:end-1], ps.projector, st.projector)[1] for u in batch.u]) for batch in prior_latent.u])
 	priorplot = plot(projected_prior, linewidth=.5,color=:black,legend=false,title="projected prior")
 	return priorplot
 end
@@ -473,7 +472,6 @@ function plotmodel()
 	rng_plot = Xoshiro(0)
 	nums = sample(rng_plot, 1:length(timeseries), n; replace=false)
 
-	println("Sampling posterior")
 	posterior_latent, posterior_data, logterm_, kl_divergence_, distance_ = latent_sde(timeseries[nums], ps, st, seed=seed, noise=noise)
 	
 	priorsamples = 25
@@ -490,9 +488,6 @@ function plotmodel()
 	#posterior_latent
 	p
 end
-
-# ╔═╡ 025b33d9-7473-4a54-a3f1-787a8650f9e7
-# plotmodel()
 
 # ╔═╡ 225791b1-0ffc-48e2-8131-7f54848d8d83
 md"""
@@ -533,9 +528,12 @@ end
 function train(lr_sched, num_steps, opt_state; kl_sched=Loop(x -> eta, 1))
 	for step in 1:num_steps
 		s = sample(rng, 1:size(timeseries)[1], batch_size)
+		
 		minibatch = timeseries[s]
-
+		
 		seed = rand(rng, UInt32)
+		println(s)
+		println(seed)
 
 		eta = popfirst!(kl_sched)
 		lr = popfirst!(lr_sched)
@@ -800,7 +798,6 @@ savefig(p_hist, "~/Downloads/histogram_ext.pdf")
 # ╠═1af41258-0c18-464d-af91-036f5a4c074c
 # ╠═3ab9a483-08f2-4767-8bd5-ae1375a62dbe
 # ╠═b5c6d43c-8252-4602-8232-b3d1b0bcee33
-# ╠═025b33d9-7473-4a54-a3f1-787a8650f9e7
 # ╟─225791b1-0ffc-48e2-8131-7f54848d8d83
 # ╠═550d8974-cd19-4d0b-9492-adb4e14a04b1
 # ╠═fa43f63d-8293-43cc-b099-3b69dbbf4b6a

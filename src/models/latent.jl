@@ -142,13 +142,14 @@ function sample_prior(n::LatentSDE, ps, st; b=1, seed=nothing, noise=(seed) -> n
         (reshape([only(rand(Normal{Float32}(0.0f0, 1.0f0), 1)) for i in 1:b], 1, :), rand(UInt32))
     end
 
+    # We vcat 0f0 to these so that the prior has the same dimensions as the posterior (for noise reasons)
     function dudt_prior(u, p, t) 
         time_or_empty = n.timedependent ? [t] : []
-        n.drift_prior(vcat(u, time_or_empty), p.drift_prior, st.drift_prior)[1]
+        vcat(n.drift_prior(vcat(u[1:end-1], time_or_empty), p.drift_prior, st.drift_prior)[1], 0f0)
     end
     function dudw_diffusion(u, p, t) 
         time_or_empty = n.timedependent ? [t] : []
-        reduce(vcat, n.diffusion(Tuple([vcat(x, time_or_empty) for x in u]), p.diffusion, st.diffusion)[1])
+        vcat(reduce(vcat, n.diffusion(Tuple([vcat(x, time_or_empty) for x in u[1:end-1]]), p.diffusion, st.diffusion)[1]), 0f0)
     end
 
     initialdists_prior = get_distributions(n.initial_prior, ps.initial_prior, st.initial_prior, [1.0f0])
@@ -158,7 +159,7 @@ function sample_prior(n::LatentSDE, ps, st; b=1, seed=nothing, noise=(seed) -> n
         noise_instance = ChainRulesCore.ignore_derivatives() do
             noise(Int(floor(seed + batch)))
         end
-        return SDEProblem{false}(dudt_prior, dudw_diffusion, z0[:, batch], tspan, ps, seed=seed + batch, noise=noise_instance)
+        SDEProblem{false}(dudt_prior, dudw_diffusion, vcat(z0[:, batch], 0f0), tspan, ps, seed=seed + batch, noise=noise_instance)
     end
 
     ensemble = EnsembleProblem(nothing, output_func=(sol, i) -> (sol, false), prob_func=prob_func)

@@ -67,8 +67,9 @@ seed = 321321
 # ╔═╡ b5a4ca1c-0458-4fdb-b2eb-b29967c02158
 noise = function(seed; tend=timeseries[1].t[end]+1f0)
 	rng = Xoshiro(seed)
-	VirtualBrownianTree(-1f0, 0f0, tend=tend+1f0; tree_depth=0, rng=Threefry4x((rand(rng, Int64), rand(rng, Int64), rand(rng, Int64), rand(rng, Int64))))
-	return nothing
+	VirtualBrownianTree(-1f0, fill(0f0, 5), tend=tend+1f0; tree_depth=0, rng=Threefry4x((rand(rng, Int64), rand(rng, Int64), rand(rng, Int64), rand(rng, Int64))))		
+	#println("Creating wiener process with seed $seed")
+	#return WienerProcess(0f0, fill(0f0, 5))
 end
 
 # ╔═╡ e0afda9e-0b17-4e7e-9d1e-d0f05df6fa4e
@@ -86,7 +87,7 @@ plot(posterior_data[1, :,:]',linewidth=2,legend=false,title="projected posterior
 # ╔═╡ 63213503-ab28-4158-b522-efd0b0139b6d
 function plot_prior(priorsamples; rng=rng, tspan=latent_sde.tspan, datasize=latent_sde.datasize)
 	prior_latent = NeuralSDEExploration.sample_prior(latent_sde,ps,st;seed=abs(rand(rng, Int)),b=priorsamples, noise=(seed) -> noise(seed; tend=tspan[2]), tspan=tspan, datasize=datasize)
-	projected_prior = reduce(hcat, [reduce(vcat, [latent_sde.projector(u, ps.projector, st.projector)[1] for u in batch.u]) for batch in prior_latent.u])
+	projected_prior = reduce(hcat, [reduce(vcat, [latent_sde.projector(u[1:end-1], ps.projector, st.projector)[1] for u in batch.u]) for batch in prior_latent.u])
 	priorplot = plot(projected_prior, linewidth=.5,color=:black,legend=false,title="projected prior")
 	return priorplot
 end
@@ -151,7 +152,7 @@ begin
 end
 
 # ╔═╡ 0d74625b-edf2-45a7-9b16-08fc29d83eb0
-kl_loss(ps, timeseries[ti], 1.0, rand(UInt32))
+loss(ps, timeseries[1:1], 30.0, rand(UInt32))
 
 # ╔═╡ fe157d5e-eead-4921-a310-467e56e33fb7
 begin
