@@ -67,9 +67,10 @@ seed = 321321
 # ╔═╡ b5a4ca1c-0458-4fdb-b2eb-b29967c02158
 noise = function(seed; tend=timeseries[1].t[end]+1f0)
 	rng = Xoshiro(seed)
-	VirtualBrownianTree(-1f0, fill(0f0, 5), tend=tend+1f0; tree_depth=0, rng=Threefry4x((rand(rng, Int64), rand(rng, Int64), rand(rng, Int64), rand(rng, Int64))))		
+	VirtualBrownianTree(-1f0, fill(0f0, 1), tend=tend+1f0; tree_depth=0, rng=Threefry4x((rand(rng, Int64), rand(rng, Int64), rand(rng, Int64), rand(rng, Int64))))		
 	#println("Creating wiener process with seed $seed")
 	#return WienerProcess(0f0, fill(0f0, 5))
+	nothing
 end
 
 # ╔═╡ e0afda9e-0b17-4e7e-9d1e-d0f05df6fa4e
@@ -137,7 +138,7 @@ function kl_loss(ps, minibatch, eta, seed)
 end
 
 # ╔═╡ 0dc46a16-e26d-4ec2-a74e-675e83959ab2
-loss(ps, viz_batch, 10.0, seed)
+loss(ps, viz_batch, 1.0, seed)
 
 # ╔═╡ 96c0423f-214e-4995-a2e4-fe5c84d5a7c3
 md"""
@@ -147,7 +148,9 @@ Histogram span: $(@bind hspan RangeSlider(1:20))
 # ╔═╡ a09063de-3002-400a-af89-233eb0822041
 begin
 	prior_latent = NeuralSDEExploration.sample_prior(latent_sde,ps,st;b=length(timeseries),seed=0,noise=noise)
-	projected_prior = vcat(reduce(vcat, [latent_sde.projector(x[hspan], ps.projector, st.projector)[1] for x in prior_latent.u])...)
+	#projected_prior = vcat(reduce(vcat, [latent_sde.projector(map(y -> y[1:end-1], x[hspan]), ps.projector, st.projector)[1] for x in prior_latent.u])...)
+	projected_prior = reduce(vcat, [reduce(vcat, [latent_sde.projector(u[1:end-1], ps.projector, st.projector)[1] for u in batch.u[hspan]]) for batch in prior_latent.u])
+
 	histogram_prior = fit(Histogram, projected_prior, 0.0:0.01:1.0)
 end
 
