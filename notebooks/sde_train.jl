@@ -532,8 +532,6 @@ function train(lr_sched, num_steps, opt_state; kl_sched=Loop(x -> eta, 1))
 		minibatch = timeseries[s]
 		
 		seed = rand(rng, UInt32)
-		println(s)
-		println(seed)
 
 		eta = popfirst!(kl_sched)
 		lr = popfirst!(lr_sched)
@@ -550,8 +548,6 @@ function train(lr_sched, num_steps, opt_state; kl_sched=Loop(x -> eta, 1))
 		dps = Zygote.gradient(ps -> loss(ps, minibatch, eta, seed)[1], ps)[1]
 		
 		GC.gc(step % 10 == 1)
-
-		println(dps)
 
 		# kidger trick
 		dps.initial_prior *= 20.0
