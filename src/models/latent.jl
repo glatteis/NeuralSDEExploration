@@ -233,77 +233,80 @@ function (n::LatentSDE)(timeseries::Vector{NamedTuple{(:t, :u), Tuple{Vector{Flo
     # context_flipped is now a vector of 2-dim matrices
     # latent space: dimension 1
     # batch: dimension 2
-    context = reduce(timecat, context_flipped)
-
+    context_precomputed = reduce(timecat, context_flipped)
+    
     initialdists_prior = get_distributions(n.initial_prior, ps.initial_prior, st.initial_prior, [1.0f0])
 
-    initialdists_posterior = get_distributions(n.initial_posterior, ps.initial_posterior, st.initial_posterior, context[:, :, 1])
+    initialdists_posterior = get_distributions(n.initial_posterior, ps.initial_posterior, st.initial_posterior, context_precomputed[:, :, 1])
 
     z0 = reduce(hcat, [reshape([x.μ + eps[1, batch] * x.σ for x in initialdists_posterior[:, batch]], :, 1) for batch in eachindex(timeseries)])
 
     augmented_z0 = vcat(z0, zeros32(1, length(z0[1, :])))
 
-    function augmented_drift(batch)
-        function (u_in::Vector{Float32}, p::ComponentVector, t::Float32)
-            # Remove augmented term from input
-            u = if n.timedependent
-                vcat(u_in[1:end-1], t)
-            else
-                u_in[1:end-1]
-            end
-
-            # Get the context for the posterior at the current time
-            # initial state evolve => get the posterior at future start time
-            time_index = max(1, searchsortedlast(timeseries[1].t, t))
-            timedctx_check = context[:, batch, time_index] # check if the context is correct, but we need to re-compute it here...
-            # tsmatrix_flipped has the batch / time indices the other way around
-            # and it has the time reversed
-            precontext_flipped_local = n.encoder_recurrent(tsmatrix_flipped[:, 1:end - time_index + 1, batch:batch], p.encoder_recurrent, st.encoder_recurrent)[1]
-            
-            timedctx = n.encoder_net(precontext_flipped_local[end], p.encoder_net, st.encoder_net)[1][:, 1]
-            
-            @assert timedctx == timedctx_check
-            
-            # The posterior gets u and the context as information
-            posterior_net_input = vcat(u, timedctx)
-
-            prior = n.drift_prior(u, p.drift_prior, st.drift_prior)[1]
-            posterior = n.drift_posterior(posterior_net_input, p.drift_posterior, st.drift_posterior)[1]
-            # The diffusion is diagonal, so a single network is invoked on each dimension
-            diffusion = reduce(vcat, n.diffusion(([n.timedependent ? vcat(x, t) : [x] for x in u]...,), p.diffusion, st.diffusion)[1])
-
-            # The augmented term for computing the KL divergence
-            u_term = stable_divide(posterior .- prior, diffusion)
-            augmented_term = 0.5f0 * sum(abs2, u_term; dims=[1])
-
-            return vcat(posterior, augmented_term)
+    function augmented_drift(u_in::Vector{Float32}, info::ComponentVector, t::Float32)
+        # Remove augmented term from input
+        u = if n.timedependent
+            vcat(u_in[1:end-1], t)
+        else
+            u_in[1:end-1]
         end
+        
+        p = info.ps
+        context = info.context
+        batch = Int(info.batch)
+        
+        # Get the context for the posterior at the current time
+        # initial state evolve => get the posterior at future start time
+        time_index = max(1, searchsortedlast(timeseries[1].t, t))
+        timedctx = context[:, batch, time_index]
+        
+        # The posterior gets u and the context as information
+        posterior_net_input = vcat(u, timedctx)
+
+        prior = n.drift_prior(u, p.drift_prior, st.drift_prior)[1]
+        posterior = n.drift_posterior(posterior_net_input, p.drift_posterior, st.drift_posterior)[1]
+        # The diffusion is diagonal, so a single network is invoked on each dimension
+        diffusion = reduce(vcat, n.diffusion(([n.timedependent ? vcat(x, t) : [x] for x in u]...,), p.diffusion, st.diffusion)[1])
+
+        # The augmented term for computing the KL divergence
+        u_term = stable_divide(posterior .- prior, diffusion)
+        augmented_term = 0.5f0 * sum(abs2, u_term; dims=[1])
+
+        return vcat(posterior, augmented_term)
     end
-    function augmented_diffusion(batch)
-        function (u_in::Vector{Float32}, p::ComponentVector, t::Float32)
-            time_or_empty = n.timedependent ? [t] : []
-            u = vcat(u_in[1:end-1], time_or_empty)
-            diffusion = reduce(vcat, n.diffusion(([n.timedependent ? vcat(x, t) : [x] for x in u]...,), p.diffusion, st.diffusion)[1])
-            additional_term = if stick_landing
-                time_index = max(1, searchsortedlast(timeseries[1].t, t))
-                timedctx = context[:, batch, time_index]
-                posterior_net_input = vcat(u, timedctx)
-                prior = n.drift_prior(u, p.drift_prior, st.drift_prior)[1]
-                posterior = ChainRulesCore.ignore_derivatives(n.drift_posterior(posterior_net_input, p.drift_posterior, st.drift_posterior)[1])
-                u_term = stable_divide(posterior .- prior, diffusion)
-                sum(u_term; dims=[1])
-            else
-                0.0f0
-            end
-            return vcat(diffusion, additional_term)
+    function augmented_diffusion(u_in::Vector{Float32}, info::ComponentVector, t::Float32)
+        p = info.ps
+        context = info.context
+        batch = Int(info.batch)
+        time_or_empty = n.timedependent ? [t] : []
+        u = vcat(u_in[1:end-1], time_or_empty)
+        diffusion = reduce(vcat, n.diffusion(([n.timedependent ? vcat(x, t) : [x] for x in u]...,), p.diffusion, st.diffusion)[1])
+        additional_term = if stick_landing
+            time_index = max(1, searchsortedlast(timeseries[1].t, t))
+            timedctx = context[:, batch, time_index]
+            posterior_net_input = vcat(u, timedctx)
+            prior = n.drift_prior(u, p.drift_prior, st.drift_prior)[1]
+            posterior = ChainRulesCore.ignore_derivatives(n.drift_posterior(posterior_net_input, p.drift_posterior, st.drift_posterior)[1])
+            u_term = stable_divide(posterior .- prior, diffusion)
+            sum(u_term; dims=[1])
+        else
+            0.0f0
         end
+        return vcat(diffusion, additional_term)
+    end
+    
+    # Deriving operations with ComponentArray is not so easy, first we have to
+    # grab the axes and then re-construct using a vector
+    axes = ChainRulesCore.ignore_derivatives() do
+        getaxes(ComponentArray((context=context_precomputed, batch=0, ps=ps)))
     end
 
     function prob_func(prob, batch, repeat)
         noise_instance = ChainRulesCore.ignore_derivatives() do
             noise(Int(floor(seed + batch)))
         end
-        return SDEProblem{false}(augmented_drift(batch), augmented_diffusion(batch), augmented_z0[:, batch], n.tspan, ps, seed=seed + Int(batch), noise=noise_instance)
+        info = ComponentArray(vcat(vec(context_precomputed), batch, ps), axes)
+        return SDEProblem{false}(augmented_drift, augmented_diffusion, augmented_z0[:, batch], n.tspan, info, seed=seed + Int(batch), noise=noise_instance)
     end
 
     ensemble = EnsembleProblem(nothing, output_func=(sol, i) -> (sol, false), prob_func=prob_func)

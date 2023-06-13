@@ -40,13 +40,6 @@ end
 # ╔═╡ dd48a285-e40e-468a-b5af-5518351128e9
 noise = 0.2
 
-# ╔═╡ ab5de288-e73a-48f2-b8c6-478d74700f6a
-# ╠═╡ disabled = true
-#=╠═╡
-model = NeuralSDEExploration.ZeroDEnergyBalanceModel(0.425, 0.4, 1363, 0.6 * 5.67e-8, noise)
-
-  ╠═╡ =#
-
 # ╔═╡ 534b4e0a-ff36-452f-997c-3623f07e877e
 model = NeuralSDEExploration.FitzHughNagumoModelGamma()
 

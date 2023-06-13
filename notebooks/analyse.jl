@@ -172,7 +172,10 @@ begin
 end
 
 # ╔═╡ fe1ae4b3-2f1f-4b6c-a076-0d215f222e6c
-plot_prior(25, rng=Xoshiro(), tspan=(0f0, 10f0), datasize=100)
+plot_prior(25, rng=Xoshiro(), tspan=(0f0, 100f0), datasize=100)
+
+# ╔═╡ 72045fd0-2769-4868-9b67-e7a41e3f1d7d
+plot_prior(1, rng=Xoshiro(), tspan=(0f0, 100f0), datasize=5000)
 
 # ╔═╡ ff5519b9-2a69-41aa-8f55-fc63fa176d3f
  plot(sample(timeseries, 25),linewidth=.5,color=:black,legend=false,title="data")
@@ -207,4 +210,5 @@ plot_prior(25, rng=Xoshiro(), tspan=(0f0, 10f0), datasize=100)
 # ╠═fe157d5e-eead-4921-a310-467e56e33fb7
 # ╠═2812e069-6bf9-4c80-91d7-f7fcf6c338fb
 # ╠═fe1ae4b3-2f1f-4b6c-a076-0d215f222e6c
+# ╠═72045fd0-2769-4868-9b67-e7a41e3f1d7d
 # ╠═ff5519b9-2a69-41aa-8f55-fc63fa176d3f
