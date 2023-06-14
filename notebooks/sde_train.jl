@@ -545,16 +545,12 @@ function train(lr_sched, num_steps, opt_state; kl_sched=Loop(x -> eta, 1))
 		push!(recorded_lr, lr)
 
 		println("Loss: $l, KL: $kl_divergence")
-		dps = Zygote.gradient(ps -> loss(ps, minibatch, eta, seed)[1], ps)[1]
+		dps = Zygote.gradient(ps -> loss(ps, minibatch, eta, seed)[1], ps)
 		
 		GC.gc(step % 10 == 1)
-
-		# kidger trick
-		dps.initial_prior *= 20.0
-		dps.initial_posterior *= 20.0
 		
-		Optimisers.adjust!(opt_state, lr)		
-		Optimisers.update!(opt_state, ps, dps)		
+		Optimisers.update!(opt_state, ps, dps[1])
+		Optimisers.adjust!(opt_state, lr)
 	end
 end
 
