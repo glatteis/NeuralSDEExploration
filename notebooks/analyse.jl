@@ -67,7 +67,7 @@ seed = 321321
 # ╔═╡ b5a4ca1c-0458-4fdb-b2eb-b29967c02158
 noise = function(seed; tend=timeseries[1].t[end]+1f0)
 	rng = Xoshiro(seed)
-	VirtualBrownianTree(-1f0, fill(0f0, 5), tend=tend+1f0; tree_depth=0, rng=Threefry4x((rand(rng, Int64), rand(rng, Int64), rand(rng, Int64), rand(rng, Int64))))		
+	VirtualBrownianTree(-1f0, fill(0f0, Int(latent_sde.initial_prior.out_dims // 2) + 1), tend=tend+1f0; tree_depth=0, rng=Threefry4x((rand(rng, Int64), rand(rng, Int64), rand(rng, Int64), rand(rng, Int64))))		
 	#println("Creating wiener process with seed $seed")
 	#return WienerProcess(0f0, fill(0f0, 5))
 end
@@ -147,7 +147,8 @@ Histogram span: $(@bind hspan RangeSlider(1:20))
 # ╔═╡ a09063de-3002-400a-af89-233eb0822041
 begin
 	prior_latent = NeuralSDEExploration.sample_prior(latent_sde,ps,st;b=length(timeseries),seed=0,noise=noise)
-	projected_prior = vcat(reduce(vcat, [latent_sde.projector(x[hspan], ps.projector, st.projector)[1] for x in prior_latent.u])...)
+	projected_prior = map(first, vcat([[latent_sde.projector(y[1:end-1], ps.projector, st.projector) for y in x[hspan].u] for x in prior_latent.u]...))
+	#projected_prior = vcat(reduce(vcat, [latent_sde.projector(x[hspan], ps.projector, st.projector)[1] for x in prior_latent.u])...)
 	histogram_prior = fit(Histogram, projected_prior, 0.0:0.01:1.0)
 end
 
@@ -168,11 +169,17 @@ begin
 	], alpha=0.5, labels=["data" "prior"], title="marginal probabilities")
 end
 
+# ╔═╡ 526f60b8-9e37-48c3-8c49-c19bc306d9f2
+timeseries_mean(plot_prior(25, rng=Xoshiro(), tspan=(0f0, 10f0), datasize=100))
+
 # ╔═╡ fe1ae4b3-2f1f-4b6c-a076-0d215f222e6c
-plot_prior(25, rng=Xoshiro(), tspan=(0f0, 100f0), datasize=100)
+plot_prior(25, rng=Xoshiro(), tspan=(0f0, 10f0), datasize=100)
 
 # ╔═╡ 72045fd0-2769-4868-9b67-e7a41e3f1d7d
-plot_prior(1, rng=Xoshiro(), tspan=(0f0, 100f0), datasize=5000)
+plot_prior(1, rng=Xoshiro(), tspan=(0f0, 10f0), datasize=5000)
+
+# ╔═╡ 9f8c49a0-2098-411b-976a-2b43cbb20a44
+plot(map(first, NeuralSDEExploration.series(NeuralSDEExploration.FitzHughNagumoModelGamma(), [[0f0, 0f0]], (0f0, 10f0), 5000; seed=1)[1].u))
 
 # ╔═╡ ff5519b9-2a69-41aa-8f55-fc63fa176d3f
  plot(sample(timeseries, 25),linewidth=.5,color=:black,legend=false,title="data")
@@ -206,6 +213,8 @@ plot_prior(1, rng=Xoshiro(), tspan=(0f0, 100f0), datasize=5000)
 # ╠═0d74625b-edf2-45a7-9b16-08fc29d83eb0
 # ╠═fe157d5e-eead-4921-a310-467e56e33fb7
 # ╠═2812e069-6bf9-4c80-91d7-f7fcf6c338fb
+# ╠═526f60b8-9e37-48c3-8c49-c19bc306d9f2
 # ╠═fe1ae4b3-2f1f-4b6c-a076-0d215f222e6c
 # ╠═72045fd0-2769-4868-9b67-e7a41e3f1d7d
+# ╠═9f8c49a0-2098-411b-976a-2b43cbb20a44
 # ╠═ff5519b9-2a69-41aa-8f55-fc63fa176d3f

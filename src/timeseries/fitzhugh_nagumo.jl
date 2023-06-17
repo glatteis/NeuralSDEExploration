@@ -1,6 +1,6 @@
 export FitzHughNagumoModel
 
-struct FitzHughNagumoModel <: Timeseries
+struct FitzHughNagumoModel <: TimeseriesModel
     b
     ɑ₁
     ɑ₃
@@ -18,9 +18,9 @@ driftx(u, fhn::FitzHughNagumoModel, t) = fhn.ɑ₁ * u[1] - fhn.ɑ₃ * u[1]^3 +
 drifty(u, fhn::FitzHughNagumoModel, t) = tan(fhn.β) * u[2] - u[1] + fhn.c
 diffusion(u, fhn::FitzHughNagumoModel, t) = [fhn.σx, fhn.σy]
 
-function series(fhn::FitzHughNagumoModel, u0s, tspan, datasize; seed=nothing, noise=(seed) -> nothing, kwargs...)
+function series(fhn::FitzHughNagumoModel, u0s, tspan, datasize; seed=rand(UInt32), noise=(seed) -> nothing, kwargs...)
     t = range(tspan[1], tspan[2], length=datasize)
-    [solve(SDEProblem(drift, diffusion, u0, tspan, fhn, reltol=0.01, seed=seed+i, maxiters=1_000_000, noise=noise(seed+i), kwargs...), saveat=t) for (i, u0) in enumerate(u0s)]
+    Timeseries([solve(SDEProblem(drift, diffusion, u0, tspan, fhn, reltol=0.01, seed=seed+i, maxiters=1_000_000, noise=noise(seed+i), kwargs...), saveat=t) for (i, u0) in enumerate(u0s)])
 end
 
 ylabel(fhn::FitzHughNagumoModel) = "ẟ¹⁸O anomaly"

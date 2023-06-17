@@ -2,7 +2,7 @@ export ZeroDEnergyBalanceModel
 
 # From https://github.com/TUM-PIK-ESM/TUM-Dynamics-Lecture/blob/main/lectures/lecture-8/lecture8.ipynb
 
-struct ZeroDEnergyBalanceModel <: Timeseries
+struct ZeroDEnergyBalanceModel <: TimeseriesModel
     albedo_0
     albedo_var
     solarconstant
@@ -27,9 +27,9 @@ drift(u, ebm::ZeroDEnergyBalanceModel, t) = energy_in(u[1], ebm) - energy_out(u[
 
 diffusion(u, ebm::ZeroDEnergyBalanceModel, t) = ebm.noise_var * 170.0
 
-function series(ebm::ZeroDEnergyBalanceModel, u0s, tspan, datasize; seed=nothing, noise=(seed) -> nothing, kwargs...)
+function series(ebm::ZeroDEnergyBalanceModel, u0s, tspan, datasize; seed=rand(UInt32), noise=(seed) -> nothing, kwargs...)
     t = range(tspan[1], tspan[2], length=datasize)
-    [solve(SDEProblem(drift, diffusion, u0, tspan, ebm; seed=seed+i, noise=noise(seed+i), kwargs...), EulerHeun(); dt=tspan[2]/(datasize*2), saveat=t) for (i, u0) in enumerate(u0s)]
+    Timeseries([solve(SDEProblem(drift, diffusion, u0, tspan, ebm; seed=seed+i, noise=noise(seed+i), kwargs...), EulerHeun(); dt=tspan[2]/(datasize*2), saveat=t) for (i, u0) in enumerate(u0s)])
 end
 
 ylabel(ebm::ZeroDEnergyBalanceModel) = "temperature [K]"

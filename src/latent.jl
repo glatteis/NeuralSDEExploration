@@ -1,5 +1,4 @@
-using Lux, LuxCore, Distributions, InformationGeometry, Functors, ChainRulesCore, DifferentialEquations
-export LatentSDE, StandardLatentSDE, sample_prior
+export LatentSDE, StandardLatentSDE, sample_prior, sample_prior_dataspace
 
 struct LatentSDE{N1,N2,N3,N4,N5,N6,N7,N8,S,T,D,TD,K} <: LuxCore.AbstractExplicitContainerLayer{(:initial_prior, :initial_posterior, :drift_prior, :drift_posterior, :diffusion, :encoder_recurrent, :encoder_net, :projector,)}
     initial_prior::N1
@@ -54,7 +53,6 @@ Constructs a "standard" latent sde - so you don't need to construct all of the n
 - `context_size`: Size of the context vector.
 - `timedependent`: Whether time is an input to prior drift, posterior drift and diffusion.
 """
-# TODO Make Networks replacable here
 function StandardLatentSDE(solver, tspan, datasize;
         data_dims=1,
         latent_dims=2,
@@ -164,7 +162,12 @@ function sample_prior(n::LatentSDE, ps, st; b=1, seed=nothing, noise=(seed) -> n
 
     ensemble = EnsembleProblem(nothing, output_func=(sol, i) -> (sol, false), prob_func=prob_func)
 
-    return solve(ensemble, n.solver, trajectories=b; saveat=range(tspan[1], tspan[end], datasize), dt=(tspan[end] / datasize), n.kwargs...)
+    Timeseries(solve(ensemble, n.solver, trajectories=b; saveat=range(tspan[1], tspan[end], datasize), dt=(tspan[end] / datasize), n.kwargs...))
+end
+
+function sample_prior_dataspace(n::LatentSDE, ps, st; kwargs...)
+    prior_latent = sample_prior(n, ps, st; kwargs...)
+    map_dims(x -> n.projector(x[1:end-1], ps.projector, st.projector)[1], prior_latent)
 end
 
 # from https://github.com/google-research/torchsde/blob/master/examples/latent_sde.py
@@ -194,7 +197,7 @@ Autodiff this function to train the Latent SDE.
 - `likelihood_dist`: Distribution for computing log-likelihoods (as a way of computing distance).
 - `likelihood_scale`: Variance of `likelihood_dist`.
 """
-function (n::LatentSDE)(timeseries::Vector{NamedTuple{(:t, :u), Tuple{Vector{Float32}, Vector{Float32}}}}, ps::ComponentVector, st;
+function (n::LatentSDE)(timeseries::Timeseries, ps::ComponentVector, st;
     sense=InterpolatingAdjoint(autojacvec=ZygoteVJP(), checkpointing=true),
     ensemblemode=EnsembleThreads(),
     seed=nothing,
@@ -202,7 +205,6 @@ function (n::LatentSDE)(timeseries::Vector{NamedTuple{(:t, :u), Tuple{Vector{Flo
     stick_landing=false,
     likelihood_dist=Normal,
     likelihood_scale=0.01f0,
-    buffer_context=true, # TODO
 )
     # We are using matrices with the following dimensions:
     # 1 = latent space dimension
@@ -212,10 +214,10 @@ function (n::LatentSDE)(timeseries::Vector{NamedTuple{(:t, :u), Tuple{Vector{Flo
         if seed !== nothing
             Random.seed!(seed)
         end
-        (reshape([only(rand(Normal{Float32}(0.0f0, 1.0f0), 1)) for i in eachindex(timeseries)], 1, :), rand(UInt32))
+        (reshape([only(rand(Normal{Float32}(0.0f0, 1.0f0), 1)) for i in eachindex(timeseries.u)], 1, :), rand(UInt32))
     end
 
-    tsmatrix = reduce(hcat, [reshape(ts.u, 1, 1, :) for ts in timeseries])
+    tsmatrix = reduce(hcat, [reshape(map(only, u), 1, 1, :) for u in timeseries.u])
 
     timecat(x, y) = cat(x, y; dims=3)
 
@@ -239,7 +241,7 @@ function (n::LatentSDE)(timeseries::Vector{NamedTuple{(:t, :u), Tuple{Vector{Flo
 
     initialdists_posterior = get_distributions(n.initial_posterior, ps.initial_posterior, st.initial_posterior, context_precomputed[:, :, 1])
 
-    z0 = reduce(hcat, [reshape([x.μ + eps[1, batch] * x.σ for x in initialdists_posterior[:, batch]], :, 1) for batch in eachindex(timeseries)])
+    z0 = reduce(hcat, [reshape([x.μ + eps[1, batch] * x.σ for x in initialdists_posterior[:, batch]], :, 1) for batch in eachindex(timeseries.u)])
 
     augmented_z0 = vcat(z0, zeros32(1, length(z0[1, :])))
 
@@ -253,12 +255,11 @@ function (n::LatentSDE)(timeseries::Vector{NamedTuple{(:t, :u), Tuple{Vector{Flo
         
         p = info.ps
         context = info.context
-        batch = Int(info.batch)
         
         # Get the context for the posterior at the current time
         # initial state evolve => get the posterior at future start time
-        time_index = max(1, searchsortedlast(timeseries[1].t, t))
-        timedctx = context[:, batch, time_index]
+        time_index = max(1, searchsortedlast(timeseries.t, t))
+        timedctx = context[:, time_index]
         
         # The posterior gets u and the context as information
         posterior_net_input = vcat(u, timedctx)
@@ -277,13 +278,12 @@ function (n::LatentSDE)(timeseries::Vector{NamedTuple{(:t, :u), Tuple{Vector{Flo
     function augmented_diffusion(u_in::Vector{Float32}, info::ComponentVector, t::Float32)
         p = info.ps
         context = info.context
-        batch = Int(info.batch)
         time_or_empty = n.timedependent ? [t] : []
         u = vcat(u_in[1:end-1], time_or_empty)
         diffusion = reduce(vcat, n.diffusion(([n.timedependent ? vcat(x, t) : [x] for x in u]...,), p.diffusion, st.diffusion)[1])
         additional_term = if stick_landing
-            time_index = max(1, searchsortedlast(timeseries[1].t, t))
-            timedctx = context[:, batch, time_index]
+            time_index = max(1, searchsortedlast(timeseries.t, t))
+            timedctx = context[:, time_index]
             posterior_net_input = vcat(u, timedctx)
             prior = n.drift_prior(u, p.drift_prior, st.drift_prior)[1]
             posterior = ChainRulesCore.ignore_derivatives(n.drift_posterior(posterior_net_input, p.drift_posterior, st.drift_posterior)[1])
@@ -298,30 +298,30 @@ function (n::LatentSDE)(timeseries::Vector{NamedTuple{(:t, :u), Tuple{Vector{Flo
     # Deriving operations with ComponentArray is not so easy, first we have to
     # grab the axes and then re-construct using a vector
     axes = ChainRulesCore.ignore_derivatives() do
-        getaxes(ComponentArray((context=context_precomputed, batch=0, ps=ps)))
+        getaxes(ComponentArray((context=context_precomputed[:, 1, :], ps=ps)))
     end
 
     function prob_func(prob, batch, repeat)
         noise_instance = ChainRulesCore.ignore_derivatives() do
             noise(Int(floor(seed + batch)))
         end
-        info = ComponentArray(vcat(vec(context_precomputed), batch, ps), axes)
+        info = ComponentArray(vcat(vec(context_precomputed[:, batch, :]), ps), axes)
         return SDEProblem{false}(augmented_drift, augmented_diffusion, augmented_z0[:, batch], n.tspan, info, seed=seed + Int(batch), noise=noise_instance)
     end
 
     ensemble = EnsembleProblem(nothing, output_func=(sol, i) -> (sol, false), prob_func=prob_func)
 
-    solution = solve(ensemble, n.solver, ensemblemode; trajectories=length(timeseries), sensealg=sense, saveat=range(n.tspan[1], n.tspan[end], n.datasize), dt=(n.tspan[end] / n.datasize), n.kwargs...)
+    solution = solve(ensemble, n.solver, ensemblemode; trajectories=length(timeseries.u), sensealg=sense, saveat=range(n.tspan[1], n.tspan[end], n.datasize), dt=(n.tspan[end] / n.datasize), n.kwargs...)
 
     # If ts_start > 0, the timeseries starts after the latent sde, thus only score after ts_start
     # The timeseries could be irregularily sampled or have a different rate than the model, so search for appropiate points here
     # TODO: Interpolate this?
-    ts_indices = [searchsortedfirst(solution[1].t, t) for t in timeseries[1].t]
+    ts_indices = [searchsortedfirst(solution[1].t, t) for t in timeseries.t]
     ts_start = ts_indices[1]
 
     posterior_latent = reduce(hcat, [reduce(timecat, [reshape(u[1:end-1], :, 1, 1) for u in batch.u]) for batch in solution.u])
     logterm = reduce(hcat, [reduce(timecat, [reshape(u[end:end], :, 1, 1) for u in batch.u]) for batch in solution.u])
-    initialdists_kl = reduce(hcat, [reshape([KullbackLeibler(a, b) for (a, b) in zip(initialdists_posterior[:, batch], initialdists_prior)], :, 1) for batch in eachindex(timeseries)])
+    initialdists_kl = reduce(hcat, [reshape([KullbackLeibler(a, b) for (a, b) in zip(initialdists_posterior[:, batch], initialdists_prior)], :, 1) for batch in eachindex(timeseries.u)])
     kl_divergence = sum(initialdists_kl, dims=1) .+ logterm[:, :, end]
 
     projected_z0 = n.projector(z0, ps.projector, st.projector)[1]

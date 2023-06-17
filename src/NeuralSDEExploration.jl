@@ -1,8 +1,29 @@
 module NeuralSDEExploration
 
-using Plots; gr()
+using ChainRulesCore
+using ComponentArrays
+using Dates
+using DiffEqFlux
+using DifferentialEquations
+using Distributions
+using ForwardDiff
+using Functors
+using InformationGeometry
+using IPMeasures
+using Lux
+using LuxCore
+using NODEData
+using Optimisers
+using ProgressMeter
+using Random
+using Statistics
+using StatsBase: sample, Histogram
+using Zygote
+using RecipesBase
 
+include("util.jl")
 include("timeseries/timeseries.jl")
-include("models/models.jl")
+include("latent.jl")
+include("analysis.jl")
 
 end # module NeuralSDEExploration

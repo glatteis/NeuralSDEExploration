@@ -182,10 +182,10 @@ end
 solution_full = NeuralSDEExploration.series(model, initial_condition, tspan_data, steps(tspan_data, dt); seed=1)
 
 # ╔═╡ 5691fcc5-29b3-4236-9154-59c6fede49ce
-tspan_train_steps = (searchsortedlast(solution_full[1].t, tspan_start_train)): (searchsortedlast(solution_full[1].t, tspan_end_train))
+tspan_train_steps = (searchsortedlast(solution_full.t, tspan_start_train)): (searchsortedlast(solution_full.t, tspan_end_train))
 
 # ╔═╡ 15cef7cc-30b6-499d-b968-775b3251dedb
-solution = shuffle([(t=map(Float32, x.t[tspan_train_steps]), u=map(Float32 ∘ first, x.u[tspan_train_steps])) for x in solution_full])
+solution = Timeseries(shuffle([(t=map(Float32, solution_full.t[tspan_train_steps]), u=map(Float32 ∘ first, x[tspan_train_steps])) for x in solution_full.u]))
 
 # ╔═╡ 1502612c-1489-4abf-8a8b-5b2d03a68cb1
 md"""
@@ -193,7 +193,7 @@ Let's also plot some example trajectories:
 """
 
 # ╔═╡ 455263ef-2f94-4f3e-8401-f0da7fb3e493
-plot(reduce(hcat, [solution[i].u for i in 1:20]); legend=false)
+plot(select_ts(1:40, solution_full))
 
 # ╔═╡ f4651b27-135e-45f1-8647-64ab08c2e8e8
 md"""
@@ -202,8 +202,8 @@ Let's normalize our data for training:
 
 # ╔═╡ aff1c9d9-b29b-4b2c-b3f1-1e06a9370f64
 begin
-    datamax = max([max(x.u...) for x in solution]...)
-    datamin = min([min(x.u...) for x in solution]...)
+    datamax = max([max(x...) for x in solution.u]...) |> only
+    datamin = min([min(x...) for x in solution.u]...) |> only
 
     function normalize(x)
         return ((x - datamin) / (datamax - datamin))
@@ -219,7 +219,7 @@ function corrupt(value)
 end
 
 # ╔═╡ 9a5c942f-9e2d-4c6c-9cb1-b0dffd8050a0
-timeseries = [(t=ts.t, u=map(x -> normalize(x), ts.u)) for ts in solution]
+timeseries = map_dims(x -> map(normalize, x), solution)
 
 # ╔═╡ da11fb69-a8a1-456d-9ce7-63180ef27a83
 md"""
@@ -354,7 +354,7 @@ CLI arg: `--kl-rate`
 """
 
 # ╔═╡ 9767a8ea-bdda-43fc-b636-8681d150d29f
-data_dims = length(solution[1].u[1]) # Dimensions of our input data.
+data_dims = length(solution.u[1][1]) # Dimensions of our input data.
 
 # ╔═╡ 3db229f0-0e13-4d80-8680-58b89161db35
 md"""
@@ -457,10 +457,8 @@ end
 
 # ╔═╡ 3ab9a483-08f2-4767-8bd5-ae1375a62dbe
 function plot_prior(priorsamples; rng=rng, tspan=latent_sde.tspan, datasize=latent_sde.datasize)
-	prior_latent = NeuralSDEExploration.sample_prior(latent_sde,ps,st;seed=abs(rand(rng, Int)),b=priorsamples, noise=(seed) -> noise(seed), tspan=tspan, datasize=datasize)
-	projected_prior = reduce(hcat, [reduce(vcat, [latent_sde.projector(u[1:end-1], ps.projector, st.projector)[1] for u in batch.u]) for batch in prior_latent.u])
-	priorplot = plot(projected_prior, linewidth=.5,color=:black,legend=false,title="projected prior")
-	return priorplot
+	prior = NeuralSDEExploration.sample_prior_dataspace(latent_sde,ps,st;seed=abs(rand(rng, Int)),b=priorsamples, noise=(seed) -> noise(seed), tspan=tspan, datasize=datasize)
+	return plot(prior, linewidth=.5,color=:black,legend=false,title="projected prior")
 end
 
 # ╔═╡ b5c6d43c-8252-4602-8232-b3d1b0bcee33
@@ -470,17 +468,18 @@ function plotmodel()
 	datas = []
 	n = 5
 	rng_plot = Xoshiro(0)
-	nums = sample(rng_plot, 1:length(timeseries), n; replace=false)
-
-	posterior_latent, posterior_data, logterm_, kl_divergence_, distance_ = latent_sde(timeseries[nums], ps, st, seed=seed, noise=noise)
+	nums = sample(rng_plot, 1:length(timeseries.u), n; replace=false)
+	
+	posterior_latent, posterior_data, logterm_, kl_divergence_, distance_ = latent_sde(select_ts(nums, timeseries), ps, st, seed=seed, noise=noise)
 	
 	priorsamples = 25
+	priornums = sample(rng_plot, 1:length(timeseries.u), priorsamples; replace=false)
 	priorplot = plot_prior(priorsamples, rng=rng_plot)
 
-	posteriorplot = plot(posterior_data[1, :,:]',linewidth=2,legend=false,title="projected posterior")
-	dataplot = plot(timeseries[nums],linewidth=2,legend=false,title="data")
+	posteriorplot = plot(timeseries.t, posterior_data[1, :,:]', linewidth=2, legend=false, title="projected posterior")
+	dataplot = plot(select_ts(nums, timeseries), linewidth=2, legend=false, title="data")
 	
-	timeseriesplot = plot(sample(rng_plot, timeseries, priorsamples),linewidth=.5,color=:black,legend=false,title="data")
+	timeseriesplot = plot(select_ts(priornums, timeseries), linewidth=.5, color=:black, legend=false, title="data")
 	
 	l = @layout [a b ; c d]
 	p = plot(dataplot, posteriorplot, timeseriesplot, priorplot, layout=l)
@@ -527,9 +526,9 @@ end
 # ╔═╡ f4a16e34-669e-4c93-bd83-e3622a747a3a
 function train(lr_sched, num_steps, opt_state; kl_sched=Loop(x -> eta, 1))
 	for step in 1:num_steps
-		s = sample(rng, 1:size(timeseries)[1], batch_size)
+		s = sample(rng, 1:length(timeseries.u), batch_size)
 		
-		minibatch = timeseries[s]
+		minibatch = select_ts(s, timeseries)
 		
 		seed = rand(rng, UInt32)
 
@@ -564,7 +563,7 @@ function exportresults(epoch)
 
 	folder = homedir() * "/artifacts/$(folder_name)/"
 
-	data = Dict("latent_sde" => latent_sde, "timeseries" => timeseries, "ps" => ps, "st" => st, "noise" => noise, "tspan_train" => tspan_train, "tspan_data" => tspan_data, "tspan_model" => tspan_model)
+	data = Dict("latent_sde" => latent_sde, "timeseries" => timeseries, "ps" => ps, "st" => st, "model" => model, "tspan_train" => tspan_train, "tspan_data" => tspan_data, "tspan_model" => tspan_model)
 
 	mkpath(folder)
 
@@ -581,7 +580,7 @@ end
 
 # ╔═╡ 7a7e8e9b-ca89-4826-8a5c-fe51d96152ad
 if enabletraining
-	@time dps = Zygote.gradient(ps -> loss(ps, timeseries[1:batch_size], 1.0, 10)[1], ps)[1]
+	@time dps = Zygote.gradient(ps -> loss(ps, select_ts(1:batch_size, timeseries), 1.0, 10)[1], ps)[1]
 end
 
 # ╔═╡ 67e5ae14-3062-4a93-9492-fc6e9861577f
@@ -640,23 +639,11 @@ md"""
 # Statistical Analysis
 """
 
-# ╔═╡ 78a74e8f-f0a3-4cf2-aecc-4ba56ca5cf7f
-md"""
-Histogram span: $(@bind hspan RangeSlider(1:steps(tspan_train, dt)))
-"""
-
 # ╔═╡ 47b2ec07-40f4-480d-b650-fbf1b44b7527
-begin
-	prior_latent = NeuralSDEExploration.sample_prior(latent_sde,ps,st;b=length(timeseries))
-	projected_prior = vcat(reduce(vcat, [latent_sde.projector(x[hspan], ps.projector, st.projector)[1] for x in prior_latent.u])...)
-	histogram_prior = fit(Histogram, projected_prior, 0.0:0.01:1.0)
-end
+histogram_data = timeseries_histogram(sample_prior_dataspace(latent_sde, ps, st, b=length(timeseries.u)), 0.0:0.01:1.0)
 
 # ╔═╡ 14f9a62d-9caa-40e9-8502-d2a27b9c950e
-begin
-	ts = vcat(reduce(vcat, [s.u[hspan] for s in timeseries])...)
-	histogram_data = fit(Histogram, ts, 0.0:0.01:1.0)
-end
+histogram_prior = timeseries_histogram(timeseries, 0.0:0.01:1.0)
 
 # ╔═╡ b7acea88-c9a8-4fdf-b3b2-c74b25f9dd93
 begin
@@ -750,7 +737,7 @@ savefig(p_hist, "~/Downloads/histogram_ext.pdf")
 # ╠═2da6bbd4-8036-471c-b94e-10182cf8a834
 # ╠═c00a97bf-5e10-4168-8d58-f4f9270258ac
 # ╟─5691fcc5-29b3-4236-9154-59c6fede49ce
-# ╟─15cef7cc-30b6-499d-b968-775b3251dedb
+# ╠═15cef7cc-30b6-499d-b968-775b3251dedb
 # ╟─1502612c-1489-4abf-8a8b-5b2d03a68cb1
 # ╠═455263ef-2f94-4f3e-8401-f0da7fb3e493
 # ╟─f4651b27-135e-45f1-8647-64ab08c2e8e8
@@ -810,7 +797,6 @@ savefig(p_hist, "~/Downloads/histogram_ext.pdf")
 # ╠═763f07e6-dd46-42d6-b57a-8f1994386302
 # ╠═655877c5-d636-4c1c-85c6-82129c1a4999
 # ╟─8880282e-1b5a-4c85-95ef-699ccf8d4203
-# ╠═78a74e8f-f0a3-4cf2-aecc-4ba56ca5cf7f
 # ╠═47b2ec07-40f4-480d-b650-fbf1b44b7527
 # ╠═14f9a62d-9caa-40e9-8502-d2a27b9c950e
 # ╠═b7acea88-c9a8-4fdf-b3b2-c74b25f9dd93
