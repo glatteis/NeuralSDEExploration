@@ -464,9 +464,6 @@ begin
 	ps = ComponentArray{Float32}(ps_)
 end
 
-# ╔═╡ 60fa9e0d-cf50-4cd5-bd0c-ab440bddad1d
-projector([1.0 2.0 5.0; 3.0 6.0 1.0], ps.projector, st.projector)
-
 # ╔═╡ ee3d4a2e-0960-430e-921a-17d340af497c
 md"""
 Select a seed: $(@bind seed Scrubbable(481283))

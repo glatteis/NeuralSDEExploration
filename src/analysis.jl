@@ -1,9 +1,7 @@
 export timeseries_mean, timeseries_tipping_rate, timeseries_std, timeseries_histogram
 
-function timeseries_mean(timeseries::Timeseries)
-end
-
-function timeseries_std(timeseries::Timeseries)
+function timeseries_mean_and_var(timeseries::Timeseries)
+    map_ts((ts) -> [mean(ts), std(ts)], timeseries)
 end
 
 function timeseries_tipping_rate(timeseries::Timeseries)
