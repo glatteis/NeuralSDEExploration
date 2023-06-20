@@ -27,7 +27,7 @@ using JLD2
     
     seed = 1
 
-    posterior_latent, posterior_data, logterm_, kl_divergence_, distance_ = latent_sde([input1, input2], ps, st, seed=seed)
+    posterior_latent, posterior_data, logterm_, kl_divergence_, distance_ = latent_sde(Timeseries([input1, input2]), ps, st, seed=seed)
     
     # p = plot(posterior_latent)
     # savefig(p, "posterior_latent.pdf")
@@ -38,8 +38,9 @@ using JLD2
         VirtualBrownianTree(-5f0, fill(0f0, 2+1), tend=tspan[end]+5f0; rng=Threefry4x((rand(rng_tree, UInt32), rand(rng_tree, UInt32), rand(rng_tree, UInt32), rand(rng_tree, UInt32))))
     end
     
+    input = Timeseries([input1, input1, input2, input2])
     function loss(ps)
-        sum(NeuralSDEExploration.loss(latent_sde, [input1, input1, input2, input2], ps, st, 1f0; seed=seed, sense=sense))
+        sum(NeuralSDEExploration.loss(latent_sde, input, ps, st, 1f0; seed=seed, sense=sense))
     end
     
     @test loss(ps) == loss(ps)
@@ -71,7 +72,7 @@ end
 
     st = dict["st"]
 
-    timeseries = dict["timeseries"]
+    timeseries = Timeseries(dict["timeseries"])
     
     minibatch = timeseries[1:1]
     

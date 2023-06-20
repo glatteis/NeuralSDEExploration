@@ -37,6 +37,14 @@ function Timeseries(sol::EnsembleSolution)
     Timeseries([x for x in sol])
 end
 
+function Timeseries(ts::Timeseries)
+    Timeseries(ts.t, ts.u)
+end
+
+function Timeseries(single_element)
+    Timeseries([single_element])
+end
+
 function select_ts(range, ts::Timeseries)
     Timeseries(ts.t, ts.u[range])
 end
@@ -63,14 +71,38 @@ Executes f on each datapoint by timeseries, so an input to f would be
     [<value at dimension i in ts 1>, <value at dimension i at ts 2>, ..., <value at dimension i at ts n>]
 and f produces
     [<value at dimension i in ts 1>, <value at dimension i at ts 2>, ..., <value at dimension i at ts m>]
+(it gives a single timeseries per dimension)
+
+Example: Compute mean and variance of a timeseries, then f is
+f(vec) = [mean(vec), var(vec)]
 """
 function map_ts(f, ts::Timeseries)
-    dims = length(ts.u[1][1])
+    n_ts = length(ts.u)
+    n_time = length(ts.t)
+    n_dims = length(ts.u[1][1])
+    
+    # # Probe many timeseries the function gives back
+    n_ts_new = length(f(zeros(eltype(ts.t), n_ts)))
+    
     result = Vector{Vector{Vector{eltype(ts.t)}}}()
-    for dimension in 1:dims
-        input_in_tuples = zip(map(case -> collect(map(el -> el[dimension], case)), ts.u)...)
-        output = [f(collect(x)) for x in input_in_tuples]
-        push!(result, output)
+    
+    for i_ts in 1:n_ts_new
+        push!(result, [])
+        for i_time in 1:n_time
+            push!(result[i_ts], [])
+            for i_dims in 1:n_dims
+                push!(result[i_ts][i_time], zero(eltype(ts.t)))
+            end
+        end
+    end
+
+    for time in 1:n_time
+        for dim in 1:n_dims
+            datapoint = f([ts.u[i_ts][time][dim] for i_ts in 1:n_ts])
+            for ts_new in eachindex(datapoint)
+                result[ts_new][time][dim] = datapoint[ts_new]
+            end
+        end
     end
     Timeseries(ts.t, result)
 end
@@ -88,3 +120,6 @@ end
     end
 end
 
+Base.:+(x::Timeseries, y::Timeseries) = Timeseries(x.t, x.u + y.u)
+Base.:-(x::Timeseries, y::Timeseries) = Timeseries(x.t, x.u - y.u)
+Base.:-(x::Timeseries) = Timeseries(x.t, -x.u)

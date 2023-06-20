@@ -67,58 +67,74 @@ function StandardLatentSDE(solver, tspan, datasize;
         timedependent=false,
         kwargs...
     )
-    encoder_recurrent = Lux.Recurrence(Lux.GRUCell(data_dims => rnn_size); return_sequence=true)
+    
+    solver_kwargs = Dict(kwargs)
+    networks = []
 
-    encoder_net = Lux.Dense(rnn_size => context_size)
+    # this function serves the following purpose:
+    # - create default network if there isn't one given in the kwargs
+    # - remove that kwarg from the kwargs given to the solver
+    # needs to be called in the same order as args to the LatentSDE
+    function create_network(name, network)
+        if haskey(solver_kwargs, name)
+            # network is provided by user
+            user_network = pop!(solver_kwargs, name)
+            push!(networks, user_network)
+        else
+            push!(networks, network)
+        end
+    end
+
+    in_dims = latent_dims + (timedependent ? 1 : 0)
 
     # The initial_posterior net is the posterior for the initial state. It
     # takes the context and outputs a mean and standard devation for the
     # position zero of the posterior. The initial_prior is a fixed gaussian
     # distribution.
-    initial_posterior = Lux.Dense(context_size => latent_dims + latent_dims; init_weight=zeros)
-    initial_prior = Lux.Dense(1 => latent_dims + latent_dims) 
+    create_network(:initial_prior, Lux.Dense(1 => latent_dims + latent_dims) )
+    create_network(:initial_posterior, Lux.Dense(context_size => latent_dims + latent_dims; init_weight=zeros))
     
-    in_dims = latent_dims + (timedependent ? 1 : 0)
     # Drift of prior. This is just an SDE drift in the latent space
-    drift_prior = Lux.Chain(
+    create_network(:drift_prior, Lux.Chain(
         Lux.Dense(in_dims => prior_size, hidden_activation),
         repeat([Lux.Dense(prior_size => prior_size, hidden_activation)], depth)...,
         Lux.Dense(prior_size => latent_dims, final_activation),
         Lux.Scale(latent_dims)
-    )
+    ))
     # Drift of posterior. This is the term of an SDE when fed with the context.
-    drift_posterior = Lux.Chain(
+    create_network(:drift_posterior, Lux.Chain(
         Lux.Dense(in_dims + context_size => posterior_size, hidden_activation),
         repeat([Lux.Dense(posterior_size => posterior_size, hidden_activation)], depth)...,
         Lux.Dense(posterior_size => latent_dims, final_activation),
         Lux.Scale(latent_dims)
-    )
+    ))
     # Prior and posterior share the same diffusion (they are not actually evaluated
     # seperately while training, only their KL divergence). This is a diagonal
     # diffusion, i.e. every term in the latent space has its own independent
     # Wiener process.
-    diffusion = Lux.Parallel(nothing, [
+    create_network(:diffusion, Lux.Parallel(nothing, [
             Lux.Chain(Lux.Dense((timedependent ? 2 : 1) => diffusion_size, tanh),
             Lux.Dense(diffusion_size => 1, Lux.sigmoid_fast),
             Lux.Scale(1, init_weight=ones, init_bias=ones))
         for i in 1:latent_dims]...
-    )
-    # The projector will transform the latent space back into data space.
-    projector = Lux.Dense(latent_dims => data_dims)
+    ))
+
+    # The encoder is a recurrent neural network.
+    create_network(:encoder_recurrent, Lux.Recurrence(Lux.GRUCell(data_dims => rnn_size); return_sequence=true))
     
+    # The encoder_net is appended to the results of the encoder. Couldn't make
+    # this work directly in Lux.
+    create_network(:encoder_net, Lux.Dense(rnn_size => context_size))
+
+    # The projector will transform the latent space back into data space.
+    create_network(:projector, Lux.Dense(latent_dims => data_dims))
+
     return LatentSDE(
-        haskey(kwargs, :initial_prior) ? kwargs[:initial_prior] : initial_prior,
-        haskey(kwargs, :initial_posterior) ? kwargs[:initial_posterior] : initial_posterior, 
-        haskey(kwargs, :drift_prior) ? kwargs[:drift_prior] : drift_prior,
-        haskey(kwargs, :drift_posterior) ? kwargs[:drift_posterior] : drift_posterior,
-        haskey(kwargs, :diffusion) ? kwargs[:diffusion] : diffusion,
-        haskey(kwargs, :encoder_recurrent) ? kwargs[:encoder_recurrent] : encoder_recurrent,
-        haskey(kwargs, :encoder_net) ? kwargs[:encoder_net] : encoder_net, 
-        haskey(kwargs, :projector) ? kwargs[:projector] : projector,
+        networks...,
         solver,
         tspan,
         datasize;
-        kwargs...
+        solver_kwargs...
     )
 end
 

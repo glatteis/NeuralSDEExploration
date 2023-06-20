@@ -277,6 +277,12 @@ Time dependence: $(@bind time_dependence Arg("time-dep", CheckBox(), required=fa
 CLI arg: `--time-dep`
 """
 
+# ╔═╡ 03a21651-9c95-49e8-bb07-b03640f7e5b7
+md"""
+Fix projector to just use first dimension: $(@bind fixed_projector Arg("fixed-projector", CheckBox(), required=false))
+CLI arg: `--fixed-projector`
+"""
+
 # ╔═╡ ad6247f6-6cb9-4a57-92d3-6328cbd84ecd
 in_dims = latent_dims + (time_dependence ? 1 : 0)
 
@@ -368,6 +374,12 @@ Brownian tree cache depth: $(@bind tree_depth Arg("tree-depth", NumberField(1:10
 CLI arg: `--tree-depth`
 """
 
+# ╔═╡ 7f219c33-b37b-480a-9d21-9ea8d898d5d5
+md"""
+Use Kidger's initial state trick: $(@bind kidger_trick Arg("kidger", CheckBox(false), required=false))
+CLI arg: `--kidger`
+"""
+
 # ╔═╡ 2bb433bb-17df-4a34-9ccf-58c0cf8b4dd3
 (sense, noise) = if backsolve
 	(
@@ -402,6 +414,13 @@ end
 # ╔═╡ ec41b765-2f73-43a5-a575-c97a5a107c4e
 println("Steps that will be derived: $(steps(tspan_model, dt))")
 
+# ╔═╡ 63960546-2157-4a23-8578-ec27f27d5185
+projector = if fixed_projector
+	error("Fixed projector isn't implemented!!")
+else
+	Lux.Dense(latent_dims => data_dims)
+end
+
 # ╔═╡ 001c318e-b7a6-48a5-bfd5-6dd0368873ac
 latent_sde = StandardLatentSDE(
 	solver,
@@ -418,7 +437,9 @@ latent_sde = StandardLatentSDE(
 	hidden_activation=tanh,
     final_activation=tanh,
 	timedependent=time_dependence,
-	adaptive=false
+	adaptive=false,
+	# we only have this custom layer - the others are default
+	projector=projector
 )
 
 # ╔═╡ 0f6f4520-576f-42d3-9126-2076a51a6e22
@@ -443,6 +464,9 @@ begin
 	ps = ComponentArray{Float32}(ps_)
 end
 
+# ╔═╡ 60fa9e0d-cf50-4cd5-bd0c-ab440bddad1d
+projector([1.0 2.0 5.0; 3.0 6.0 1.0], ps.projector, st.projector)
+
 # ╔═╡ ee3d4a2e-0960-430e-921a-17d340af497c
 md"""
 Select a seed: $(@bind seed Scrubbable(481283))
@@ -463,9 +487,6 @@ end
 
 # ╔═╡ b5c6d43c-8252-4602-8232-b3d1b0bcee33
 function plotmodel()
-	posteriors = []
-	priors = []
-	datas = []
 	n = 5
 	rng_plot = Xoshiro(0)
 	nums = sample(rng_plot, 1:length(timeseries.u), n; replace=false)
@@ -483,8 +504,6 @@ function plotmodel()
 	
 	l = @layout [a b ; c d]
 	p = plot(dataplot, posteriorplot, timeseriesplot, priorplot, layout=l)
-	#p = plot(timeseriesplot)
-	#posterior_latent
 	p
 end
 
@@ -547,6 +566,10 @@ function train(lr_sched, num_steps, opt_state; kl_sched=Loop(x -> eta, 1))
 		dps = Zygote.gradient(ps -> loss(ps, minibatch, eta, seed)[1], ps)
 		
 		GC.gc(step % 10 == 1)
+
+		if kidger_trick
+			dps[1].initial_prior *= length(timeseries.t)
+		end
 		
 		Optimisers.update!(opt_state, ps, dps[1])
 		Optimisers.adjust!(opt_state, lr)
@@ -754,6 +777,7 @@ savefig(p_hist, "~/Downloads/histogram_ext.pdf")
 # ╟─b5721107-7cf5-4da3-b22a-552e3d56bcfa
 # ╟─efd438bc-13cc-457f-82c1-c6e0711079b3
 # ╟─9382314d-c076-4b95-8171-71d903bb9271
+# ╟─03a21651-9c95-49e8-bb07-b03640f7e5b7
 # ╟─ad6247f6-6cb9-4a57-92d3-6328cbd84ecd
 # ╟─fe749caf-393f-45b0-98e5-5d10c1821a9d
 # ╟─60b5397d-7350-460b-9117-319dc127cc7e
@@ -769,11 +793,14 @@ savefig(p_hist, "~/Downloads/histogram_ext.pdf")
 # ╟─9767a8ea-bdda-43fc-b636-8681d150d29f
 # ╟─3db229f0-0e13-4d80-8680-58b89161db35
 # ╟─cb1c2b2e-a2a2-45ed-9fc1-655d28f267d1
+# ╟─7f219c33-b37b-480a-9d21-9ea8d898d5d5
 # ╠═2bb433bb-17df-4a34-9ccf-58c0cf8b4dd3
 # ╟─db88cae4-cb25-4628-9298-5a694c4b29ef
 # ╟─b8b2f4b5-e90c-4066-8dad-27e8dfa1d7c5
 # ╠═08759cda-2a2a-41ff-af94-5b1000c9e53f
 # ╟─ec41b765-2f73-43a5-a575-c97a5a107c4e
+# ╠═63960546-2157-4a23-8578-ec27f27d5185
+# ╠═60fa9e0d-cf50-4cd5-bd0c-ab440bddad1d
 # ╠═001c318e-b7a6-48a5-bfd5-6dd0368873ac
 # ╠═0f6f4520-576f-42d3-9126-2076a51a6e22
 # ╟─1938e122-2c05-46fc-b179-db38322530ff

@@ -53,9 +53,6 @@ ps = dict["ps"]
 # ╔═╡ 23bc5697-f1ca-4598-92fb-2d43e94ce310
 st = dict["st"]
 
-# ╔═╡ b214a6b2-d430-4d95-9f3a-b31c4ff7bcc7
-model = dict["model"]
-
 # ╔═╡ fabc1578-ba35-4c4e-9129-02da3bf43f56
 timeseries = Timeseries(dict["timeseries"])
 
@@ -123,19 +120,25 @@ mean_and_var_data = map_ts((ts) -> [mean(ts), std(ts)], select_ts(1:500, timeser
 p_data = plot!(p_model, select_ts(1:1, mean_and_var_data), ribbon=2*map(only, mean_and_var_data.u[2]))
 
 # ╔═╡ 2a1ca1d0-163d-41b8-9f2d-8a3a475cc75d
+#=╠═╡
 function loss(ps, minibatch, eta, seed)
 	_, _, _, kl_divergence, likelihood = latent_sde(minibatch, ps, st, seed=seed, noise=noise)
 	return mean(-likelihood .+ (eta * kl_divergence)), mean(kl_divergence), mean(likelihood)
 end
+  ╠═╡ =#
 
 # ╔═╡ bf819c97-3ed9-484c-a499-7449244cb840
+#=╠═╡
 function kl_loss(ps, minibatch, eta, seed)
 	_, _, _, kl_divergence, likelihood = latent_sde(minibatch, ps, st, seed=seed, noise=noise)
 	return mean(kl_divergence), mean(kl_divergence), mean(likelihood)
 end
+  ╠═╡ =#
 
 # ╔═╡ 0dc46a16-e26d-4ec2-a74e-675e83959ab2
+#=╠═╡
 loss(ps, viz_batch, 10.0, seed)
+  ╠═╡ =#
 
 # ╔═╡ 96c0423f-214e-4995-a2e4-fe5c84d5a7c3
 md"""
@@ -143,15 +146,19 @@ Histogram span: $(@bind hspan RangeSlider(1:20))
 """
 
 # ╔═╡ a09063de-3002-400a-af89-233eb0822041
+#=╠═╡
 begin
 	prior_latent = NeuralSDEExploration.sample_prior(latent_sde,ps,st;b=length(timeseries),seed=0,noise=noise)
 	projected_prior = map(first, vcat([[latent_sde.projector(y[1:end-1], ps.projector, st.projector) for y in x[hspan].u] for x in prior_latent.u]...))
 	#projected_prior = vcat(reduce(vcat, [latent_sde.projector(x[hspan], ps.projector, st.projector)[1] for x in prior_latent.u])...)
 	histogram_prior = fit(Histogram, projected_prior, 0.0:0.01:1.0)
 end
+  ╠═╡ =#
 
 # ╔═╡ 0d74625b-edf2-45a7-9b16-08fc29d83eb0
+#=╠═╡
 loss(ps, timeseries[1:1], 30.0, rand(UInt32))
+  ╠═╡ =#
 
 # ╔═╡ fe157d5e-eead-4921-a310-467e56e33fb7
 begin
@@ -160,12 +167,17 @@ begin
 end
 
 # ╔═╡ 2812e069-6bf9-4c80-91d7-f7fcf6c338fb
+#=╠═╡
 begin
 	p_hist = plot([
 		histogram_data,
 		histogram_prior,
 	], alpha=0.5, labels=["data" "prior"], title="marginal probabilities")
 end
+  ╠═╡ =#
+
+# ╔═╡ 526f60b8-9e37-48c3-8c49-c19bc306d9f2
+timeseries_mean(plot_prior(25, rng=Xoshiro(), tspan=(0f0, 10f0), datasize=100))
 
 # ╔═╡ fe1ae4b3-2f1f-4b6c-a076-0d215f222e6c
 plot_prior(25, rng=Xoshiro(), tspan=(0f0, 10f0), datasize=100)
@@ -174,14 +186,8 @@ plot_prior(25, rng=Xoshiro(), tspan=(0f0, 10f0), datasize=100)
 plot(NeuralSDEExploration.sample_prior(latent_sde,ps,st;b=1,tspan=(0f0,10f0),datasize=5000)
 )
 
-# ╔═╡ ae0c9dae-e490-4965-9353-c820a3ce3645
-plot(NeuralSDEExploration.sample_prior_dataspace(latent_sde,ps,st;b=1,tspan=(0f0,10f0),datasize=5000,seed=1), title="Neural SDE")
-
-# ╔═╡ 63e3e80c-6d03-4e42-a718-5bf30ad7182f
-plot(filter_dims(1:1, NeuralSDEExploration.series(model, [[0f0, 0f0]], (0f0, 10f0), 5000,seed=1)), title="FitzHugh-Nagumo")
-
 # ╔═╡ 9f8c49a0-2098-411b-976a-2b43cbb20a44
-plot(NeuralSDEExploration.series(model, [[0f0, 0f0]], (0f0, 10f0), 5000))
+plot(NeuralSDEExploration.series(NeuralSDEExploration.FitzHughNagumoModelGamma(), [[0f0, 0f0]], (0f0, 10f0), 5000; seed=1))
 
 # ╔═╡ ff5519b9-2a69-41aa-8f55-fc63fa176d3f
  plot(sample(timeseries, 25),linewidth=.5,color=:black,legend=false,title="data")
@@ -196,7 +202,6 @@ plot(NeuralSDEExploration.series(model, [[0f0, 0f0]], (0f0, 10f0), 5000))
 # ╠═9f89a8d9-05e5-4af0-9dd8-1a528ea7e9de
 # ╠═7da4b3b6-3cee-4b93-9359-a2f7e2341da9
 # ╠═23bc5697-f1ca-4598-92fb-2d43e94ce310
-# ╠═b214a6b2-d430-4d95-9f3a-b31c4ff7bcc7
 # ╠═fabc1578-ba35-4c4e-9129-02da3bf43f56
 # ╟─af3619b0-f9be-40f2-8027-77e435f8e4e5
 # ╠═69459a5f-75b7-4c33-a489-bf4d4411c1ec
@@ -219,9 +224,8 @@ plot(NeuralSDEExploration.series(model, [[0f0, 0f0]], (0f0, 10f0), 5000))
 # ╠═0d74625b-edf2-45a7-9b16-08fc29d83eb0
 # ╠═fe157d5e-eead-4921-a310-467e56e33fb7
 # ╠═2812e069-6bf9-4c80-91d7-f7fcf6c338fb
+# ╠═526f60b8-9e37-48c3-8c49-c19bc306d9f2
 # ╠═fe1ae4b3-2f1f-4b6c-a076-0d215f222e6c
 # ╠═72045fd0-2769-4868-9b67-e7a41e3f1d7d
-# ╟─ae0c9dae-e490-4965-9353-c820a3ce3645
-# ╟─63e3e80c-6d03-4e42-a718-5bf30ad7182f
 # ╠═9f8c49a0-2098-411b-976a-2b43cbb20a44
 # ╠═ff5519b9-2a69-41aa-8f55-fc63fa176d3f
