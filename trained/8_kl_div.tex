@@ -1,0 +1,161 @@
+% Recommended preamble:
+% \usetikzlibrary{arrows.meta}
+% \usetikzlibrary{backgrounds}
+% \usepgfplotslibrary{patchplots}
+% \usepgfplotslibrary{fillbetween}
+% \pgfplotsset{%
+%     layers/standard/.define layer set={%
+%         background,axis background,axis grid,axis ticks,axis lines,axis tick labels,pre main,main,axis descriptions,axis foreground%
+%     }{
+%         grid style={/pgfplots/on layer=axis grid},%
+%         tick style={/pgfplots/on layer=axis ticks},%
+%         axis line style={/pgfplots/on layer=axis lines},%
+%         label style={/pgfplots/on layer=axis descriptions},%
+%         legend style={/pgfplots/on layer=axis descriptions},%
+%         title style={/pgfplots/on layer=axis descriptions},%
+%         colorbar style={/pgfplots/on layer=axis descriptions},%
+%         ticklabel style={/pgfplots/on layer=axis tick labels},%
+%         axis background@ style={/pgfplots/on layer=axis background},%
+%         3d box foreground style={/pgfplots/on layer=axis foreground},%
+%     },
+% }
+
+\begin{tikzpicture}[/tikz/background rectangle/.style={fill={rgb,1:red,1.0;green,1.0;blue,1.0}, fill opacity={1.0}, draw opacity={1.0}}, show background rectangle]
+\begin{axis}[point meta max={nan}, point meta min={nan}, legend cell align={left}, legend columns={1}, title={KL-Divergence}, title style={at={{(0.5,1)}}, anchor={south}, font={{\fontsize{14 pt}{18.2 pt}\selectfont}}, color={rgb,1:red,0.0;green,0.0;blue,0.0}, draw opacity={1.0}, rotate={0.0}, align={center}}, legend style={color={rgb,1:red,0.0;green,0.0;blue,0.0}, draw opacity={1.0}, line width={1}, solid, fill={rgb,1:red,1.0;green,1.0;blue,1.0}, fill opacity={1.0}, text opacity={1.0}, font={{\fontsize{8 pt}{10.4 pt}\selectfont}}, text={rgb,1:red,0.0;green,0.0;blue,0.0}, cells={anchor={center}}, at={(1.02, 1)}, anchor={north west}}, axis background/.style={fill={rgb,1:red,1.0;green,1.0;blue,1.0}, opacity={1.0}}, anchor={north west}, xshift={1.0mm}, yshift={-1.0mm}, width={145.4mm}, height={99.6mm}, scaled x ticks={false}, xlabel={}, x tick style={color={rgb,1:red,0.0;green,0.0;blue,0.0}, opacity={1.0}}, x tick label style={color={rgb,1:red,0.0;green,0.0;blue,0.0}, opacity={1.0}, rotate={0}}, xlabel style={at={(ticklabel cs:0.5)}, anchor=near ticklabel, at={{(ticklabel cs:0.5)}}, anchor={near ticklabel}, font={{\fontsize{11 pt}{14.3 pt}\selectfont}}, color={rgb,1:red,0.0;green,0.0;blue,0.0}, draw opacity={1.0}, rotate={0.0}}, xmajorgrids={true}, xmin={0.4299999999999997}, xmax={20.57}, xticklabels={{$5$,$10$,$15$,$20$}}, xtick={{5.0,10.0,15.0,20.0}}, xtick align={inside}, xticklabel style={font={{\fontsize{8 pt}{10.4 pt}\selectfont}}, color={rgb,1:red,0.0;green,0.0;blue,0.0}, draw opacity={1.0}, rotate={0.0}}, x grid style={color={rgb,1:red,0.0;green,0.0;blue,0.0}, draw opacity={0.1}, line width={0.5}, solid}, axis x line*={left}, x axis line style={color={rgb,1:red,0.0;green,0.0;blue,0.0}, draw opacity={1.0}, line width={1}, solid}, scaled y ticks={false}, ylabel={}, y tick style={color={rgb,1:red,0.0;green,0.0;blue,0.0}, opacity={1.0}}, y tick label style={color={rgb,1:red,0.0;green,0.0;blue,0.0}, opacity={1.0}, rotate={0}}, ylabel style={at={(ticklabel cs:0.5)}, anchor=near ticklabel, at={{(ticklabel cs:0.5)}}, anchor={near ticklabel}, font={{\fontsize{11 pt}{14.3 pt}\selectfont}}, color={rgb,1:red,0.0;green,0.0;blue,0.0}, draw opacity={1.0}, rotate={0.0}}, ymajorgrids={true}, ymin={-0.0010605628788471246}, ymax={0.03641265884041786}, yticklabels={{$0.00$,$0.01$,$0.02$,$0.03$}}, ytick={{0.0,0.010000000000000002,0.020000000000000004,0.030000000000000006}}, ytick align={inside}, yticklabel style={font={{\fontsize{8 pt}{10.4 pt}\selectfont}}, color={rgb,1:red,0.0;green,0.0;blue,0.0}, draw opacity={1.0}, rotate={0.0}}, y grid style={color={rgb,1:red,0.0;green,0.0;blue,0.0}, draw opacity={0.1}, line width={0.5}, solid}, axis y line*={left}, y axis line style={color={rgb,1:red,0.0;green,0.0;blue,0.0}, draw opacity={1.0}, line width={1}, solid}, colorbar={false}]
+    \addplot[color={rgb,1:red,0.0;green,0.6056;blue,0.9787}, name path={acd14975-8c52-4223-b391-96443b4892e6}, draw opacity={1.0}, line width={2}, solid]
+        table[row sep={\\}]
+        {
+            \\
+            1.0  0.0  \\
+            2.0  0.0010890369  \\
+            3.0  0.00218524  \\
+            4.0  0.0032965748  \\
+            5.0  0.004422052  \\
+            6.0  0.005537028  \\
+            7.0  0.006596134  \\
+            8.0  0.007629377  \\
+            9.0  0.008610078  \\
+            10.0  0.009467017  \\
+            11.0  0.0100501105  \\
+            12.0  0.010268051  \\
+            13.0  0.010362178  \\
+            14.0  0.010448668  \\
+            15.0  0.010678029  \\
+            16.0  0.010975177  \\
+            17.0  0.012625288  \\
+            18.0  0.015311032  \\
+            19.0  0.016561097  \\
+            20.0  0.01738858  \\
+        }
+        ;
+    \addlegendentry {y1}
+    \addplot[color={rgb,1:red,0.8889;green,0.4356;blue,0.2781}, name path={5b286cef-efec-43af-b730-17e42204de58}, draw opacity={1.0}, line width={2}, solid]
+        table[row sep={\\}]
+        {
+            \\
+            1.0  0.0  \\
+            2.0  0.0010922288  \\
+            3.0  0.0021908595  \\
+            4.0  0.0033002216  \\
+            5.0  0.004419737  \\
+            6.0  0.005545116  \\
+            7.0  0.006674609  \\
+            8.0  0.007807644  \\
+            9.0  0.0089455405  \\
+            10.0  0.010087391  \\
+            11.0  0.01123127  \\
+            12.0  0.012376824  \\
+            13.0  0.013521012  \\
+            14.0  0.014659435  \\
+            15.0  0.015753798  \\
+            16.0  0.016556991  \\
+            17.0  0.016938156  \\
+            18.0  0.017071221  \\
+            19.0  0.017196361  \\
+            20.0  0.017879926  \\
+        }
+        ;
+    \addlegendentry {y2}
+    \addplot[color={rgb,1:red,0.2422;green,0.6433;blue,0.3044}, name path={254b68f8-c5f4-45f6-b44a-798d9e495afc}, draw opacity={1.0}, line width={2}, solid]
+        table[row sep={\\}]
+        {
+            \\
+            1.0  0.0  \\
+            2.0  0.0010939321  \\
+            3.0  0.0021986144  \\
+            4.0  0.003319627  \\
+            5.0  0.004447234  \\
+            6.0  0.005575948  \\
+            7.0  0.0067149973  \\
+            8.0  0.007859714  \\
+            9.0  0.009008449  \\
+            10.0  0.010163922  \\
+            11.0  0.01132272  \\
+            12.0  0.012482215  \\
+            13.0  0.013642717  \\
+            14.0  0.014805039  \\
+            15.0  0.015968382  \\
+            16.0  0.01713202  \\
+            17.0  0.018279182  \\
+            18.0  0.019428415  \\
+            19.0  0.020579843  \\
+            20.0  0.021728382  \\
+        }
+        ;
+    \addlegendentry {y3}
+    \addplot[color={rgb,1:red,0.7644;green,0.4441;blue,0.8243}, name path={db090e80-341d-46e9-ae81-d0b4923958fa}, draw opacity={1.0}, line width={2}, solid]
+        table[row sep={\\}]
+        {
+            \\
+            1.0  0.0  \\
+            2.0  0.001094914  \\
+            3.0  0.0022042857  \\
+            4.0  0.0033232118  \\
+            5.0  0.0044496106  \\
+            6.0  0.0055865757  \\
+            7.0  0.0067211194  \\
+            8.0  0.007767955  \\
+            9.0  0.00848655  \\
+            10.0  0.008920651  \\
+            11.0  0.009554668  \\
+            12.0  0.010313546  \\
+            13.0  0.010770858  \\
+            14.0  0.010941465  \\
+            15.0  0.011221347  \\
+            16.0  0.011762447  \\
+            17.0  0.013530288  \\
+            18.0  0.019159593  \\
+            19.0  0.028904261  \\
+            20.0  0.035352096  \\
+        }
+        ;
+    \addlegendentry {y4}
+    \addplot[color={rgb,1:red,0.6755;green,0.5557;blue,0.0942}, name path={fabc444b-3f89-40eb-9f5c-078abfbc367e}, draw opacity={1.0}, line width={2}, solid]
+        table[row sep={\\}]
+        {
+            \\
+            1.0  0.0  \\
+            2.0  0.0011068229  \\
+            3.0  0.0022247373  \\
+            4.0  0.0033279501  \\
+            5.0  0.004416995  \\
+            6.0  0.0055083125  \\
+            7.0  0.006605507  \\
+            8.0  0.007711453  \\
+            9.0  0.0086876955  \\
+            10.0  0.009238422  \\
+            11.0  0.009383886  \\
+            12.0  0.009428362  \\
+            13.0  0.009470488  \\
+            14.0  0.00949601  \\
+            15.0  0.0095474655  \\
+            16.0  0.009605488  \\
+            17.0  0.009622988  \\
+            18.0  0.009658353  \\
+            19.0  0.00970703  \\
+            20.0  0.009789683  \\
+        }
+        ;
+    \addlegendentry {y5}
+\end{axis}
+\end{tikzpicture}

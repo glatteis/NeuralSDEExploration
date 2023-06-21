@@ -646,7 +646,7 @@ begin
 		for epoch in 1:1000
 			train(lr_sched, 100, opt_state_job; kl_sched=kl_sched)
 			exportresults(epoch)
-			GC.gc()
+			GC.gc(true)
 		end
 	end
 end

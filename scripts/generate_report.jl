@@ -14,9 +14,8 @@ for f in ARGS
     model = dict["model"]
     timeseries = dict["timeseries"]
     
-    # TODO replace with datamin/datamax from dict
-    datamin = -7.2356f0
-    datamax = 6.890989f0
+    datamin = dict["datamin"]
+    datamax = dict["datamax"]
     function normalize(x)
         return ((x - datamin) / (datamax - datamin))
     end
@@ -76,9 +75,8 @@ for f in ARGS
     sample_size = 500
     latent_sde_sample = NeuralSDEExploration.sample_prior_dataspace(latent_sde,ps,st;b=sample_size, tspan=extended_tspan, datasize=datasize)
 
-    # TODO replace with initial condition from .jld file
-    initial_condition_hack = [[0f0, 0f0] for i in 1:sample_size]
-    data_model_sample = map_dims(x -> map(normalize, x), filter_dims(1:1, NeuralSDEExploration.series(model, initial_condition_hack, extended_tspan, datasize)))
+    initial_condition = dict["initial_condition"][1:sample_size]
+    data_model_sample = map_dims(x -> map(normalize, x), filter_dims(1:1, NeuralSDEExploration.series(model, initial_condition, extended_tspan, datasize)))
 
     function moment_analysis()
         mean_and_var_latent_sde = map_ts((ts) -> [mean(ts), std(ts)], latent_sde_sample)
@@ -86,6 +84,7 @@ for f in ARGS
 
         p = plot(select_ts(1:1, mean_and_var_latent_sde), ribbon=2*map(only, mean_and_var_latent_sde.u[2]), label="Latent SDE")
         plot!(p, select_ts(1:1, mean_and_var_data_model), ribbon=2*map(only, mean_and_var_data_model.u[2]), label="Data Model")
+        plot!(p, legend=true, title="mean and 95th percentile")
 
         savefigure("mean_var", p)
     end
@@ -98,12 +97,12 @@ for f in ARGS
             "4x extrapolation" => (latent_sde.tspan[2], extrapolate_tspan(latent_sde.tspan, 4)[2]),
         )
         for (title, tspan) in tspans
-            histogram_latent_sde = timeseries_histogram(select_tspan(tspan, latent_sde_sample), 0.0:0.01:1.0)
-            histogram_data_model = timeseries_histogram(select_tspan(tspan, data_model_sample), 0.0:0.01:1.0)
+            histogram_latent_sde = timeseries_histogram(select_tspan(tspan, latent_sde_sample), 0.0:0.01:2.0)
+            histogram_data_model = timeseries_histogram(select_tspan(tspan, data_model_sample), 0.0:0.01:2.0)
             p_hist = plot([
                 histogram_latent_sde,
                 histogram_data_model,
-            ], alpha=0.5, labels=["data model" "latent sde"], title=title)
+            ], alpha=0.5, labels=["Latent SDE" "Data Model"], title=title)
             savefigure("histogram_" * replace(title, " " => "_"), p_hist)
         end
     end
