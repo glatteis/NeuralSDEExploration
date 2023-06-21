@@ -562,7 +562,9 @@ function train(lr_sched, num_steps, opt_state; kl_sched=Loop(x -> eta, 1))
 		println("Loss: $l, KL: $kl_divergence")
 		dps = Zygote.gradient(ps -> loss(ps, minibatch, eta, seed)[1], ps)
 		
-		GC.gc(step % 10 == 1)
+		if step % 10 == 1
+			GC.gc(true)
+		end
 
 		if kidger_trick
 			dps[1].initial_prior *= length(timeseries.t)
@@ -583,7 +585,20 @@ function exportresults(epoch)
 
 	folder = homedir() * "/artifacts/$(folder_name)/"
 
-	data = Dict("latent_sde" => latent_sde, "timeseries" => timeseries, "ps" => ps, "st" => st, "model" => model, "tspan_train" => tspan_train, "tspan_data" => tspan_data, "tspan_model" => tspan_model)
+	data = Dict(
+		"latent_sde" => latent_sde,
+		"timeseries" => timeseries,
+		"ps" => ps,
+		"st" => st,
+		"model" => model,
+		"initial_condition" => initial_condition,
+		"args" => ARGS,
+		"datamin" => datamin,
+		"datamax" => datamax,
+		"tspan_train" => tspan_train,
+		"tspan_data" => tspan_data,
+		"tspan_model" => tspan_model
+	)
 
 	mkpath(folder)
 

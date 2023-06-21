@@ -110,8 +110,14 @@ end
 # ╔═╡ 6c06ef9d-d3b4-4917-89f6-af0a3e72b4d1
 plotmodel()
 
+# ╔═╡ 9542f2b8-e746-4b37-b6f5-b8fd8a9d1876
+data_sample = NeuralSDEExploration.sample_prior_dataspace(latent_sde,ps,st;b=500, tspan=latent_sde.tspan, datasize=latent_sde.datasize)
+
+# ╔═╡ 6860e52e-8f51-41e1-b505-5b70ca112051
+latent_sample = NeuralSDEExploration.sample_prior(latent_sde,ps,st;b=500, tspan=latent_sde.tspan, datasize=latent_sde.datasize)
+
 # ╔═╡ 851ac161-d44c-47a7-89d5-c6c97d3ac8a6
-mean_and_var_model = map_ts((ts) -> [mean(ts), std(ts)], NeuralSDEExploration.sample_prior_dataspace(latent_sde,ps,st;b=500, tspan=latent_sde.tspan, datasize=latent_sde.datasize))
+mean_and_var_model = map_ts((ts) -> [mean(ts), std(ts)], data_sample)
 
 # ╔═╡ 5fc6a274-5185-4d3f-808b-b1326f92081a
 p_model = plot(select_ts(1:1, mean_and_var_model), ribbon=2*map(only, mean_and_var_model.u[2]))
@@ -124,18 +130,27 @@ p_data = plot!(p_model, select_ts(1:1, mean_and_var_data), ribbon=2*map(only, me
 
 # ╔═╡ 2a1ca1d0-163d-41b8-9f2d-8a3a475cc75d
 function loss(ps, minibatch, eta, seed)
-	_, _, _, kl_divergence, likelihood = latent_sde(minibatch, ps, st, seed=seed, noise=noise)
+	_, _, _, kl_divergence, likelihood = latent_sde(minibatch, ps, st, seed=seed)
 	return mean(-likelihood .+ (eta * kl_divergence)), mean(kl_divergence), mean(likelihood)
 end
 
 # ╔═╡ bf819c97-3ed9-484c-a499-7449244cb840
 function kl_loss(ps, minibatch, eta, seed)
-	_, _, _, kl_divergence, likelihood = latent_sde(minibatch, ps, st, seed=seed, noise=noise)
+	_, _, _, kl_divergence, likelihood = latent_sde(minibatch, ps, st, seed=seed)
 	return mean(kl_divergence), mean(kl_divergence), mean(likelihood)
 end
 
 # ╔═╡ 0dc46a16-e26d-4ec2-a74e-675e83959ab2
 loss(ps, viz_batch, 10.0, seed)
+
+# ╔═╡ 63e1f3d9-185a-4d7a-8535-3d21f2af1ee0
+plot(latent_sample)
+
+# ╔═╡ 905a440f-4a56-4205-aba0-558fd28f0bc0
+tipping_rate(data_sample)
+
+# ╔═╡ 99b80546-740e-485e-82a1-948f837ed696
+tipping_rate(timeseries)
 
 # ╔═╡ 96c0423f-214e-4995-a2e4-fe5c84d5a7c3
 md"""
@@ -207,6 +222,8 @@ plot(NeuralSDEExploration.series(model, [[0f0, 0f0]], (0f0, 10f0), 5000))
 # ╠═63213503-ab28-4158-b522-efd0b0139b6d
 # ╠═0b47115c-0561-439b-be7b-78195da6215e
 # ╠═6c06ef9d-d3b4-4917-89f6-af0a3e72b4d1
+# ╠═9542f2b8-e746-4b37-b6f5-b8fd8a9d1876
+# ╠═6860e52e-8f51-41e1-b505-5b70ca112051
 # ╠═851ac161-d44c-47a7-89d5-c6c97d3ac8a6
 # ╠═5fc6a274-5185-4d3f-808b-b1326f92081a
 # ╠═de7959b4-87bd-4374-8fbd-c7a9f0e57d5a
@@ -214,6 +231,9 @@ plot(NeuralSDEExploration.series(model, [[0f0, 0f0]], (0f0, 10f0), 5000))
 # ╠═2a1ca1d0-163d-41b8-9f2d-8a3a475cc75d
 # ╠═bf819c97-3ed9-484c-a499-7449244cb840
 # ╠═0dc46a16-e26d-4ec2-a74e-675e83959ab2
+# ╠═63e1f3d9-185a-4d7a-8535-3d21f2af1ee0
+# ╠═905a440f-4a56-4205-aba0-558fd28f0bc0
+# ╠═99b80546-740e-485e-82a1-948f837ed696
 # ╟─96c0423f-214e-4995-a2e4-fe5c84d5a7c3
 # ╠═a09063de-3002-400a-af89-233eb0822041
 # ╠═0d74625b-edf2-45a7-9b16-08fc29d83eb0

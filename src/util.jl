@@ -107,6 +107,11 @@ function map_ts(f, ts::Timeseries)
     Timeseries(ts.t, result)
 end
 
+function select_tspan(timeseries::Timeseries, tspan::Tuple)
+    searchsortedfirst()
+    searchsortedlast
+end
+
 @recipe function f(ts::Timeseries)
     dims = length(ts.u[1][1])
     layout := @layout collect(repeat([1], dims))
