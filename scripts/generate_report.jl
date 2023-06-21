@@ -65,42 +65,51 @@ for f in ARGS
 
         savefigure("model", plotmodel())
     end
-    train_plot()
 
     # four times training tspan
-    extended_tspan = (latent_sde.tspan[1], latent_sde.tspan[2] + 3 * (latent_sde.tspan[2] - latent_sde.tspan[1]))
-    datasize = latent_sde.datasize * 50
+    function extrapolate_tspan(tspan, factor)
+        (tspan[1], tspan[2] + factor * (tspan[2] - tspan[1]))
+    end
+    extended_tspan = extrapolate_tspan(latent_sde.tspan, 3f0)
+    datasize = latent_sde.datasize * 16
 
-    println("Sampling from Latent SDE")
     sample_size = 500
     latent_sde_sample = NeuralSDEExploration.sample_prior_dataspace(latent_sde,ps,st;b=sample_size, tspan=extended_tspan, datasize=datasize)
 
     # TODO replace with initial condition from .jld file
-    initial_condition_hack = [x[1] for x in select_ts(1:sample_size, timeseries).u]
-    println(initial_condition_hack)
+    initial_condition_hack = [[0f0, 0f0] for i in 1:sample_size]
     data_model_sample = map_dims(x -> map(normalize, x), filter_dims(1:1, NeuralSDEExploration.series(model, initial_condition_hack, extended_tspan, datasize)))
-    
-    println("Done")
 
     function moment_analysis()
         mean_and_var_latent_sde = map_ts((ts) -> [mean(ts), std(ts)], latent_sde_sample)
         mean_and_var_data_model = map_ts((ts) -> [mean(ts), std(ts)], data_model_sample)
 
-        p = plot(select_ts(1:1, mean_and_var_latent_sde), ribbon=2*map(only, mean_and_var_latent_sde.u[2]))
-        plot!(p, select_ts(1:1, mean_and_var_data_model), ribbon=2*map(only, mean_and_var_data_model.u[2]))
+        p = plot(select_ts(1:1, mean_and_var_latent_sde), ribbon=2*map(only, mean_and_var_latent_sde.u[2]), label="Latent SDE")
+        plot!(p, select_ts(1:1, mean_and_var_data_model), ribbon=2*map(only, mean_and_var_data_model.u[2]), label="Data Model")
 
         savefigure("mean_var", p)
     end
-    moment_analysis()
     
     function plot_histograms()
-        histogram_latent_sde = fit(Histogram, latent_sde_sample, 0.0:0.01:1.0)
-        histogram_data_model = fit(Histogram, data_model_sample, 0.0:0.01:1.0)
-        
-        p = plot(histogram_latent_sde)
-        plot!(p, histogram_data_model)
-        savefigure("histogram", p)
+        tspans = Dict(
+            "training timespan" => latent_sde.tspan,
+            "second half of training timespan" => (latent_sde.tspan[1] + 0.5 * (latent_sde.tspan[2] - latent_sde.tspan[1]), latent_sde.tspan[2]),
+            "1x extrapolation" => (latent_sde.tspan[2], extrapolate_tspan(latent_sde.tspan, 1)[2]),
+            "4x extrapolation" => (latent_sde.tspan[2], extrapolate_tspan(latent_sde.tspan, 4)[2]),
+        )
+        for (title, tspan) in tspans
+            histogram_latent_sde = timeseries_histogram(select_tspan(tspan, latent_sde_sample), 0.0:0.01:1.0)
+            histogram_data_model = timeseries_histogram(select_tspan(tspan, data_model_sample), 0.0:0.01:1.0)
+            p_hist = plot([
+                histogram_latent_sde,
+                histogram_data_model,
+            ], alpha=0.5, labels=["data model" "latent sde"], title=title)
+            savefigure("histogram_" * replace(title, " " => "_"), p_hist)
+        end
     end
+    
+    train_plot()
+    moment_analysis()
     plot_histograms()
 
     function generate_json()
@@ -110,23 +119,6 @@ for f in ARGS
         end
 
         kl_divergence, likelihood = loss(ps, select_ts(timeseries, 1:1000), seed)
-
-        # ╔═╡ 0d74625b-edf2-45a7-9b16-08fc29d83eb0
-        loss(ps, timeseries[1:1], 30.0, rand(UInt32))
-
-        # ╔═╡ fe157d5e-eead-4921-a310-467e56e33fb7
-        begin
-            ts = vcat(reduce(vcat, [s.u[hspan] for s in timeseries])...)
-            histogram_data = fit(Histogram, ts, 0.0:0.01:1.0)
-        end
-
-        # ╔═╡ 2812e069-6bf9-4c80-91d7-f7fcf6c338fb
-        begin
-            p_hist = plot([
-                histogram_data,
-                histogram_prior,
-            ], alpha=0.5, labels=["data" "prior"], title="marginal probabilities")
-        end
 
         # ╔═╡ fe1ae4b3-2f1f-4b6c-a076-0d215f222e6c
         plot_prior(25, rng=Xoshiro(), tspan=(0f0, 10f0), datasize=100)
@@ -144,6 +136,6 @@ for f in ARGS
         plot(NeuralSDEExploration.series(model, [[0f0, 0f0]], (0f0, 10f0), 5000))
 
         # ╔═╡ ff5519b9-2a69-41aa-8f55-fc63fa176d3f
-         plot(sample(timeseries, 25),linewidth=.5,color=:black,legend=false,title="data")
+        plot(sample(timeseries, 25),linewidth=.5,color=:black,legend=false,title="data")
     end
 end

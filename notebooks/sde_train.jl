@@ -597,7 +597,12 @@ function exportresults(epoch)
 		"datamax" => datamax,
 		"tspan_train" => tspan_train,
 		"tspan_data" => tspan_data,
-		"tspan_model" => tspan_model
+		"tspan_model" => tspan_model,
+		"recorded_loss" => recorded_loss,
+		"recorded_kl" => recorded_kl,
+		"recorded_likelihood" => recorded_likelihood,
+		"recorded_eta" => recorded_eta,
+		"recorded_lr" => recorded_lr,
 	)
 
 	mkpath(folder)
@@ -642,7 +647,6 @@ begin
 			train(lr_sched, 100, opt_state_job; kl_sched=kl_sched)
 			exportresults(epoch)
 			GC.gc()
-			sleep(10.0)
 		end
 	end
 end
@@ -668,77 +672,6 @@ begin
 		end
 	end
 end
-
-# ╔═╡ 8880282e-1b5a-4c85-95ef-699ccf8d4203
-md"""
-# Statistical Analysis
-"""
-
-# ╔═╡ 47b2ec07-40f4-480d-b650-fbf1b44b7527
-histogram_data = timeseries_histogram(sample_prior_dataspace(latent_sde, ps, st, b=length(timeseries.u)), 0.0:0.01:1.0)
-
-# ╔═╡ 14f9a62d-9caa-40e9-8502-d2a27b9c950e
-histogram_prior = timeseries_histogram(timeseries, 0.0:0.01:1.0)
-
-# ╔═╡ b7acea88-c9a8-4fdf-b3b2-c74b25f9dd93
-begin
-	plot([
-		histogram_data,
-		histogram_prior,
-	], layout=@layout [a; b])
-end
-
-# ╔═╡ 797ea98e-a690-43a8-b212-0c3a9484e2da
-plot(histogram_data, legend=false, title="data")
-
-# ╔═╡ 25638805-7c33-4b91-846d-0dc893acea56
-plot(histogram_prior, legend=false, title="projected prior")
-
-# ╔═╡ 1ad4db6e-19ba-42a3-b023-32b902beb9fd
-begin
-	p_hist = plot([
-		histogram_data,
-		histogram_prior,
-	], alpha=0.5, labels=["data" "prior"], title="marginal probabilities (1x extrapolation)")
-end
-
-# ╔═╡ 300da269-58f1-402b-88de-9c60b8c2dd9d
-md"""
-Timeseries tip at: $(@bind tipping_point NumberField(0.01:1.0, 0.6))
-"""
-
-# ╔═╡ f62e09f3-2d12-4bea-b7d9-02edd4418330
-tip_index = searchsortedfirst(histogram_prior.edges[1], tipping_point)
-
-# ╔═╡ 667da247-9664-4621-8e90-84e0515e5edb
-prior_tipping_rate = histogram_prior.weights[tip_index] / sum(histogram_prior.weights)
-
-# ╔═╡ e4ecb1ad-fef2-4450-82ff-240e076727bd
-data_tipping_rate = histogram_data.weights[tip_index] / sum(histogram_data.weights)
-
-# ╔═╡ b9fb2abc-31a0-48bb-b41d-665f8b3512e5
-gr(size=(600,300))
-
-# ╔═╡ ddafd313-823a-43c2-99c9-7e22660d5f58
-p_prior = plot_prior(25)
-
-# ╔═╡ 3ed1236e-a805-48c5-9250-def2cdaab2cb
-p_data = plot((solution[1].t, reduce(hcat, [solution[i].u for i in 1:25])); legend=false, linewidth=.5,color=:black, title="data")
-
-# ╔═╡ cad2efa8-c434-4661-8dd4-2e2ebd66ee09
-plot([(x, projector(drift_prior([x], ps.drift_prior, st.drift_prior)[1], ps.projector, st.projector)[1][1]) for x in 0:0.01:1])
-
-# ╔═╡ 975d41c9-caed-47df-a870-c587c775aa03
-plot([(normalize(x), NeuralSDEExploration.drift(x, model, 0)) for x in datamin:0.1:datamax])
-
-# ╔═╡ 5c18b3e0-0209-4468-a720-af6972bce28e
-plot([(x, projector(diffusion(([x],), ps.diffusion, st.diffusion)[1][1], ps.projector, st.projector)[1][1]) for x in 0:0.01:2])
-
-# ╔═╡ 84d0265b-c26a-4561-a24a-396da3c6157d
-plot([(normalize(x), NeuralSDEExploration.diffusion(x, model, 0)) for x in datamin:0.1:datamax])
-
-# ╔═╡ 4219497d-9cf6-420f-975d-241259de5e1f
-savefig(p_hist, "~/Downloads/histogram_ext.pdf")
 
 # ╔═╡ Cell order:
 # ╠═67cb574d-7bd6-40d9-9dc3-d57f4226cc83

@@ -1,4 +1,4 @@
-export Timeseries, filter_dims, map_dims, map_ts, select_ts
+export Timeseries, filter_dims, map_dims, map_ts, select_ts, select_tspan
 
 """A collection of multivariate timeseries.
 This type exists to consolidate the tons of different representations that are
@@ -107,9 +107,10 @@ function map_ts(f, ts::Timeseries)
     Timeseries(ts.t, result)
 end
 
-function select_tspan(timeseries::Timeseries, tspan::Tuple)
-    searchsortedfirst()
-    searchsortedlast
+function select_tspan(tspan::Tuple, timeseries::Timeseries)
+    t_begin = searchsortedfirst(timeseries.t, tspan[1])
+    t_end = searchsortedlast(timeseries.t, tspan[2])
+    Timeseries(timeseries.t[t_begin:t_end], [x[t_begin:t_end] for x in timeseries.u])
 end
 
 @recipe function f(ts::Timeseries)
