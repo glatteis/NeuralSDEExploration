@@ -3,8 +3,8 @@
 #SBATCH --job-name=train
 #SBATCH --account=tipes
 #SBATCH --partition=standard
-#SBATCH --cpus-per-task=10
-#SBATCH --mem=100G
+#SBATCH --cpus-per-task=16
+#SBATCH --mem=70GB
 #SBATCH --time=24:00:00
 #SBATCH --output=/home/linushe/outputs/plain-%j.log
 
@@ -23,9 +23,9 @@ echo "------------------------------------------------------------"
 export I_MPI_PMI_LIBRARY=/p/system/slurm/lib/libpmi.so
 module purge
 
+#srun /home/linushe/julia-1.9.0/bin/julia --project=. -t32 notebooks/sde_train.jl -m fhn --batch-size 128 --eta 10.0 --learning-rate 0.02 --lr-cycle false --lr-rate 3000 --latent-dims 2 --stick-landing false --kl-rate 1500 --kl-anneal true --tspan-start-data 0.0 --tspan-end-data 1.0 --tspan-start-train 0.0 --tspan-end-train 1.0 --tspan-start-model 0.0 --tspan-end-model 1.0 --dt 0.04 --backsolve true --decay 1.0
 
-
-srun /home/linushe/julia-1.9.0/bin/julia --project=. -t10 notebooks/sde_train.jl -m fhn --batch-size 128 --eta 30.0 --learning-rate 0.02 --latent-dims 2 --stick-landing false --kl-rate 400 --kl-anneal true --tspan-start-data 0.0 --tspan-end-data 0.2 --tspan-start-train 0.0 --tspan-end-train 0.2 --tspan-start-model 0.0 --tspan-end-model 0.2 --dt 0.01 --backsolve true --scale 0.01
+srun /home/linushe/julia-1.9.0/bin/julia --project=. -t16 notebooks/sde_train.jl -m fhn --batch-size 128 --eta 100.0 --learning-rate 0.015 --lr-cycle false --lr-rate 3000 --latent-dims 3 --stick-landing false --kl-rate 1000 --kl-anneal true --tspan-start-data 0.0 --tspan-end-data 0.5 --tspan-start-train 0.0 --tspan-end-train 0.5 --tspan-start-model 0.0 --tspan-end-model 0.5 --dt 0.05 --backsolve true --decay 1.0 --kidger true --hidden-size 32
 
 
 # Load a Julia module, if you're running Julia notebooks
