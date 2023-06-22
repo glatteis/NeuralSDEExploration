@@ -70,15 +70,6 @@ seed = 378
 # ╔═╡ e0afda9e-0b17-4e7e-9d1e-d0f05df6fa4e
 viz_batch = select_ts(ti, timeseries)
 
-# ╔═╡ 9c5f37b0-9998-4879-85d0-f540089e1ca8
-posterior_latent, posterior_data, logterm_, kl_divergence_, distance_ = latent_sde(viz_batch, ps, st)
-
-# ╔═╡ 8f38bdbc-8b22-46c5-bbf4-d38d277b000f
-plot(logterm_[1, :, :]', title="KL-Divergence", linewidth=2)
-
-# ╔═╡ 2f6d198e-4cae-40cd-8624-6aab867fee0b
-plot(posterior_data[1, :,:]',linewidth=2,legend=false,title="projected posterior")
-
 # ╔═╡ 63213503-ab28-4158-b522-efd0b0139b6d
 function plot_prior(priorsamples; rng=rng, tspan=latent_sde.tspan, datasize=latent_sde.datasize)
 	prior = NeuralSDEExploration.sample_prior_dataspace(latent_sde,ps,st;seed=abs(rand(rng, Int)),b=priorsamples, tspan=tspan, datasize=datasize)
@@ -110,23 +101,8 @@ end
 # ╔═╡ 6c06ef9d-d3b4-4917-89f6-af0a3e72b4d1
 plotmodel()
 
-# ╔═╡ 9542f2b8-e746-4b37-b6f5-b8fd8a9d1876
-data_sample = NeuralSDEExploration.sample_prior_dataspace(latent_sde,ps,st;b=500, tspan=latent_sde.tspan, datasize=latent_sde.datasize)
-
-# ╔═╡ 6860e52e-8f51-41e1-b505-5b70ca112051
-latent_sample = NeuralSDEExploration.sample_prior(latent_sde,ps,st;b=500, tspan=latent_sde.tspan, datasize=latent_sde.datasize)
-
-# ╔═╡ 851ac161-d44c-47a7-89d5-c6c97d3ac8a6
-mean_and_var_model = map_ts((ts) -> [mean(ts), std(ts)], data_sample)
-
-# ╔═╡ 5fc6a274-5185-4d3f-808b-b1326f92081a
-p_model = plot(select_ts(1:1, mean_and_var_model), ribbon=2*map(only, mean_and_var_model.u[2]))
-
 # ╔═╡ de7959b4-87bd-4374-8fbd-c7a9f0e57d5a
 mean_and_var_data = map_ts((ts) -> [mean(ts), std(ts)], select_ts(1:500, timeseries))
-
-# ╔═╡ c275150e-e90c-4895-99c8-2f6364505dc0
-p_data = plot!(p_model, select_ts(1:1, mean_and_var_data), ribbon=2*map(only, mean_and_var_data.u[2]))
 
 # ╔═╡ 2a1ca1d0-163d-41b8-9f2d-8a3a475cc75d
 function loss(ps, minibatch, eta, seed)
@@ -140,8 +116,41 @@ function kl_loss(ps, minibatch, eta, seed)
 	return mean(kl_divergence), mean(kl_divergence), mean(likelihood)
 end
 
+# ╔═╡ 91a99de2-84b3-4ed7-b8de-97652c59137f
+ps_new = copy(ps)
+
+# ╔═╡ 9c5f37b0-9998-4879-85d0-f540089e1ca8
+posterior_latent, posterior_data, logterm_, kl_divergence_, distance_ = latent_sde(viz_batch, ps_new, st)
+
+# ╔═╡ 8f38bdbc-8b22-46c5-bbf4-d38d277b000f
+plot(logterm_[1, :, :]', title="KL-Divergence", linewidth=2)
+
+# ╔═╡ 2f6d198e-4cae-40cd-8624-6aab867fee0b
+plot(posterior_data[1, :,:]',linewidth=2,legend=false,title="projected posterior")
+
+# ╔═╡ 9542f2b8-e746-4b37-b6f5-b8fd8a9d1876
+data_sample = NeuralSDEExploration.sample_prior_dataspace(latent_sde,ps_new,st;b=500, tspan=latent_sde.tspan, datasize=latent_sde.datasize)
+
+# ╔═╡ 851ac161-d44c-47a7-89d5-c6c97d3ac8a6
+mean_and_var_model = map_ts((ts) -> [mean(ts), std(ts)], data_sample)
+
+# ╔═╡ 5fc6a274-5185-4d3f-808b-b1326f92081a
+p_model = plot(select_ts(1:1, mean_and_var_model), ribbon=2*map(only, mean_and_var_model.u[2]))
+
+# ╔═╡ c275150e-e90c-4895-99c8-2f6364505dc0
+p_data = plot!(p_model, select_ts(1:1, mean_and_var_data), ribbon=2*map(only, mean_and_var_data.u[2]))
+
+# ╔═╡ 6860e52e-8f51-41e1-b505-5b70ca112051
+latent_sample = NeuralSDEExploration.sample_prior(latent_sde,ps_new,st;b=500, tspan=latent_sde.tspan, datasize=latent_sde.datasize)
+
+# ╔═╡ 9e85f70b-41ef-4912-acc6-ff4a0e21bcb1
+ps_new.initial_prior.weight[6] = 1.0
+
 # ╔═╡ 0dc46a16-e26d-4ec2-a74e-675e83959ab2
 loss(ps, viz_batch, 10.0, seed)
+
+# ╔═╡ 978d045c-3bfd-4ab9-96d4-0af6b8d0f6d4
+loss(ps_new, viz_batch, 10.0, seed)
 
 # ╔═╡ 63e1f3d9-185a-4d7a-8535-3d21f2af1ee0
 plot(latent_sample)
@@ -156,14 +165,6 @@ tipping_rate(timeseries)
 md"""
 Histogram span: $(@bind hspan RangeSlider(1:20))
 """
-
-# ╔═╡ a09063de-3002-400a-af89-233eb0822041
-begin
-	prior_latent = NeuralSDEExploration.sample_prior(latent_sde,ps,st;b=length(timeseries),seed=0,noise=noise)
-	projected_prior = map(first, vcat([[latent_sde.projector(y[1:end-1], ps.projector, st.projector) for y in x[hspan].u] for x in prior_latent.u]...))
-	#projected_prior = vcat(reduce(vcat, [latent_sde.projector(x[hspan], ps.projector, st.projector)[1] for x in prior_latent.u])...)
-	histogram_prior = fit(Histogram, projected_prior, 0.0:0.01:1.0)
-end
 
 # ╔═╡ 0d74625b-edf2-45a7-9b16-08fc29d83eb0
 loss(ps, timeseries[1:1], 30.0, rand(UInt32))
@@ -186,7 +187,10 @@ end
 plot_prior(25, rng=Xoshiro(), tspan=(0f0, 10f0), datasize=100)
 
 # ╔═╡ 72045fd0-2769-4868-9b67-e7a41e3f1d7d
-plot(NeuralSDEExploration.sample_prior(latent_sde,ps,st;b=1,tspan=(0f0,10f0),datasize=5000)
+plot(NeuralSDEExploration.sample_prior(latent_sde,ps,st;b=40,tspan=(0f0,10f0),datasize=5000),dpi=400)
+
+# ╔═╡ 5f3db28c-b3bb-4461-b457-e7af3e273674
+plot(NeuralSDEExploration.sample_prior(latent_sde,ps_new,st;b=10,tspan=(0f0,10f0),datasize=5000)
 )
 
 # ╔═╡ ae0c9dae-e490-4965-9353-c820a3ce3645
@@ -227,20 +231,23 @@ plot(NeuralSDEExploration.series(model, [[0f0, 0f0]], (0f0, 10f0), 5000))
 # ╠═851ac161-d44c-47a7-89d5-c6c97d3ac8a6
 # ╠═5fc6a274-5185-4d3f-808b-b1326f92081a
 # ╠═de7959b4-87bd-4374-8fbd-c7a9f0e57d5a
-# ╠═c275150e-e90c-4895-99c8-2f6364505dc0
+# ╟─c275150e-e90c-4895-99c8-2f6364505dc0
 # ╠═2a1ca1d0-163d-41b8-9f2d-8a3a475cc75d
 # ╠═bf819c97-3ed9-484c-a499-7449244cb840
+# ╠═91a99de2-84b3-4ed7-b8de-97652c59137f
+# ╠═9e85f70b-41ef-4912-acc6-ff4a0e21bcb1
 # ╠═0dc46a16-e26d-4ec2-a74e-675e83959ab2
+# ╠═978d045c-3bfd-4ab9-96d4-0af6b8d0f6d4
 # ╠═63e1f3d9-185a-4d7a-8535-3d21f2af1ee0
 # ╠═905a440f-4a56-4205-aba0-558fd28f0bc0
 # ╠═99b80546-740e-485e-82a1-948f837ed696
 # ╟─96c0423f-214e-4995-a2e4-fe5c84d5a7c3
-# ╠═a09063de-3002-400a-af89-233eb0822041
 # ╠═0d74625b-edf2-45a7-9b16-08fc29d83eb0
 # ╠═fe157d5e-eead-4921-a310-467e56e33fb7
 # ╠═2812e069-6bf9-4c80-91d7-f7fcf6c338fb
 # ╠═fe1ae4b3-2f1f-4b6c-a076-0d215f222e6c
 # ╠═72045fd0-2769-4868-9b67-e7a41e3f1d7d
+# ╠═5f3db28c-b3bb-4461-b457-e7af3e273674
 # ╟─ae0c9dae-e490-4965-9353-c820a3ce3645
 # ╟─63e3e80c-6d03-4e42-a718-5bf30ad7182f
 # ╠═9f8c49a0-2098-411b-976a-2b43cbb20a44

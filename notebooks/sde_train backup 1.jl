@@ -416,7 +416,7 @@ println("Steps that will be derived: $(steps(tspan_model, dt))")
 
 # ╔═╡ 63960546-2157-4a23-8578-ec27f27d5185
 projector = if fixed_projector
-	Chain(FlattenLayer(), Chain((x, ps, st) -> (x[1, :, :], st)))
+	error("Fixed projector isn't implemented!!")
 else
 	Lux.Dense(latent_dims => data_dims)
 end
@@ -745,6 +745,7 @@ end
 # ╠═08759cda-2a2a-41ff-af94-5b1000c9e53f
 # ╟─ec41b765-2f73-43a5-a575-c97a5a107c4e
 # ╠═63960546-2157-4a23-8578-ec27f27d5185
+# ╠═60fa9e0d-cf50-4cd5-bd0c-ab440bddad1d
 # ╠═001c318e-b7a6-48a5-bfd5-6dd0368873ac
 # ╠═0f6f4520-576f-42d3-9126-2076a51a6e22
 # ╟─1938e122-2c05-46fc-b179-db38322530ff
@@ -767,3 +768,22 @@ end
 # ╠═830f7e7a-71d0-43c8-8e74-d1709b8a6707
 # ╠═763f07e6-dd46-42d6-b57a-8f1994386302
 # ╠═655877c5-d636-4c1c-85c6-82129c1a4999
+# ╟─8880282e-1b5a-4c85-95ef-699ccf8d4203
+# ╠═47b2ec07-40f4-480d-b650-fbf1b44b7527
+# ╠═14f9a62d-9caa-40e9-8502-d2a27b9c950e
+# ╠═b7acea88-c9a8-4fdf-b3b2-c74b25f9dd93
+# ╠═797ea98e-a690-43a8-b212-0c3a9484e2da
+# ╠═25638805-7c33-4b91-846d-0dc893acea56
+# ╠═1ad4db6e-19ba-42a3-b023-32b902beb9fd
+# ╟─300da269-58f1-402b-88de-9c60b8c2dd9d
+# ╠═f62e09f3-2d12-4bea-b7d9-02edd4418330
+# ╠═667da247-9664-4621-8e90-84e0515e5edb
+# ╠═e4ecb1ad-fef2-4450-82ff-240e076727bd
+# ╠═b9fb2abc-31a0-48bb-b41d-665f8b3512e5
+# ╠═ddafd313-823a-43c2-99c9-7e22660d5f58
+# ╠═3ed1236e-a805-48c5-9250-def2cdaab2cb
+# ╠═cad2efa8-c434-4661-8dd4-2e2ebd66ee09
+# ╠═975d41c9-caed-47df-a870-c587c775aa03
+# ╠═5c18b3e0-0209-4468-a720-af6972bce28e
+# ╠═84d0265b-c26a-4561-a24a-396da3c6157d
+# ╠═4219497d-9cf6-420f-975d-241259de5e1f
