@@ -340,12 +340,11 @@ function (n::LatentSDE)(timeseries::Timeseries, ps::ComponentVector, st;
     initialdists_kl = reduce(hcat, [reshape([KullbackLeibler(a, b) for (a, b) in zip(initialdists_posterior[:, batch], initialdists_prior)], :, 1) for batch in eachindex(timeseries.u)])
     kl_divergence = sum(initialdists_kl, dims=1) .+ logterm[:, :, end]
 
-    projected_z0 = z0[1:1, :, :]
     projected_ts = posterior_latent[1:1, :, :]
 
     logp(x, y) = loglikelihood(likelihood_dist(y, likelihood_scale), x)
     likelihoods_initial = if ts_start == 1
-        [logp(x, y) for (x, y) in zip(tsmatrix[:, :, 1], projected_z0)]
+        [logp(x, y) for (x, y) in zip(tsmatrix[:, :, 1], z0[1:1, :])]
     else
         fill(0.0f0, size(projected_z0))
     end
