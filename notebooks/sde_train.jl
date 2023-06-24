@@ -662,6 +662,8 @@ end
 gifplot()
 
 # ╔═╡ 655877c5-d636-4c1c-85c6-82129c1a4999
+# ╠═╡ skip_as_script = true
+#=╠═╡
 begin
 	if enabletraining
 		opt_state = Optimisers.setup(Optimisers.Adam(), ps)
@@ -672,6 +674,7 @@ begin
 		end
 	end
 end
+  ╠═╡ =#
 
 # ╔═╡ Cell order:
 # ╠═67cb574d-7bd6-40d9-9dc3-d57f4226cc83

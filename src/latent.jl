@@ -153,7 +153,8 @@ function sample_prior(n::LatentSDE, ps, st; b=1, seed=nothing, noise=(seed) -> n
         if seed !== nothing
             Random.seed!(seed)
         end
-        (reshape([only(rand(Normal{Float32}(0.0f0, 1.0f0), 1)) for i in 1:b], 1, :), rand(UInt32))
+        latent_dimensions = n.initial_prior.out_dims ÷ 2
+        (rand(Normal{Float32}(0.0f0, 1.0f0), (latent_dimensions, b)), rand(UInt32))
     end
 
     # We vcat 0f0 to these so that the prior has the same dimensions as the posterior (for noise reasons)
@@ -167,7 +168,8 @@ function sample_prior(n::LatentSDE, ps, st; b=1, seed=nothing, noise=(seed) -> n
     end
 
     initialdists_prior = get_distributions(n.initial_prior, ps.initial_prior, st.initial_prior, [1.0f0])
-    z0 = hcat([reshape([x.μ + ep * x.σ for x in initialdists_prior], :, 1) for ep in eps[1, :]]...)
+    distributions_with_eps = [zip(initialdists_prior, eps_batch) for eps_batch in eachslice(eps, dims=2)]
+    z0 = hcat([reshape([x.μ + ep * x.σ for (x, ep) in d], :, 1) for d in distributions_with_eps]...)
 
     function prob_func(prob, batch, repeat)
         noise_instance = ChainRulesCore.ignore_derivatives() do
@@ -230,7 +232,9 @@ function (n::LatentSDE)(timeseries::Timeseries, ps::ComponentVector, st;
         if seed !== nothing
             Random.seed!(seed)
         end
-        (reshape([only(rand(Normal{Float32}(0.0f0, 1.0f0), 1)) for i in eachindex(timeseries.u)], 1, :), rand(UInt32))
+        latent_dimensions = n.initial_prior.out_dims ÷ 2
+        batch_size = length(timeseries.u)
+        (rand(Normal{Float32}(0.0f0, 1.0f0), (latent_dimensions, batch_size)), rand(UInt32))
     end
 
     tsmatrix = reduce(hcat, [reshape(map(only, u), 1, 1, :) for u in timeseries.u])
@@ -256,8 +260,8 @@ function (n::LatentSDE)(timeseries::Timeseries, ps::ComponentVector, st;
     initialdists_prior = get_distributions(n.initial_prior, ps.initial_prior, st.initial_prior, [1.0f0])
 
     initialdists_posterior = get_distributions(n.initial_posterior, ps.initial_posterior, st.initial_posterior, context_precomputed[:, :, 1])
-
-    z0 = reduce(hcat, [reshape([x.μ + eps[1, batch] * x.σ for x in initialdists_posterior[:, batch]], :, 1) for batch in eachindex(timeseries.u)])
+    distributions_with_eps = [zip(dist, eps_batch) for (dist, eps_batch) in zip(eachslice(initialdists_posterior, dims=2), eachslice(eps, dims=2))]
+    z0 = hcat([reshape([x.μ + ep * x.σ for (x, ep) in d], :, 1) for d in distributions_with_eps]...)
 
     augmented_z0 = vcat(z0, zeros32(1, length(z0[1, :])))
 

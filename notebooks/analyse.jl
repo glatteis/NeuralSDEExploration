@@ -141,7 +141,7 @@ p_model = plot(select_ts(1:1, mean_and_var_model), ribbon=2*map(only, mean_and_v
 p_data = plot!(p_model, select_ts(1:1, mean_and_var_data), ribbon=2*map(only, mean_and_var_data.u[2]))
 
 # ╔═╡ 6860e52e-8f51-41e1-b505-5b70ca112051
-latent_sample = NeuralSDEExploration.sample_prior(latent_sde,ps_new,st;b=500, tspan=latent_sde.tspan, datasize=latent_sde.datasize)
+latent_sample = NeuralSDEExploration.sample_prior(latent_sde,ps_new,st;b=2, tspan=latent_sde.tspan, datasize=latent_sde.datasize)
 
 # ╔═╡ 9e85f70b-41ef-4912-acc6-ff4a0e21bcb1
 ps_new.initial_prior.weight[6] = 1.0
@@ -190,7 +190,7 @@ plot_prior(25, rng=Xoshiro(), tspan=(0f0, 10f0), datasize=100)
 plot(NeuralSDEExploration.sample_prior(latent_sde,ps,st;b=40,tspan=(0f0,10f0),datasize=5000),dpi=400)
 
 # ╔═╡ 5f3db28c-b3bb-4461-b457-e7af3e273674
-plot(NeuralSDEExploration.sample_prior(latent_sde,ps_new,st;b=10,tspan=(0f0,10f0),datasize=5000)
+plot(NeuralSDEExploration.sample_prior(latent_sde,ps_new,st;b=3,tspan=(0f0,10f0),datasize=5000)
 )
 
 # ╔═╡ ae0c9dae-e490-4965-9353-c820a3ce3645
