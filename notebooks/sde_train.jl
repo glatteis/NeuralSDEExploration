@@ -298,14 +298,6 @@ Use GPU: $(@bind gpu Arg("gpu", CheckBox(), required=false))
 CLI arg: `--gpu`
 """
 
-# ╔═╡ 08759cda-2a2a-41ff-af94-5b1000c9e53f
-solver = if gpu
-	using DiffEqGPU, CUDA, Metal
-	GPUEM()
-else
-	EM()
-end
-
 # ╔═╡ 16c12354-5ab6-4c0e-833d-265642119ed2
 md"""
 Batch size
@@ -412,6 +404,13 @@ md"""
 ### Latent SDE Model
 """
 
+# ╔═╡ 08759cda-2a2a-41ff-af94-5b1000c9e53f
+solver = if gpu
+	GPUEulerHeun()
+else
+	EulerHeun()
+end
+
 # ╔═╡ ec41b765-2f73-43a5-a575-c97a5a107c4e
 println("Steps that will be derived: $(steps(tspan_model, dt))")
 
@@ -453,25 +452,15 @@ md"""
 # Parameters
 """
 
-# ╔═╡ 14b9afd1-d858-4068-9e6d-32b408a7b9bd
-ensemblemode = if gpu
-	EnsembleGPUKernel(CUDA.CUDABackend())
-	#EnsembleGPUKernel(Metal.MetalBackend())
-else
-	EnsembleThreads()
-end
-
 # ╔═╡ 05568880-f931-4394-b31e-922850203721
 ps_, st = if gpu
-	Lux.setup(rng, latent_sde) .|> Lux.gpu
+	Lux.setup(rng, latent_sde) |> gpu
 else
 	Lux.setup(rng, latent_sde)
 end
 
 # ╔═╡ b0692162-bdd2-4cb8-b99c-1ebd2177a3fd
-if gpu
-	ps = ComponentArray{Float32}(ps_) .|> Lux.gpu
-else
+begin
 	ps = ComponentArray{Float32}(ps_)
 end
 
@@ -479,6 +468,13 @@ end
 md"""
 Select a seed: $(@bind seed Scrubbable(481283))
 """
+
+# ╔═╡ 1af41258-0c18-464d-af91-036f5a4c074c
+ensemblemode = if gpu
+	EnsembleGPUKernel(CUDA.CUDABackend())
+else
+	EnsembleThreads()
+end
 
 # ╔═╡ 3ab9a483-08f2-4767-8bd5-ae1375a62dbe
 function plot_prior(priorsamples; rng=rng, tspan=latent_sde.tspan, datasize=latent_sde.datasize)
@@ -666,8 +662,6 @@ end
 gifplot()
 
 # ╔═╡ 655877c5-d636-4c1c-85c6-82129c1a4999
-# ╠═╡ disabled = true
-#=╠═╡
 begin
 	if enabletraining
 		opt_state = Optimisers.setup(Optimisers.Adam(), ps)
@@ -678,7 +672,6 @@ begin
 		end
 	end
 end
-  ╠═╡ =#
 
 # ╔═╡ Cell order:
 # ╠═67cb574d-7bd6-40d9-9dc3-d57f4226cc83
@@ -755,10 +748,10 @@ end
 # ╠═001c318e-b7a6-48a5-bfd5-6dd0368873ac
 # ╠═0f6f4520-576f-42d3-9126-2076a51a6e22
 # ╟─1938e122-2c05-46fc-b179-db38322530ff
-# ╠═14b9afd1-d858-4068-9e6d-32b408a7b9bd
 # ╠═05568880-f931-4394-b31e-922850203721
 # ╠═b0692162-bdd2-4cb8-b99c-1ebd2177a3fd
 # ╟─ee3d4a2e-0960-430e-921a-17d340af497c
+# ╠═1af41258-0c18-464d-af91-036f5a4c074c
 # ╠═3ab9a483-08f2-4767-8bd5-ae1375a62dbe
 # ╠═b5c6d43c-8252-4602-8232-b3d1b0bcee33
 # ╟─225791b1-0ffc-48e2-8131-7f54848d8d83
