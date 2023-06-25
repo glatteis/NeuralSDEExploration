@@ -246,9 +246,6 @@ function (n::LatentSDE)(timeseries::Timeseries, ps::ComponentVector, st;
     # batches: dimension 2 => dimension 3
     tsmatrix_flipped = reverse(permutedims(tsmatrix, (1, 3, 2)), dims=2)
 
-    # ## !! LUX.JL BUG WORKAROUND !! (fixed in Lux.jl v0.4.51)
-    # tsmatrix_flipped_wrong = hcat(tsmatrix_flipped[:, 1:1, :], reverse(tsmatrix_flipped[:, 2:end, :], dims=2))
-
     precontext_flipped = reverse(n.encoder_recurrent(tsmatrix_flipped, ps.encoder_recurrent, st.encoder_recurrent)[1])
     context_flipped = [n.encoder_net(x, ps.encoder_net, st.encoder_net)[1] for x in precontext_flipped]
 

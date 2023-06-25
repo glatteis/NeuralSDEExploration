@@ -286,12 +286,6 @@ CLI arg: `--fixed-projector`
 # ╔═╡ ad6247f6-6cb9-4a57-92d3-6328cbd84ecd
 in_dims = latent_dims + (time_dependence ? 1 : 0)
 
-# ╔═╡ fe749caf-393f-45b0-98e5-5d10c1821a9d
-md"""
-Stick landing: $(@bind stick_landing Arg("stick-landing", CheckBox(), required=false))
-CLI arg: `--stick-landing`
-"""
-
 # ╔═╡ 60b5397d-7350-460b-9117-319dc127cc7e
 md"""
 Use GPU: $(@bind gpu Arg("gpu", CheckBox(), required=false))
@@ -397,7 +391,7 @@ else
 end
 
 # ╔═╡ db88cae4-cb25-4628-9298-5a694c4b29ef
-println((context_size=context_size, hidden_size=hidden_size, latent_dims=latent_dims, data_dims=data_dims, stick_landing=stick_landing, batch_size=batch_size))
+println((context_size=context_size, hidden_size=hidden_size, latent_dims=latent_dims, data_dims=data_dims, batch_size=batch_size))
 
 # ╔═╡ b8b2f4b5-e90c-4066-8dad-27e8dfa1d7c5
 md"""
@@ -535,7 +529,7 @@ end
 
 # ╔═╡ e0a34be1-6aa2-4563-abc2-ea163a778752
 function loss(ps, minibatch, eta, seed)
-	_, _, _, kl_divergence, likelihood = latent_sde(minibatch, ps, st; sense=sense, noise=noise, ensemblemode=ensemblemode, stick_landing=stick_landing, seed=seed, likelihood_scale=scale)
+	_, _, _, kl_divergence, likelihood = latent_sde(minibatch, ps, st; sense=sense, noise=noise, ensemblemode=ensemblemode, seed=seed, likelihood_scale=scale)
 	return mean(-likelihood .+ (eta * kl_divergence)), mean(kl_divergence), mean(likelihood)
 end
 

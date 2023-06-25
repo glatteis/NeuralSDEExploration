@@ -25,7 +25,7 @@ using JLD2
     input1 = (t=collect(range(tspan[1],tspan[end],datasize)),u=collect(range(0e0, 1e0, datasize)))
     input2 = (t=collect(range(tspan[1],tspan[end],datasize)),u=collect(range(2e0, 1e0, datasize)))
     
-    seed = 1
+    seed = rand(rng, UInt32)
 
     posterior_latent, posterior_data, logterm_, kl_divergence_, distance_ = latent_sde(Timeseries([input1, input2, input2, input2]), ps, st, seed=seed)
     
@@ -64,7 +64,7 @@ using JLD2
 end
 
 @testset "Exported Latent SDE" begin
-    dict = load("8.jld")["data"]
+    dict = load("1.jld")["data"]
 
     latent_sde = dict["latent_sde"]
 
@@ -78,7 +78,9 @@ end
     
     minibatch = select_ts(1:10, timeseries)
     
-    seed = 1
+    rng = Xoshiro()
+    
+    seed = rand(rng, UInt32)
 
     hidden_dims = latent_sde.initial_prior.out_dims ÷ 2
     sense = BacksolveAdjoint(autojacvec=ZygoteVJP(), checkpointing=true)
@@ -100,7 +102,7 @@ end
     println(outliers)
     println(grads_zygote[outliers])
     println(grads_finitediff[outliers])
-    # @test length(outliers) == 0
+    @test length(outliers) == 0
     println("Please check the grads manually:")
     println(grads_zygote)
     println(grads_finitediff)
