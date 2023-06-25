@@ -391,7 +391,7 @@ else
 end
 
 # ╔═╡ db88cae4-cb25-4628-9298-5a694c4b29ef
-println((context_size=context_size, hidden_size=hidden_size, latent_dims=latent_dims, data_dims=data_dims, stick_landing=stick_landing, batch_size=batch_size))
+println((context_size=context_size, hidden_size=hidden_size, latent_dims=latent_dims, data_dims=data_dims, batch_size=batch_size))
 
 # ╔═╡ b8b2f4b5-e90c-4066-8dad-27e8dfa1d7c5
 md"""
