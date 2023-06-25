@@ -391,7 +391,7 @@ else
 end
 
 # ╔═╡ db88cae4-cb25-4628-9298-5a694c4b29ef
-println((context_size=context_size, hidden_size=hidden_size, latent_dims=latent_dims, data_dims=data_dims, batch_size=batch_size))
+println((context_size=context_size, hidden_size=hidden_size, latent_dims=latent_dims, data_dims=data_dims, stick_landing=stick_landing, batch_size=batch_size))
 
 # ╔═╡ b8b2f4b5-e90c-4066-8dad-27e8dfa1d7c5
 md"""
@@ -721,7 +721,6 @@ end
 # ╟─9382314d-c076-4b95-8171-71d903bb9271
 # ╟─03a21651-9c95-49e8-bb07-b03640f7e5b7
 # ╟─ad6247f6-6cb9-4a57-92d3-6328cbd84ecd
-# ╟─fe749caf-393f-45b0-98e5-5d10c1821a9d
 # ╟─60b5397d-7350-460b-9117-319dc127cc7e
 # ╟─16c12354-5ab6-4c0e-833d-265642119ed2
 # ╟─f12633b6-c770-439d-939f-c41b74a5c309
