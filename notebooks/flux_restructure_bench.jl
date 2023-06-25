@@ -36,7 +36,7 @@ end
 # ╔═╡ 803c27f2-a12c-4e15-8072-7903efd7c591
 begin
 	Profile.clear()
-	@profile eval(100000, rand(Float32, 1))
+	@profile eval(100000, rand(Float64, 1))
 	pprof(; web=true)
 end
 

@@ -131,13 +131,13 @@ CLI arg: `--scale`
 """
 
 # ╔═╡ fe7e2889-88de-49b3-b20b-342357596bfc
-tspan_train = (Float32(tspan_start_train), Float32(tspan_end_train))
+tspan_train = (Float64(tspan_start_train), Float64(tspan_end_train))
 
 # ╔═╡ de70d89a-275d-49d2-9da4-4470c869e56e
-tspan_data = (Float32(tspan_start_data), Float32(tspan_end_data))
+tspan_data = (Float64(tspan_start_data), Float64(tspan_end_data))
 
 # ╔═╡ 986c442a-d02e-42d4-bda4-f66a1c92f799
-tspan_model = (Float32(tspan_start_model), Float32(tspan_end_model))
+tspan_model = (Float64(tspan_start_model), Float64(tspan_end_model))
 
 # ╔═╡ 9a89a97c-da03-4887-ac8c-ef1f5264436e
 println((num_data=n, dt=dt, tspan_train=tspan_train, tspan_data=tspan_data, tspan_model=tspan_model))
@@ -185,7 +185,7 @@ solution_full = NeuralSDEExploration.series(model, initial_condition, tspan_data
 tspan_train_steps = (searchsortedlast(solution_full.t, tspan_start_train)): (searchsortedlast(solution_full.t, tspan_end_train))
 
 # ╔═╡ 15cef7cc-30b6-499d-b968-775b3251dedb
-solution = Timeseries(shuffle([(t=map(Float32, solution_full.t[tspan_train_steps]), u=map(Float32 ∘ first, x[tspan_train_steps])) for x in solution_full.u]))
+solution = Timeseries(shuffle([(t=map(Float64, solution_full.t[tspan_train_steps]), u=map(Float64 ∘ first, x[tspan_train_steps])) for x in solution_full.u]))
 
 # ╔═╡ 1502612c-1489-4abf-8a8b-5b2d03a68cb1
 md"""
@@ -215,7 +215,7 @@ println((datamin=datamin, datamax=datamax))
 
 # ╔═╡ c79a3a3a-5599-4585-83a4-c7b6bc017436
 function corrupt(value)
-	value + only(rand(Normal{Float32}(0f0, Float32(scale)), 1))
+	value + only(rand(Normal{Float64}(0f0, Float64(scale)), 1))
 end
 
 # ╔═╡ 9a5c942f-9e2d-4c6c-9cb1-b0dffd8050a0
@@ -461,7 +461,7 @@ end
 
 # ╔═╡ b0692162-bdd2-4cb8-b99c-1ebd2177a3fd
 begin
-	ps = ComponentArray{Float32}(ps_)
+	ps = ComponentArray{Float64}(ps_)
 end
 
 # ╔═╡ ee3d4a2e-0960-430e-921a-17d340af497c

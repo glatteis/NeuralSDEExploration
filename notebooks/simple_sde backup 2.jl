@@ -69,7 +69,7 @@ end
 display(ps_)
 
 # ╔═╡ d5214491-e569-4a0c-b2f9-dbf0b91e0566
-ps__ = (initial_prior = (weight = [0.0; 0.0; 0.0; 0.0;;],), initial_posterior = (weight = [100.0; 0.01; 100.0; 0.01;;],), drift_prior = (weight = Float32[1.0, 1.0],), drift_posterior = (weight = [0.1 0.1 0.1; 1.0 1.0 1.0],), diffusion = (layer_1 = (weight = [0.0;;], bias = [0.01;;]), layer_2 = (weight = [0.0;;], bias = [1.0;;])), encoder = (weight_ih = [1.0;;], weight_hh = [1.0;;], bias = Float32[0.0]), projector = (weight = [1.0 1.0],))
+ps__ = (initial_prior = (weight = [0.0; 0.0; 0.0; 0.0;;],), initial_posterior = (weight = [100.0; 0.01; 100.0; 0.01;;],), drift_prior = (weight = Float64[1.0, 1.0],), drift_posterior = (weight = [0.1 0.1 0.1; 1.0 1.0 1.0],), diffusion = (layer_1 = (weight = [0.0;;], bias = [0.01;;]), layer_2 = (weight = [0.0;;], bias = [1.0;;])), encoder = (weight_ih = [1.0;;], weight_hh = [1.0;;], bias = Float64[0.0]), projector = (weight = [1.0 1.0],))
 
 # ╔═╡ 9057f759-322b-4fe7-8a3a-3a3c16c03de2
 ps = ComponentArray(ps__)

@@ -145,7 +145,7 @@ function get_distributions(model, model_p, st, context)
     # output ordered like [norm, var, norm, var, ...]
     halfindices = 1:Int(length(normsandvars[:, 1]) / 2)
 
-    return hcat([reshape([Normal{Float32}(normsandvars[2*i-1, j], exp(0.5f0 * normsandvars[2*i, j])) for i in halfindices], :, 1) for j in batch_indices]...)
+    return hcat([reshape([Normal{Float64}(normsandvars[2*i-1, j], exp(0.5f0 * normsandvars[2*i, j])) for i in halfindices], :, 1) for j in batch_indices]...)
 end
 
 function sample_prior(n::LatentSDE, ps, st; b=1, seed=nothing, noise=(seed) -> nothing, tspan=n.tspan, datasize=n.datasize)
@@ -154,7 +154,7 @@ function sample_prior(n::LatentSDE, ps, st; b=1, seed=nothing, noise=(seed) -> n
             Random.seed!(seed)
         end
         latent_dimensions = n.initial_prior.out_dims ÷ 2
-        (rand(Normal{Float32}(0.0f0, 1.0f0), (latent_dimensions, b)), rand(UInt32))
+        (rand(Normal{Float64}(0.0f0, 1.0f0), (latent_dimensions, b)), rand(UInt32))
     end
 
     # We vcat 0f0 to these so that the prior has the same dimensions as the posterior (for noise reasons)
@@ -190,8 +190,10 @@ end
 
 # from https://github.com/google-research/torchsde/blob/master/examples/latent_sde.py
 function stable_divide(a, b, eps=1e-7)
-    if any([x <= eps for x in b])
-        @warn "diffusion to small"
+    ChainRulesCore.ignore_derivatives() do
+        if any([abs(x) <= eps for x in b])
+            @warn "diffusion too small"
+        end
     end
     b = map(x -> abs(x) <= eps ? eps * sign(x) : x, b)
     a ./ b
@@ -234,7 +236,7 @@ function (n::LatentSDE)(timeseries::Timeseries, ps::ComponentVector, st;
         end
         latent_dimensions = n.initial_prior.out_dims ÷ 2
         batch_size = length(timeseries.u)
-        (rand(Normal{Float32}(0.0f0, 1.0f0), (latent_dimensions, batch_size)), rand(UInt32))
+        (rand(Normal{Float64}(0.0f0, 1.0f0), (latent_dimensions, batch_size)), rand(UInt32))
     end
 
     tsmatrix = reduce(hcat, [reshape(map(only, u), 1, 1, :) for u in timeseries.u])
@@ -262,10 +264,10 @@ function (n::LatentSDE)(timeseries::Timeseries, ps::ComponentVector, st;
     initialdists_posterior = get_distributions(n.initial_posterior, ps.initial_posterior, st.initial_posterior, context_precomputed[:, :, 1])
     distributions_with_eps = [zip(dist, eps_batch) for (dist, eps_batch) in zip(eachslice(initialdists_posterior, dims=2), eachslice(eps, dims=2))]
     z0 = hcat([reshape([x.μ + ep * x.σ for (x, ep) in d], :, 1) for d in distributions_with_eps]...)
-
+    
     augmented_z0 = vcat(z0, zeros32(1, length(z0[1, :])))
 
-    function augmented_drift(u_in::Vector{Float32}, info::ComponentVector, t::Float32)
+    function augmented_drift(u_in::Vector{Float64}, info::ComponentVector, t::Float64)
         # Remove augmented term from input
         u = if n.timedependent
             vcat(u_in[1:end-1], t)
@@ -287,6 +289,7 @@ function (n::LatentSDE)(timeseries::Timeseries, ps::ComponentVector, st;
         prior = n.drift_prior(u, p.drift_prior, st.drift_prior)[1]
         posterior = n.drift_posterior(posterior_net_input, p.drift_posterior, st.drift_posterior)[1]
         # The diffusion is diagonal, so a single network is invoked on each dimension
+        
         diffusion = reduce(vcat, n.diffusion(([n.timedependent ? vcat(x, t) : [x] for x in u]...,), p.diffusion, st.diffusion)[1])
 
         # The augmented term for computing the KL divergence
@@ -295,26 +298,14 @@ function (n::LatentSDE)(timeseries::Timeseries, ps::ComponentVector, st;
 
         return vcat(posterior, augmented_term)
     end
-    function augmented_diffusion(u_in::Vector{Float32}, info::ComponentVector, t::Float32)
+    function augmented_diffusion(u_in::Vector{Float64}, info::ComponentVector, t::Float64)
         p = info.ps
-        context = info.context
         time_or_empty = n.timedependent ? [t] : []
         u = vcat(u_in[1:end-1], time_or_empty)
         diffusion = reduce(vcat, n.diffusion(([n.timedependent ? vcat(x, t) : [x] for x in u]...,), p.diffusion, st.diffusion)[1])
-        additional_term = if stick_landing
-            time_index = max(1, searchsortedlast(timeseries.t, t))
-            timedctx = context[:, time_index]
-            posterior_net_input = vcat(u, timedctx)
-            prior = n.drift_prior(u, p.drift_prior, st.drift_prior)[1]
-            posterior = ChainRulesCore.ignore_derivatives(n.drift_posterior(posterior_net_input, p.drift_posterior, st.drift_posterior)[1])
-            u_term = stable_divide(posterior .- prior, diffusion)
-            sum(u_term; dims=[1])
-        else
-            0.0f0
-        end
-        return vcat(diffusion, additional_term)
+        return vcat(diffusion, 0f0)
     end
-    
+
     # Deriving operations with ComponentArray is not so easy, first we have to
     # grab the axes and then re-construct using a vector
     axes = ChainRulesCore.ignore_derivatives() do
