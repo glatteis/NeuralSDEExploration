@@ -49,14 +49,14 @@ begin
 end
 
 # ╔═╡ c00a97bf-5e10-4168-8d58-f4f9270258ac
-solution = NeuralSDEExploration.series(ebm, shuffle(range(210.0f0, 320.0f0, n)), tspan, datasize)
+solution = NeuralSDEExploration.series(ebm, shuffle(range(210.0e0, 320.0e0, n)), tspan, datasize)
 
 # ╔═╡ 1502612c-1489-4abf-8a8b-5b2d03a68cb1
 md"""
 Let's also plot some example trajectories:
 """
 
-# ╔═╡ 455263ef-2f94-4f3e-8401-f0da7fb3e493
+# ╔═╡ 455263ef-2f94-4f3e-8401-e0da7fb3e493
 plot(reduce(hcat, [solution[i].u for i in 1:10]))
 
 # ╔═╡ f4651b27-135e-45f1-8647-64ab08c2e8e8
@@ -172,7 +172,7 @@ md"""
 The projector will transform the latent space back into data space.
 """
 
-# ╔═╡ f0486891-b8b3-4a39-91df-1389d6f799e1
+# ╔═╡ e0486891-b8b3-4a39-91df-1389d6f799e1
 projector = Flux.Dense(latent_dims => data_dims) |> f64
 
 # ╔═╡ 001c318e-b7a6-48a5-bfd5-6dd0368873ac
@@ -331,7 +331,7 @@ pprof()
 # ╠═dd03f851-2e26-4850-a7d4-a64f154d2872
 # ╠═c00a97bf-5e10-4168-8d58-f4f9270258ac
 # ╟─1502612c-1489-4abf-8a8b-5b2d03a68cb1
-# ╠═455263ef-2f94-4f3e-8401-f0da7fb3e493
+# ╠═455263ef-2f94-4f3e-8401-e0da7fb3e493
 # ╟─f4651b27-135e-45f1-8647-64ab08c2e8e8
 # ╠═aff1c9d9-b29b-4b2c-b3f1-1e06a9370f64
 # ╠═9a5c942f-9e2d-4c6c-9cb1-b0dffd8050a0
@@ -356,7 +356,7 @@ pprof()
 # ╟─4a97576c-96de-458e-b881-3f5dd140fa6a
 # ╠═a1cb11fb-ec69-4ba2-9ed1-2d1a6d24ccd9
 # ╟─bfabcd80-fb62-410f-8710-f577852c77df
-# ╠═f0486891-b8b3-4a39-91df-1389d6f799e1
+# ╠═e0486891-b8b3-4a39-91df-1389d6f799e1
 # ╠═001c318e-b7a6-48a5-bfd5-6dd0368873ac
 # ╠═05568880-f931-4394-b31e-922850203721
 # ╠═0349cc0b-657c-49c7-9194-0fc5d13f35bc

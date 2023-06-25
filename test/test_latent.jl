@@ -13,7 +13,7 @@ using JLD2
 
 @testset "Latent SDE" begin
     solver = EulerHeun()
-    tspan = (0f0, 5f0)
+    tspan = (0e0, 5e0)
     datasize = 50
     
     rng = Xoshiro()
@@ -22,8 +22,8 @@ using JLD2
     ps_, st = Lux.setup(rng, latent_sde)
     ps = ComponentArray{Float64}(ps_)
 
-    input1 = (t=collect(range(tspan[1],tspan[end],datasize)),u=collect(range(0f0, 1f0, datasize)))
-    input2 = (t=collect(range(tspan[1],tspan[end],datasize)),u=collect(range(2f0, 1f0, datasize)))
+    input1 = (t=collect(range(tspan[1],tspan[end],datasize)),u=collect(range(0e0, 1e0, datasize)))
+    input2 = (t=collect(range(tspan[1],tspan[end],datasize)),u=collect(range(2e0, 1e0, datasize)))
     
     seed = 1
 
@@ -35,12 +35,12 @@ using JLD2
     sense = BacksolveAdjoint(autojacvec=ZygoteVJP(), checkpointing=true)
     noise = function(seed)
         rng_tree = Xoshiro(seed)
-        VirtualBrownianTree(-5f0, fill(0f0, 2+1), tend=tspan[end]+5f0; rng=Threefry4x((rand(rng_tree, UInt32), rand(rng_tree, UInt32), rand(rng_tree, UInt32), rand(rng_tree, UInt32))))
+        VirtualBrownianTree(-5e0, fill(0e0, 2+1), tend=tspan[end]+5e0; rng=Threefry4x((rand(rng_tree, UInt32), rand(rng_tree, UInt32), rand(rng_tree, UInt32), rand(rng_tree, UInt32))))
     end
     
     input = Timeseries([input1, input1, input2, input2])
     function loss(ps)
-        sum(NeuralSDEExploration.loss(latent_sde, input, ps, st, 1f0; seed=seed, sense=sense, noise=noise))
+        sum(NeuralSDEExploration.loss(latent_sde, input, ps, st, 1e0; seed=seed, sense=sense, noise=noise))
     end
     
     @test loss(ps) == loss(ps)
@@ -84,11 +84,11 @@ end
     sense = BacksolveAdjoint(autojacvec=ZygoteVJP(), checkpointing=true)
     noise = function(seed)
         rng_tree = Xoshiro(seed)
-        VirtualBrownianTree(-5f0, fill(0f0, hidden_dims + 1), tend=tspan[end]+5f0; rng=Threefry4x((rand(rng_tree, UInt32), rand(rng_tree, UInt32), rand(rng_tree, UInt32), rand(rng_tree, UInt32))))
+        VirtualBrownianTree(-5e0, fill(0e0, hidden_dims + 1), tend=tspan[end]+5e0; rng=Threefry4x((rand(rng_tree, UInt32), rand(rng_tree, UInt32), rand(rng_tree, UInt32), rand(rng_tree, UInt32))))
     end
     
     function loss(ps)
-        sum(NeuralSDEExploration.loss(latent_sde, minibatch, ps, st, 1f0; seed=seed, sense=sense, noise=noise))
+        sum(NeuralSDEExploration.loss(latent_sde, minibatch, ps, st, 1e0; seed=seed, sense=sense, noise=noise))
     end
     
     @test loss(ps) == loss(ps)

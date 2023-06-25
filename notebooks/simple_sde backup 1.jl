@@ -27,7 +27,7 @@ using Optimisers, StatsBase, Zygote, ForwardDiff, Enzyme, Lux, DifferentialEquat
 # ╔═╡ 682a8844-d1a8-4919-8a57-41b942b7da25
 using NeuralSDEExploration, Plots, PlutoUI, ProfileSVG
 
-# ╔═╡ b94d5f36-b7fe-493d-a774-f03062ee5afa
+# ╔═╡ b94d5f36-b7fe-493d-a774-e03062ee5afa
 using Profile, PProf
 
 # ╔═╡ d86a3b4e-6735-4de2-85d3-b6106ae48444
@@ -36,7 +36,7 @@ Revise.retry()
 # ╔═╡ 9e4de245-815a-4d38-bb14-7b7b29da24cf
 rng = Xoshiro()
 
-# ╔═╡ c56ceab4-6ca7-4ea8-a905-24b5e9d8f0e1
+# ╔═╡ c56ceab4-6ca7-4ea8-a905-24b5e9d8e0e1
 begin
 	initial_prior = Lux.Dense(1 => 4; bias=false, init_weight=zeros)
     initial_posterior = Lux.Dense(1 => 4; bias=false, init_weight=ones)
@@ -68,7 +68,7 @@ end
 # ╔═╡ 23601b08-2d78-426c-9702-53232c0db1bc
 display(ps_)
 
-# ╔═╡ d5214491-e569-4a0c-b2f9-dbf0b91e0566
+# ╔═╡ d5214491-e569-4a0c-b2f9-dbe0b91e0566
 ps__ = (initial_prior = (weight = [0.0; 0.0; 0.0; 0.0;;],), initial_posterior = (weight = [100.0; 0.01; 100.0; 0.01;;],), drift_prior = (weight = Float64[1.0, 1.0],), drift_posterior = (weight = [0.1 0.1 0.1; 1.0 1.0 1.0],), diffusion = (layer_1 = (weight = [0.0;;], bias = [0.01;;]), layer_2 = (weight = [0.0;;], bias = [1.0;;])), encoder = (weight_ih = [1.0;;], weight_hh = [1.0;;], bias = Float64[0.0]), projector = (weight = [1.0 1.0],))
 
 # ╔═╡ 9057f759-322b-4fe7-8a3a-3a3c16c03de2
@@ -89,7 +89,7 @@ plot(inputs)
 # ╔═╡ 02bc2a6e-1497-4bf3-ac67-26c770425c22
 m1 = reshape([.1, .2, .3, .4], 1, :, 1)
 
-# ╔═╡ ae0c97bf-a307-4e61-83c1-8bf84d2d7f0a
+# ╔═╡ ae0c97bf-a307-4e61-83c1-8bf84d2d7e0a
 m2 = reshape([.5, .6, .7, .8], 1, :, 1)
 
 # ╔═╡ 0903e805-2147-42fd-919f-5bf2103df859
@@ -193,17 +193,17 @@ cb()
 # ╠═9f89ad4a-4ffc-4cc8-bd7d-916ff6d6fa10
 # ╠═682a8844-d1a8-4919-8a57-41b942b7da25
 # ╠═9e4de245-815a-4d38-bb14-7b7b29da24cf
-# ╠═c56ceab4-6ca7-4ea8-a905-24b5e9d8f0e1
+# ╠═c56ceab4-6ca7-4ea8-a905-24b5e9d8e0e1
 # ╠═5782bf69-d810-4b29-978e-188c1790b566
 # ╠═23601b08-2d78-426c-9702-53232c0db1bc
-# ╠═d5214491-e569-4a0c-b2f9-dbf0b91e0566
+# ╠═d5214491-e569-4a0c-b2f9-dbe0b91e0566
 # ╠═9057f759-322b-4fe7-8a3a-3a3c16c03de2
 # ╠═af673c70-c7bf-4fe6-92c0-b5e09fd99195
 # ╠═24d1e95b-08d1-463c-87c5-b71dc6397624
 # ╠═0522b60f-3817-424c-bb32-dbc50769a025
 # ╠═7b81e46b-c55a-42e4-af34-9d1101de4b9c
 # ╠═02bc2a6e-1497-4bf3-ac67-26c770425c22
-# ╠═ae0c97bf-a307-4e61-83c1-8bf84d2d7f0a
+# ╠═ae0c97bf-a307-4e61-83c1-8bf84d2d7e0a
 # ╠═0903e805-2147-42fd-919f-5bf2103df859
 # ╠═78ad30c4-38b9-4f1a-8cf8-9174708286e1
 # ╠═7dfb3923-c0fc-4f88-9104-7d619ff415cd
@@ -211,7 +211,7 @@ cb()
 # ╠═e8ef1773-8087-4f47-abfe-11e73f28a269
 # ╠═7fabae7c-abef-4d2c-a3b5-b9d2f683dc26
 # ╠═937d5963-eddc-4296-9b6e-9532eb57bdf2
-# ╠═b94d5f36-b7fe-493d-a774-f03062ee5afa
+# ╠═b94d5f36-b7fe-493d-a774-e03062ee5afa
 # ╠═3eb43be1-1ae9-499d-a350-d34d8daa30ca
 # ╠═fd6d9e72-edc6-4ed1-9956-0b2164bc8b97
 # ╠═4b555ed0-0f4e-4619-9358-9bdc5e09fa76

@@ -32,10 +32,10 @@ diffusion = Lux.Dense(2 => 2)
 # ╔═╡ 02d27388-4f12-44f3-b123-df10da452348
 ps_drift, st_drift = Lux.setup(rng, drift)
 
-# ╔═╡ 8ca6821b-2a06-4c50-a3af-af00636e8a7d
+# ╔═╡ 8ca6821b-2a06-4c50-a3af-ae00636e8a7d
 ps_diffusion, st_diffusion = Lux.setup(rng, diffusion)
 
-# ╔═╡ 9b85af6a-6931-49b7-b3f0-75febe5925f3
+# ╔═╡ 9b85af6a-6931-49b7-b3e0-75febe5925f3
 ps = ComponentArray((drift=ps_drift, diffusion=ps_diffusion))
 
 # ╔═╡ 9eda52c2-0eeb-453b-9fd4-8eb1fa4c9d5e
@@ -48,7 +48,7 @@ drift_f(u, p, t) = drift(u, p.drift, st_drift)[1]
 diffusion_f(u, p, t) = diffusion(u, p.diffusion, st_diffusion)[1]
 
 # ╔═╡ 38732a20-009b-48e5-ad23-07b449def12a
-problem = SDEProblem{false}(drift_f, diffusion_f, [1f0, 1f0], (0f0, 1f0), ps)
+problem = SDEProblem{false}(drift_f, diffusion_f, [1e0, 1e0], (0e0, 1e0), ps)
 
 # ╔═╡ e63e7869-2de6-478e-bc04-998b8858c1ce
 plot(solve(problem, solver, dt=0.05))
@@ -84,7 +84,7 @@ dps = Zygote.gradient(ps -> mean(NeuralSDEExploration.loss(latent_sde, ps, input
 println(dps)
   ╠═╡ =#
 
-# ╔═╡ e99f0f6a-950b-4ccc-8798-a3a10730b4f5
+# ╔═╡ e99e0f6a-950b-4ccc-8798-a3a10730b4f5
 println(ps_flux)
 
 # ╔═╡ 83e1b7df-9cc4-4504-936e-69028ed7ee02
@@ -102,8 +102,8 @@ println(dps_flux)
 # ╠═b1bd691b-6635-4cdb-9841-bd7aca73e50a
 # ╠═82a649b4-0f72-490f-8b5b-d69255ebfcde
 # ╠═02d27388-4f12-44f3-b123-df10da452348
-# ╠═8ca6821b-2a06-4c50-a3af-af00636e8a7d
-# ╠═9b85af6a-6931-49b7-b3f0-75febe5925f3
+# ╠═8ca6821b-2a06-4c50-a3af-ae00636e8a7d
+# ╠═9b85af6a-6931-49b7-b3e0-75febe5925f3
 # ╠═9eda52c2-0eeb-453b-9fd4-8eb1fa4c9d5e
 # ╠═e2efc1b1-de35-48e6-85f2-9df852ba888d
 # ╠═1657a1fc-f98b-4e9e-b347-75086575aeaf
@@ -113,6 +113,6 @@ println(dps_flux)
 # ╠═04d8ee06-9872-4481-8df5-26d47862261b
 # ╠═6bf6a59c-549c-495b-a574-caa12c87e055
 # ╠═ada03e49-be82-418a-a915-efbc78a81368
-# ╠═e99f0f6a-950b-4ccc-8798-a3a10730b4f5
+# ╠═e99e0f6a-950b-4ccc-8798-a3a10730b4f5
 # ╠═83e1b7df-9cc4-4504-936e-69028ed7ee02
 # ╠═07e32ac3-f419-46a5-91cb-4f88eb57c7e3

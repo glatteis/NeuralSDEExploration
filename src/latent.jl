@@ -145,7 +145,7 @@ function get_distributions(model, model_p, st, context)
     # output ordered like [norm, var, norm, var, ...]
     halfindices = 1:Int(length(normsandvars[:, 1]) / 2)
 
-    return hcat([reshape([Normal{Float64}(normsandvars[2*i-1, j], exp(0.5f0 * normsandvars[2*i, j])) for i in halfindices], :, 1) for j in batch_indices]...)
+    return hcat([reshape([Normal{Float64}(normsandvars[2*i-1, j], exp(0.5e0 * normsandvars[2*i, j])) for i in halfindices], :, 1) for j in batch_indices]...)
 end
 
 function sample_prior(n::LatentSDE, ps, st; b=1, seed=nothing, noise=(seed) -> nothing, tspan=n.tspan, datasize=n.datasize)
@@ -154,20 +154,20 @@ function sample_prior(n::LatentSDE, ps, st; b=1, seed=nothing, noise=(seed) -> n
             Random.seed!(seed)
         end
         latent_dimensions = n.initial_prior.out_dims ÷ 2
-        (rand(Normal{Float64}(0.0f0, 1.0f0), (latent_dimensions, b)), rand(UInt32))
+        (rand(Normal{Float64}(0.0e0, 1.0e0), (latent_dimensions, b)), rand(UInt32))
     end
 
-    # We vcat 0f0 to these so that the prior has the same dimensions as the posterior (for noise reasons)
+    # We vcat 0e0 to these so that the prior has the same dimensions as the posterior (for noise reasons)
     function dudt_prior(u, p, t) 
         time_or_empty = n.timedependent ? [t] : []
-        vcat(n.drift_prior(vcat(u[1:end-1], time_or_empty), p.drift_prior, st.drift_prior)[1], 0f0)
+        vcat(n.drift_prior(vcat(u[1:end-1], time_or_empty), p.drift_prior, st.drift_prior)[1], 0e0)
     end
     function dudw_diffusion(u, p, t) 
         time_or_empty = n.timedependent ? [t] : []
-        vcat(reduce(vcat, n.diffusion(Tuple([vcat(x, time_or_empty) for x in u[1:end-1]]), p.diffusion, st.diffusion)[1]), 0f0)
+        vcat(reduce(vcat, n.diffusion(Tuple([vcat(x, time_or_empty) for x in u[1:end-1]]), p.diffusion, st.diffusion)[1]), 0e0)
     end
 
-    initialdists_prior = get_distributions(n.initial_prior, ps.initial_prior, st.initial_prior, [1.0f0])
+    initialdists_prior = get_distributions(n.initial_prior, ps.initial_prior, st.initial_prior, [1.0e0])
     distributions_with_eps = [zip(initialdists_prior, eps_batch) for eps_batch in eachslice(eps, dims=2)]
     z0 = hcat([reshape([x.μ + ep * x.σ for (x, ep) in d], :, 1) for d in distributions_with_eps]...)
 
@@ -175,7 +175,7 @@ function sample_prior(n::LatentSDE, ps, st; b=1, seed=nothing, noise=(seed) -> n
         noise_instance = ChainRulesCore.ignore_derivatives() do
             noise(Int(floor(seed + batch)))
         end
-        SDEProblem{false}(dudt_prior, dudw_diffusion, vcat(z0[:, batch], 0f0), tspan, ps, seed=seed + batch, noise=noise_instance)
+        SDEProblem{false}(dudt_prior, dudw_diffusion, vcat(z0[:, batch], 0e0), tspan, ps, seed=seed + batch, noise=noise_instance)
     end
 
     ensemble = EnsembleProblem(nothing, output_func=(sol, i) -> (sol, false), prob_func=prob_func)
@@ -224,7 +224,7 @@ function (n::LatentSDE)(timeseries::Timeseries, ps::ComponentVector, st;
     noise=(seed) -> nothing,
     stick_landing=false,
     likelihood_dist=Normal,
-    likelihood_scale=0.01f0,
+    likelihood_scale=0.01e0,
 )
     # We are using matrices with the following dimensions:
     # 1 = latent space dimension
@@ -236,7 +236,7 @@ function (n::LatentSDE)(timeseries::Timeseries, ps::ComponentVector, st;
         end
         latent_dimensions = n.initial_prior.out_dims ÷ 2
         batch_size = length(timeseries.u)
-        (rand(Normal{Float64}(0.0f0, 1.0f0), (latent_dimensions, batch_size)), rand(UInt32))
+        (rand(Normal{Float64}(0.0e0, 1.0e0), (latent_dimensions, batch_size)), rand(UInt32))
     end
 
     tsmatrix = reduce(hcat, [reshape(map(only, u), 1, 1, :) for u in timeseries.u])
@@ -259,7 +259,7 @@ function (n::LatentSDE)(timeseries::Timeseries, ps::ComponentVector, st;
     # batch: dimension 2
     context_precomputed = reduce(timecat, context_flipped)
     
-    initialdists_prior = get_distributions(n.initial_prior, ps.initial_prior, st.initial_prior, [1.0f0])
+    initialdists_prior = get_distributions(n.initial_prior, ps.initial_prior, st.initial_prior, [1.0e0])
 
     initialdists_posterior = get_distributions(n.initial_posterior, ps.initial_posterior, st.initial_posterior, context_precomputed[:, :, 1])
     distributions_with_eps = [zip(dist, eps_batch) for (dist, eps_batch) in zip(eachslice(initialdists_posterior, dims=2), eachslice(eps, dims=2))]
@@ -294,7 +294,7 @@ function (n::LatentSDE)(timeseries::Timeseries, ps::ComponentVector, st;
 
         # The augmented term for computing the KL divergence
         u_term = stable_divide(posterior .- prior, diffusion)
-        augmented_term = 0.5f0 * sum(abs2, u_term; dims=[1])
+        augmented_term = 0.5e0 * sum(abs2, u_term; dims=[1])
 
         return vcat(posterior, augmented_term)
     end
@@ -303,7 +303,7 @@ function (n::LatentSDE)(timeseries::Timeseries, ps::ComponentVector, st;
         time_or_empty = n.timedependent ? [t] : []
         u = vcat(u_in[1:end-1], time_or_empty)
         diffusion = reduce(vcat, n.diffusion(([n.timedependent ? vcat(x, t) : [x] for x in u]...,), p.diffusion, st.diffusion)[1])
-        return vcat(diffusion, 0f0)
+        return vcat(diffusion, 0e0)
     end
 
     # Deriving operations with ComponentArray is not so easy, first we have to
@@ -341,7 +341,7 @@ function (n::LatentSDE)(timeseries::Timeseries, ps::ComponentVector, st;
     likelihoods_initial = if ts_start == 1
         [logp(x, y) for (x, y) in zip(tsmatrix[:, :, 1], z0[1:1, :])]
     else
-        fill(0.0f0, size(projected_z0))
+        fill(0.0e0, size(projected_z0))
     end
     likelihoods_time = sum([logp(x, y) for (x, y) in zip(tsmatrix, projected_ts[:, :, ts_indices])], dims=3)[:, :, 1]
     likelihoods = likelihoods_initial .+ likelihoods_time

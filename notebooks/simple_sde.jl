@@ -38,7 +38,7 @@ function steps(tspan, dt)
 	return Int(ceil((tspan[2] - tspan[1]) / dt))
 end
 
-# ╔═╡ c56ceab4-6ca7-4ea8-a905-24b5e9d8f0e1
+# ╔═╡ c56ceab4-6ca7-4ea8-a905-24b5e9d8e0e1
 begin
 	initial_prior = Lux.Dense(1 => 4; bias=false, init_weight=zeros)
     initial_posterior = Lux.Dense(1 => 4; bias=false, init_weight=ones)
@@ -144,7 +144,7 @@ plot(inputs)
 # ╔═╡ 02bc2a6e-1497-4bf3-ac67-26c770425c22
 m1 = reshape([.1, .1, .1, .1], 1, :, 1)
 
-# ╔═╡ ae0c97bf-a307-4e61-83c1-8bf84d2d7f0a
+# ╔═╡ ae0c97bf-a307-4e61-83c1-8bf84d2d7e0a
 m2 = reshape([.5, 0.0, .7, .8], 1, :, 1)
 
 # ╔═╡ 0903e805-2147-42fd-919f-5bf2103df859
@@ -248,7 +248,7 @@ dps = Zygote.gradient(ps -> mean(NeuralSDEExploration.loss(latent_sde, ps, input
 # ╔═╡ ada03e49-be82-418a-a915-efbc78a81368
 println(dps)
 
-# ╔═╡ e99f0f6a-950b-4ccc-8798-a3a10730b4f5
+# ╔═╡ e99e0f6a-950b-4ccc-8798-a3a10730b4f5
 println(ps_flux)
 
 # ╔═╡ 83e1b7df-9cc4-4504-936e-69028ed7ee02
@@ -264,7 +264,7 @@ println(dps_flux)
 # ╠═682a8844-d1a8-4919-8a57-41b942b7da25
 # ╠═9e4de245-815a-4d38-bb14-7b7b29da24cf
 # ╠═e6a96c38-cc43-4f1a-8281-a3bd9e7d12c3
-# ╠═c56ceab4-6ca7-4ea8-a905-24b5e9d8f0e1
+# ╠═c56ceab4-6ca7-4ea8-a905-24b5e9d8e0e1
 # ╠═02b7abfe-e12a-41d5-a407-a249323ddb3e
 # ╠═9d2a583f-e285-41d0-8911-19aa8dff73aa
 # ╠═4176d447-5b4a-47eb-aead-1bac0d983aa6
@@ -281,7 +281,7 @@ println(dps_flux)
 # ╠═0522b60f-3817-424c-bb32-dbc50769a025
 # ╠═7b81e46b-c55a-42e4-af34-9d1101de4b9c
 # ╠═02bc2a6e-1497-4bf3-ac67-26c770425c22
-# ╠═ae0c97bf-a307-4e61-83c1-8bf84d2d7f0a
+# ╠═ae0c97bf-a307-4e61-83c1-8bf84d2d7e0a
 # ╠═0903e805-2147-42fd-919f-5bf2103df859
 # ╠═6b826904-f134-40cf-a5a8-0f2aaf89e562
 # ╠═78ad30c4-38b9-4f1a-8cf8-9174708286e1
@@ -301,6 +301,6 @@ println(dps_flux)
 # ╠═04d8ee06-9872-4481-8df5-26d47862261b
 # ╠═6bf6a59c-549c-495b-a574-caa12c87e055
 # ╠═ada03e49-be82-418a-a915-efbc78a81368
-# ╠═e99f0f6a-950b-4ccc-8798-a3a10730b4f5
+# ╠═e99e0f6a-950b-4ccc-8798-a3a10730b4f5
 # ╠═83e1b7df-9cc4-4504-936e-69028ed7ee02
 # ╠═07e32ac3-f419-46a5-91cb-4f88eb57c7e3

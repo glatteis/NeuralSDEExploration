@@ -37,13 +37,13 @@ rng = Xoshiro()
 # ╔═╡ 25a5213f-4fed-4121-92d2-c639f6aabfd6
 model = Model{typeof(normal),typeof(parallel)}(normal, parallel)
 
-# ╔═╡ 9ff0b7d8-5693-488f-be8e-6385e01dac47
+# ╔═╡ 9fe0b7d8-5693-488f-be8e-6385e01dac47
 ps_, st = Lux.setup(rng, model)
 
 # ╔═╡ 3cfff749-0211-441b-8eae-e10bfa31c688
 ps = ComponentArray(ps_)
 
-# ╔═╡ 6a0185aa-6f6f-4ed2-b00b-c4791f5ccf05
+# ╔═╡ 6a0185aa-6f6f-4ed2-b00b-c4791f5cce05
 function drift(batch)
 	return function(u::Vector{Float64}, p::ComponentVector, t::Float64)
 		one = model.normal(u, p.normal, st.normal)[1]
@@ -81,9 +81,9 @@ plot(solution)
 # ╠═ebaf488e-33fa-4649-86e3-f4eb7fc7cf4d
 # ╠═02f622b9-ebe6-4383-9de8-d11dce3e32be
 # ╠═25a5213f-4fed-4121-92d2-c639f6aabfd6
-# ╠═9ff0b7d8-5693-488f-be8e-6385e01dac47
+# ╠═9fe0b7d8-5693-488f-be8e-6385e01dac47
 # ╠═3cfff749-0211-441b-8eae-e10bfa31c688
-# ╠═6a0185aa-6f6f-4ed2-b00b-c4791f5ccf05
+# ╠═6a0185aa-6f6f-4ed2-b00b-c4791f5cce05
 # ╠═fcd8ad4e-240c-4c34-b142-8f597759a7ea
 # ╠═25b42893-5a7d-419b-b523-7678f34e065a
 # ╠═7fb6f5ef-d7ed-4a40-9184-637e1ce225a0

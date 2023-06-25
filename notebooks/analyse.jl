@@ -36,7 +36,7 @@ begin
 	end
 end
 
-# ╔═╡ 43e6a892-8b2d-4fbb-b49c-681d78f0202c
+# ╔═╡ 43e6a892-8b2d-4fbb-b49c-681d78e0202c
 md"""
 Model filename: $(@bind f TextField())
 """
@@ -44,7 +44,7 @@ Model filename: $(@bind f TextField())
 # ╔═╡ 09a13088-a784-4d53-8012-cef948eb796c
 dict = f === "" ? (nothing, nothing) : load(f)["data"]
 
-# ╔═╡ 9f89a8d9-05e5-4af0-9dd8-1a528ea7e9de
+# ╔═╡ 9f89a8d9-05e5-4ae0-9dd8-1a528ea7e9de
 latent_sde = dict["latent_sde"]
 
 # ╔═╡ 7da4b3b6-3cee-4b93-9359-a2f7e2341da9
@@ -67,7 +67,7 @@ Select timeseries to do some simulations on: $(@bind ti RangeSlider(1:100; defau
 # ╔═╡ 69459a5f-75b7-4c33-a489-bf4d4411c1ec
 seed = 378
 
-# ╔═╡ e0afda9e-0b17-4e7e-9d1e-d0f05df6fa4e
+# ╔═╡ e0afda9e-0b17-4e7e-9d1e-d0e05df6fa4e
 viz_batch = select_ts(ti, timeseries)
 
 # ╔═╡ 63213503-ab28-4158-b522-efd0b0139b6d
@@ -98,10 +98,10 @@ function plotmodel()
 	p
 end
 
-# ╔═╡ 6c06ef9d-d3b4-4917-89f6-af0a3e72b4d1
+# ╔═╡ 6c06ef9d-d3b4-4917-89f6-ae0a3e72b4d1
 plotmodel()
 
-# ╔═╡ de7959b4-87bd-4374-8fbd-c7a9f0e57d5a
+# ╔═╡ de7959b4-87bd-4374-8fbd-c7a9e0e57d5a
 mean_and_var_data = map_ts((ts) -> [mean(ts), std(ts)], select_ts(1:500, timeseries))
 
 # ╔═╡ 2a1ca1d0-163d-41b8-9f2d-8a3a475cc75d
@@ -155,7 +155,7 @@ loss(ps_new, viz_batch, 10.0, seed)
 # ╔═╡ 63e1f3d9-185a-4d7a-8535-3d21f2af1ee0
 plot(latent_sample)
 
-# ╔═╡ 905a440f-4a56-4205-aba0-558fd28f0bc0
+# ╔═╡ 905a440f-4a56-4205-aba0-558fd28e0bc0
 tipping_rate(data_sample)
 
 # ╔═╡ 99b80546-740e-485e-82a1-948f837ed696
@@ -184,23 +184,23 @@ begin
 end
 
 # ╔═╡ fe1ae4b3-2f1f-4b6c-a076-0d215f222e6c
-plot_prior(25, rng=Xoshiro(), tspan=(0f0, 10f0), datasize=100)
+plot_prior(25, rng=Xoshiro(), tspan=(0e0, 10e0), datasize=100)
 
 # ╔═╡ 72045fd0-2769-4868-9b67-e7a41e3f1d7d
-plot(NeuralSDEExploration.sample_prior(latent_sde,ps,st;b=40,tspan=(0f0,10f0),datasize=5000),dpi=400)
+plot(NeuralSDEExploration.sample_prior(latent_sde,ps,st;b=40,tspan=(0e0,10e0),datasize=5000),dpi=400)
 
 # ╔═╡ 5f3db28c-b3bb-4461-b457-e7af3e273674
-plot(NeuralSDEExploration.sample_prior(latent_sde,ps_new,st;b=3,tspan=(0f0,10f0),datasize=5000)
+plot(NeuralSDEExploration.sample_prior(latent_sde,ps_new,st;b=3,tspan=(0e0,10e0),datasize=5000)
 )
 
 # ╔═╡ ae0c9dae-e490-4965-9353-c820a3ce3645
-plot(NeuralSDEExploration.sample_prior_dataspace(latent_sde,ps,st;b=1,tspan=(0f0,10f0),datasize=5000,seed=1), title="Neural SDE")
+plot(NeuralSDEExploration.sample_prior_dataspace(latent_sde,ps,st;b=1,tspan=(0e0,10e0),datasize=5000,seed=1), title="Neural SDE")
 
 # ╔═╡ 63e3e80c-6d03-4e42-a718-5bf30ad7182f
-plot(filter_dims(1:1, NeuralSDEExploration.series(model, [[0f0, 0f0]], (0f0, 10f0), 5000,seed=1)), title="FitzHugh-Nagumo")
+plot(filter_dims(1:1, NeuralSDEExploration.series(model, [[0e0, 0e0]], (0e0, 10e0), 5000,seed=1)), title="FitzHugh-Nagumo")
 
 # ╔═╡ 9f8c49a0-2098-411b-976a-2b43cbb20a44
-plot(NeuralSDEExploration.series(model, [[0f0, 0f0]], (0f0, 10f0), 5000))
+plot(NeuralSDEExploration.series(model, [[0e0, 0e0]], (0e0, 10e0), 5000))
 
 # ╔═╡ ff5519b9-2a69-41aa-8f55-fc63fa176d3f
  plot(sample(timeseries, 25),linewidth=.5,color=:black,legend=false,title="data")
@@ -210,27 +210,27 @@ plot(NeuralSDEExploration.series(model, [[0f0, 0f0]], (0f0, 10f0), 5000))
 # ╠═7a6bbfd6-ffb7-11ed-39d7-5b673fe4cdae
 # ╠═6995cd16-0c69-49c7-9523-4c842c0db339
 # ╠═ae7d6e11-55da-44a2-a5b6-60d11caa9dbf
-# ╟─43e6a892-8b2d-4fbb-b49c-681d78f0202c
+# ╟─43e6a892-8b2d-4fbb-b49c-681d78e0202c
 # ╠═09a13088-a784-4d53-8012-cef948eb796c
-# ╠═9f89a8d9-05e5-4af0-9dd8-1a528ea7e9de
+# ╠═9f89a8d9-05e5-4ae0-9dd8-1a528ea7e9de
 # ╠═7da4b3b6-3cee-4b93-9359-a2f7e2341da9
 # ╠═23bc5697-f1ca-4598-92fb-2d43e94ce310
 # ╠═b214a6b2-d430-4d95-9f3a-b31c4ff7bcc7
 # ╠═fabc1578-ba35-4c4e-9129-02da3bf43f56
 # ╟─af3619b0-f9be-40f2-8027-77e435f8e4e5
 # ╠═69459a5f-75b7-4c33-a489-bf4d4411c1ec
-# ╠═e0afda9e-0b17-4e7e-9d1e-d0f05df6fa4e
+# ╠═e0afda9e-0b17-4e7e-9d1e-d0e05df6fa4e
 # ╠═9c5f37b0-9998-4879-85d0-f540089e1ca8
 # ╠═8f38bdbc-8b22-46c5-bbf4-d38d277b000f
 # ╠═2f6d198e-4cae-40cd-8624-6aab867fee0b
 # ╠═63213503-ab28-4158-b522-efd0b0139b6d
 # ╠═0b47115c-0561-439b-be7b-78195da6215e
-# ╠═6c06ef9d-d3b4-4917-89f6-af0a3e72b4d1
+# ╠═6c06ef9d-d3b4-4917-89f6-ae0a3e72b4d1
 # ╠═9542f2b8-e746-4b37-b6f5-b8fd8a9d1876
 # ╠═6860e52e-8f51-41e1-b505-5b70ca112051
 # ╠═851ac161-d44c-47a7-89d5-c6c97d3ac8a6
 # ╠═5fc6a274-5185-4d3f-808b-b1326f92081a
-# ╠═de7959b4-87bd-4374-8fbd-c7a9f0e57d5a
+# ╠═de7959b4-87bd-4374-8fbd-c7a9e0e57d5a
 # ╟─c275150e-e90c-4895-99c8-2f6364505dc0
 # ╠═2a1ca1d0-163d-41b8-9f2d-8a3a475cc75d
 # ╠═bf819c97-3ed9-484c-a499-7449244cb840
@@ -239,7 +239,7 @@ plot(NeuralSDEExploration.series(model, [[0f0, 0f0]], (0f0, 10f0), 5000))
 # ╠═0dc46a16-e26d-4ec2-a74e-675e83959ab2
 # ╠═978d045c-3bfd-4ab9-96d4-0af6b8d0f6d4
 # ╠═63e1f3d9-185a-4d7a-8535-3d21f2af1ee0
-# ╠═905a440f-4a56-4205-aba0-558fd28f0bc0
+# ╠═905a440f-4a56-4205-aba0-558fd28e0bc0
 # ╠═99b80546-740e-485e-82a1-948f837ed696
 # ╟─96c0423f-214e-4995-a2e4-fe5c84d5a7c3
 # ╠═0d74625b-edf2-45a7-9b16-08fc29d83eb0

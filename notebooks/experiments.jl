@@ -4,7 +4,7 @@
 using Markdown
 using InteractiveUtils
 
-# ╔═╡ c5916df0-c180-11ed-27a8-038cdb9d5940
+# ╔═╡ c5916de0-c180-11ed-27a8-038cdb9d5940
 begin
 	import Pkg
 	Pkg.activate("..")
@@ -14,10 +14,10 @@ end
 # ╔═╡ 734441ce-fdae-49c9-8ec2-20a54630abfc
 using Zygote, Enzyme, Lux, Random, ForwardDiff
 
-# ╔═╡ f04a5047-1ee0-4518-b559-7560bfa4908b
+# ╔═╡ e04a5047-1ee0-4518-b559-7560bfa4908b
 grucell = Lux.Recurrence(Lux.GRUCell(1 => 3))
 
-# ╔═╡ 4578fdd4-e70c-45a3-a5ca-5cf047c593d7
+# ╔═╡ 4578fdd4-e70c-45a3-a5ca-5ce047c593d7
 rng = Random.default_rng()
 
 # ╔═╡ eed80a27-7b4a-444c-ab8c-0421db77a531
@@ -50,10 +50,10 @@ Zygote.gradient(gruit, arg, ps)
 ForwardDiff.gradient(gruit, arg, ps)
 
 # ╔═╡ Cell order:
-# ╠═c5916df0-c180-11ed-27a8-038cdb9d5940
+# ╠═c5916de0-c180-11ed-27a8-038cdb9d5940
 # ╠═734441ce-fdae-49c9-8ec2-20a54630abfc
-# ╠═f04a5047-1ee0-4518-b559-7560bfa4908b
-# ╠═4578fdd4-e70c-45a3-a5ca-5cf047c593d7
+# ╠═e04a5047-1ee0-4518-b559-7560bfa4908b
+# ╠═4578fdd4-e70c-45a3-a5ca-5ce047c593d7
 # ╠═eed80a27-7b4a-444c-ab8c-0421db77a531
 # ╠═4b7f2095-b2d6-4cc2-b12b-12b851e5af26
 # ╠═841a59cc-44f3-4734-a2c9-67bcae369ce6

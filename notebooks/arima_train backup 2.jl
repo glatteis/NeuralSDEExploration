@@ -67,7 +67,7 @@ solution[1].u
 # ╔═╡ 29818d39-25d1-480c-9c7f-1094af9c4047
 airp = CSV.File(StateSpaceModels.AIR_PASSENGERS) |> DataFrame
 
-# ╔═╡ 58f08340-c39e-433e-ac63-3a3b89d475a7
+# ╔═╡ 58e08340-c39e-433e-ac63-3a3b89d475a7
 y = map(first, solution[1].u)
 
 # ╔═╡ 6a941237-b0d1-490d-81d3-07aa15b1d723
@@ -105,7 +105,7 @@ begin
 	histogram_data = fit(Histogram, ts, 200.0:2.0:350.0)
 end
 
-# ╔═╡ 336bcb98-5f03-4133-a3d0-eba7336febe3
+# ╔═╡ 336bcb98-5e03-4133-a3d0-eba7336febe3
 begin
 	histogram_arima = fit(Histogram, vcat(scenarios[hspan, 1, 1]...), 200.0:2.0:350.0)
 end
@@ -134,7 +134,7 @@ end
 # ╠═ddd3c757-80d1-49f9-8c62-8340f1d494e9
 # ╠═3354ca5f-e9db-454e-b107-b9839817122a
 # ╟─29818d39-25d1-480c-9c7f-1094af9c4047
-# ╠═58f08340-c39e-433e-ac63-3a3b89d475a7
+# ╠═58e08340-c39e-433e-ac63-3a3b89d475a7
 # ╠═6a941237-b0d1-490d-81d3-07aa15b1d723
 # ╠═e816dd26-cf7d-4bcc-abe8-af2fd3fcb9cf
 # ╠═51ecdc84-4603-4994-acd0-2fd6a57861ca
@@ -147,6 +147,6 @@ end
 # ╠═95e6c78e-0a0c-43ae-9775-a225b053a426
 # ╟─cffd7ab6-8eaa-4c4a-a952-d4f51bb10b19
 # ╠═f7c5e60a-8aaa-48f3-a902-4aaae07b19fc
-# ╠═336bcb98-5f03-4133-a3d0-eba7336febe3
+# ╠═336bcb98-5e03-4133-a3d0-eba7336febe3
 # ╠═959e21b2-d51d-4ba8-bd26-40cb4aab7f85
 # ╠═534b6091-9e34-454c-aec8-e5bb354c1404

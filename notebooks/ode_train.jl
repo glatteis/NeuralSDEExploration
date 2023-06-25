@@ -37,11 +37,11 @@ md"Let's generate the data and plot a quick example:"
 begin
 	n = 100
     datasize = 30
-    tspan = (0.0f0, 1f0)
+    tspan = (0.0e0, 1e0)
 end
 
 # ╔═╡ c00a97bf-5e10-4168-8d58-f4f9270258ac
-timeseries = map(x -> NODEDataloader(x, 20), series(ebm, range(210.0f0, 320.0f0, n), tspan, datasize))
+timeseries = map(x -> NODEDataloader(x, 20), series(ebm, range(210.0e0, 320.0e0, n), tspan, datasize))
 
 # ╔═╡ c58ebda6-4c51-4103-b340-ecac7339e551
 md"""
@@ -130,10 +130,10 @@ function cb(data)
 	trajectories = apply(ps, data)
 
 	trajectories2 = []
-	t = 0f0:0.01f0:3f0
+	t = 0e0:0.01e0:3e0
 
 	st´ = st
-	for u in 200f0:5f0:350f0
+	for u in 200e0:5e0:350e0
 		trajectory, st´´ = Lux.apply(remake(neural_ode, tspan=(t[1], t[end]), saveat=range(t[1], t[end], size(t)[1])), [normalize(u[1])], ps, st´)
 		push!(trajectories2, trajectory)
 		st´ = merge(st´, st´´)

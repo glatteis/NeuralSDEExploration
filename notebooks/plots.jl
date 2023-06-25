@@ -14,7 +14,7 @@ macro bind(def, element)
     end
 end
 
-# ╔═╡ c5916df0-c180-11ed-27a8-038cdb9d5940
+# ╔═╡ c5916de0-c180-11ed-27a8-038cdb9d5940
 begin
 	import Pkg
 	Pkg.activate("..")
@@ -40,14 +40,14 @@ ebm2 = NeuralSDEExploration.ZeroDEnergyBalanceModelNonStochastic()
 begin
 	n = 50
     datasize = 300
-    tspan = (0.0f0, 20f0)
+    tspan = (0.0e0, 20e0)
 end
 
 # ╔═╡ 9e4eb730-a0df-41c6-bfaa-3702e7ed7e13
-solution1 = NeuralSDEExploration.series(ebm1, range(210.0f0, 320.0f0, n), tspan, datasize)
+solution1 = NeuralSDEExploration.series(ebm1, range(210.0e0, 320.0e0, n), tspan, datasize)
 
 # ╔═╡ ab6e853c-9c2f-4d2a-a38d-ac041911d3e4
-solution2 = NeuralSDEExploration.series(ebm2, range(210.0f0, 320.0f0, n), (0.0f0, 5f0), datasize)
+solution2 = NeuralSDEExploration.series(ebm2, range(210.0e0, 320.0e0, n), (0.0e0, 5e0), datasize)
 
 # ╔═╡ 6bda1827-da30-40f8-a2be-fb7180cd4e17
 begin
@@ -74,7 +74,7 @@ begin
 end
 
 # ╔═╡ Cell order:
-# ╠═c5916df0-c180-11ed-27a8-038cdb9d5940
+# ╠═c5916de0-c180-11ed-27a8-038cdb9d5940
 # ╠═734441ce-fdae-49c9-8ec2-20a54630abfc
 # ╠═18bf2a6e-7f27-44fe-a834-9ce697728c59
 # ╠═36c67008-f19d-4bd8-b2b4-f4b0d141ed6b
