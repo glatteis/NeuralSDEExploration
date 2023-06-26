@@ -1,6 +1,6 @@
 export LatentSDE, StandardLatentSDE, sample_prior, sample_prior_dataspace
 
-struct LatentSDE{N1,N2,N3,N4,N5,N6,N7,N8,S,T,D,TD,K} <: LuxCore.AbstractExplicitContainerLayer{(:initial_prior, :initial_posterior, :drift_prior, :drift_posterior, :diffusion, :encoder_recurrent, :encoder_net, :projector,)}
+mutable struct LatentSDE{N1,N2,N3,N4,N5,N6,N7,N8,S,T,D,TD,K} <: LuxCore.AbstractExplicitContainerLayer{(:initial_prior, :initial_posterior, :drift_prior, :drift_posterior, :diffusion, :encoder_recurrent, :encoder_net, :projector,)}
     initial_prior::N1
     initial_posterior::N2
     drift_prior::N3
@@ -170,7 +170,6 @@ function sample_prior(n::LatentSDE, ps, st; b=1, seed=nothing, noise=(seed) -> n
     initialdists_prior = get_distributions(n.initial_prior, ps.initial_prior, st.initial_prior, [1.0e0])
     distributions_with_eps = [zip(initialdists_prior, eps_batch) for eps_batch in eachslice(eps, dims=2)]
     z0 = hcat([reshape([x.μ + ep * x.σ for (x, ep) in d], :, 1) for d in distributions_with_eps]...)
-
     function prob_func(prob, batch, repeat)
         noise_instance = ChainRulesCore.ignore_derivatives() do
             noise(Int(floor(seed + batch)))
@@ -272,12 +271,14 @@ function (n::LatentSDE)(timeseries::Timeseries, ps::ComponentVector, st;
         
         p = info.ps
         context = info.context
+        batch = info.batch
         
         # Get the context for the posterior at the current time
         # initial state evolve => get the posterior at future start time
         time_index = max(1, searchsortedlast(timeseries.t, t))
-        timedctx = context[:, time_index]
-        
+
+        timedctx = context[:, Int(batch), time_index]
+
         # The posterior gets u and the context as information
         posterior_net_input = vcat(u, timedctx)
 
@@ -304,14 +305,14 @@ function (n::LatentSDE)(timeseries::Timeseries, ps::ComponentVector, st;
     # Deriving operations with ComponentArray is not so easy, first we have to
     # grab the axes and then re-construct using a vector
     axes = ChainRulesCore.ignore_derivatives() do
-        getaxes(ComponentArray((context=context_precomputed[:, 1, :], ps=ps)))
+        getaxes(ComponentArray((context=context_precomputed, batch=0.0, ps=ps)))
     end
 
     function prob_func(prob, batch, repeat)
         noise_instance = ChainRulesCore.ignore_derivatives() do
             noise(Int(floor(seed + batch)))
         end
-        info = ComponentArray(vcat(vec(context_precomputed[:, batch, :]), ps), axes)
+        info = ComponentArray(vcat(vec(context_precomputed), batch, ps), axes)
         return SDEProblem{false}(augmented_drift, augmented_diffusion, augmented_z0[:, batch], n.tspan, info, seed=seed + Int(batch), noise=noise_instance)
     end
 

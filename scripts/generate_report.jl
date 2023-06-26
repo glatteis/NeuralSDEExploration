@@ -119,22 +119,6 @@ for f in ARGS
 
         kl_divergence, likelihood = loss(ps, select_ts(timeseries, 1:1000), seed)
 
-        # ╔═╡ fe1ae4b3-2f1f-4b6c-a076-0d215f222e6c
-        plot_prior(25, rng=Xoshiro(), tspan=(0e0, 10e0), datasize=100)
-
-        # ╔═╡ 72045fd0-2769-4868-9b67-e7a41e3f1d7d
-        plot(NeuralSDEExploration.sample_prior(latent_sde,ps,st;b=1,tspan=(0e0,10e0),datasize=5000))
-
-        # ╔═╡ ae0c9dae-e490-4965-9353-c820a3ce3645
-        plot(NeuralSDEExploration.sample_prior_dataspace(latent_sde,ps,st;b=1,tspan=(0e0,10e0),datasize=5000,seed=1), title="Neural SDE")
-
-        # ╔═╡ 63e3e80c-6d03-4e42-a718-5bf30ad7182f
-        plot(filter_dims(1:1, NeuralSDEExploration.series(model, [[0e0, 0e0]], (0e0, 10e0), 5000,seed=1)), title="FitzHugh-Nagumo")
-
-        # ╔═╡ 9f8c49a0-2098-411b-976a-2b43cbb20a44
-        plot(NeuralSDEExploration.series(model, [[0e0, 0e0]], (0e0, 10e0), 5000))
-
-        # ╔═╡ ff5519b9-2a69-41aa-8f55-fc63fa176d3f
-        plot(sample(timeseries, 25),linewidth=.5,color=:black,legend=false,title="data")
+        
     end
 end
