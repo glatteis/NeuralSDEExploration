@@ -223,6 +223,7 @@ function (n::LatentSDE)(timeseries::Timeseries, ps::ComponentVector, st;
     likelihood_dist=Normal,
     likelihood_scale=0.01e0,
 )
+    println("Pass")
     # We are using matrices with the following dimensions:
     # 1 = latent space dimension
     # 2 = batch number

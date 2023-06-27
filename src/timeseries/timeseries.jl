@@ -21,3 +21,4 @@ ylabel(model :: TimeseriesModel) = "value"
 include("zero_d_energy_balance.jl")
 include("fitzhugh_nagumo.jl")
 include("ornstein_uhlenbeck.jl")
+include("zeroes.jl")

@@ -75,7 +75,7 @@ md"""
 
 # ╔═╡ cb3a270e-0f2a-4be3-9ab3-ea5e4c56d0e7
 md"""
-Used model: $(@bind model_name Arg("model", Select(["sun", "fhn", "ou", "ouli"]), short_name="m")), CLI arg: `--model`, `-m` (required!)
+Used model: $(@bind model_name Arg("model", Select(["sun", "fhn", "ou", "ouli", "zero"]), short_name="m")), CLI arg: `--model`, `-m` (required!)
 """
 
 # ╔═╡ 95bdd676-d8df-4fef-bdd7-cce85b717018
@@ -172,6 +172,11 @@ elseif model_name == "ouli"
 	(
 		[0e0 for i in 1:n],
 		NeuralSDEExploration.OrnsteinUhlenbeck(0.0, 1.0, 0.5)
+	)
+elseif model_name == "zero"
+	(
+		[0e0],
+		NeuralSDEExploration.Zeroes()
 	)
 else
 	@error "Invalid model name!"
@@ -614,7 +619,9 @@ end
 
 # ╔═╡ 7a7e8e9b-ca89-4826-8a5c-fe51d96152ad
 if enabletraining
-	@time dps = Zygote.gradient(ps -> loss(ps, select_ts(1:batch_size, timeseries), 1.0, 10)[1], ps)[1]
+	println("First Zygote call")
+	@time loss(ps, select_ts(1:batch_size, timeseries), 1.0, 10)[1]
+	@time Zygote.gradient(ps -> loss(ps, select_ts(1:batch_size, timeseries), 1.0, 10)[1], ps)[1]
 end
 
 # ╔═╡ 67e5ae14-3062-4a93-9492-fc6e9861577f
@@ -634,6 +641,7 @@ end
 # ╔═╡ 78aa72e2-8188-441f-9910-1bc5525fda7a
 begin
 	if !(@isdefined PlutoRunner) && enabletraining  # running as job
+		println("Starting training")
 		opt_state_job = Optimisers.setup(Optimisers.Adam(), ps)
 		# precompile exportresults because there are some memory problems
 		exportresults(0)
