@@ -113,9 +113,11 @@ function StandardLatentSDE(solver, tspan, datasize;
     # diffusion, i.e. every term in the latent space has its own independent
     # Wiener process.
     create_network(:diffusion, Lux.Parallel(nothing, [
-            Lux.Chain(Lux.Dense((timedependent ? 2 : 1) => diffusion_size, tanh),
-            Lux.Dense(diffusion_size => 1, Lux.sigmoid_fast),
-            Lux.Scale(1, init_weight=ones, init_bias=ones))
+            Lux.Chain(
+                Lux.Dense((timedependent ? 2 : 1) => diffusion_size, tanh),
+                Lux.Dense(diffusion_size => 1, Lux.sigmoid_fast)
+            )
+            # Lux.Scale(1, init_weight=ones, init_bias=ones)
         for i in 1:latent_dims]...
     ))
 
@@ -223,7 +225,6 @@ function (n::LatentSDE)(timeseries::Timeseries, ps::ComponentVector, st;
     likelihood_dist=Normal,
     likelihood_scale=0.01e0,
 )
-    println("Pass")
     # We are using matrices with the following dimensions:
     # 1 = latent space dimension
     # 2 = batch number
@@ -309,11 +310,12 @@ function (n::LatentSDE)(timeseries::Timeseries, ps::ComponentVector, st;
         getaxes(ComponentArray((context=context_precomputed, batch=0.0, ps=ps)))
     end
 
+    vec_context = vec(context_precomputed)
     function prob_func(prob, batch, repeat)
         noise_instance = ChainRulesCore.ignore_derivatives() do
             noise(Int(floor(seed + batch)))
         end
-        info = ComponentArray(vcat(vec(context_precomputed), batch, ps), axes)
+        info = ComponentArray(vcat(vec_context, batch, ps), axes)
         return SDEProblem{false}(augmented_drift, augmented_diffusion, augmented_z0[:, batch], n.tspan, info, seed=seed + Int(batch), noise=noise_instance)
     end
 
