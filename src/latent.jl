@@ -184,7 +184,7 @@ end
 
 function sample_prior_dataspace(n::LatentSDE, ps, st; kwargs...)
     prior_latent = sample_prior(n, ps, st; kwargs...)
-    map_dims(x -> x[1:1], prior_latent)
+    map_dims(x -> n.projector(x[1:end-1], ps.projector, st.projector)[1], prior_latent)
 end
 
 # from https://github.com/google-research/torchsde/blob/master/examples/latent_sde.py
@@ -331,7 +331,8 @@ function (n::LatentSDE)(timeseries::Timeseries, ps::ComponentVector, st;
     initialdists_kl = reduce(hcat, [reshape([KullbackLeibler(a, b) for (a, b) in zip(initialdists_posterior[:, batch], initialdists_prior)], :, 1) for batch in eachindex(timeseries.u)])
     kl_divergence = sum(initialdists_kl, dims=1) .+ logterm[:, :, end]
 
-    projected_ts = posterior_latent[1:1, :, :]
+    projected_z0 = n.projector(z0, ps.projector, st.projector)[1]
+    projected_ts = reduce(timecat, [n.projector(x, ps.projector, st.projector)[1] for x in eachslice(posterior_latent, dims=3)])
 
     logp(x, y) = loglikelihood(likelihood_dist(y, likelihood_scale), x)
     likelihoods_initial = if ts_start == 1
