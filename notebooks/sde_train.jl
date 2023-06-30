@@ -567,6 +567,7 @@ function train(lr_sched, num_steps, opt_state; kl_sched=Loop(x -> eta, 1))
 
 		if kidger_trick
 			dps[1].initial_prior *= length(timeseries.t)
+			dps[1].initial_posterior *= length(timeseries.t)
 		end
 		
 		Optimisers.update!(opt_state, ps, dps[1])
