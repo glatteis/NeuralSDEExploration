@@ -41,6 +41,18 @@ function Timeseries(ts::Timeseries)
     Timeseries(ts.t, ts.u)
 end
 
+function Timeseries(timespan::Vector, matrix::Array)
+    # works for a matrix like the Latent SDE returns:
+    # 1 = latent space dimension
+    # 2 = batch number
+    # 3 = time step
+    
+    by_batch = map(collect, eachslice(matrix, dims=2))
+    by_batch_latent = map((x) -> map(collect, eachslice(x, dims=2)), by_batch)
+    
+    Timeseries(timespan, by_batch_latent)
+end
+
 function Timeseries(single_element)
     Timeseries([single_element])
 end

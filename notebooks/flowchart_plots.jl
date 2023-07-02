@@ -241,7 +241,7 @@ savefig(posterior_plot, "~/Downloads/flowchart_posterior.tikz")
 prior_plot = plot(NeuralSDEExploration.sample_prior_dataspace(latent_sde,ps,st;b=10, tspan=latent_sde.tspan, datasize=latent_sde.datasize), color=:black, axis=([], false), ticks=false, grid=false, background=RGBA{Float64}(1.0,1.0,1.0,0.0))
 
 # ╔═╡ c8d890f6-b816-4711-aaba-27052b8365ab
-savefig(prior_plot, "~/Downloads/flowchart_prior.tikz")
+savefig(posterior_plot, "~/Downloads/flowchart_prior.tikz")
 
 # ╔═╡ ef3614bf-8462-4e17-80b2-768c9ac7ab28
 pgfplotsx(size=(500, 250))

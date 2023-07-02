@@ -106,16 +106,22 @@ function steps(tspan, dt)
 end
 
 # ╔═╡ f76cecd4-bd35-4111-8822-be02ea4b0c78
-solution_full_1 = NeuralSDEExploration.series(model, initial_condition, tspan_data, steps(tspan_data, dt), seed=0, noise=noise)
+solution_full_1 = NeuralSDEExploration.series(model, initial_condition, tspan_data, steps(tspan_data, dt), noise=noise)
 
 # ╔═╡ 4ea56ef7-fe58-4bda-b882-3881303fddc8
 solution_full_2 = NeuralSDEExploration.series(model, initial_condition, tspan_data, steps(tspan_data, dt), seed=0)
 
 # ╔═╡ 7d424318-658b-4f63-aaa1-7c552c83a93f
-solution_1 = [(x.t, map(first, x.u)) for x in solution_full_1]
+solution_1 = [(solution_full_1.t, map(first, u)) for u in solution_full_1.u]
 
 # ╔═╡ 23e48eeb-8bae-4b58-b3a9-5571f9479e07
-solution_2 = [(x.t, map(first, x.u)) for x in solution_full_2]
+solution_2 = [(solution_full_2.t, map(first, u)) for u in solution_full_2.u]
+
+# ╔═╡ 74c9ae6e-86c0-49b6-bf11-4c5f80283aa3
+exp = plot(select_ts(1:50, select_tspan((tspan_data[2] / 2, tspan_data[2]), solution_full_1)), color=:black, axis=([], false), ticks=false, grid=false, background=RGBA{Float64}(1.0,1.0,1.0,0.0))
+
+# ╔═╡ de01645c-ef21-4037-a667-5f7a6a868993
+savefig(exp, "~/Downloads/flowchart_data.tikz")
 
 # ╔═╡ 12e33fad-6664-493b-9514-e12257b9197d
 plot(solution_1, legend=false)
@@ -159,6 +165,8 @@ PGFPlotsX.DEFAULT_PREAMBLE
 # ╠═4ea56ef7-fe58-4bda-b882-3881303fddc8
 # ╠═7d424318-658b-4f63-aaa1-7c552c83a93f
 # ╠═23e48eeb-8bae-4b58-b3a9-5571f9479e07
+# ╠═74c9ae6e-86c0-49b6-bf11-4c5f80283aa3
+# ╠═de01645c-ef21-4037-a667-5f7a6a868993
 # ╠═12e33fad-6664-493b-9514-e12257b9197d
 # ╠═f1613986-b7af-433b-8df9-afd2350f3a2e
 # ╠═68b29d7a-5ef1-4272-ae42-5a6052493c1c
