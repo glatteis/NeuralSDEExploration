@@ -579,7 +579,7 @@ end
 function exportresults(epoch)
 	folder_name = if "SLURM_ARRAY_JOB_ID" in keys(ENV)
 		ENV["SLURM_ARRAY_JOB_ID"] * "_" * ENV["SLURM_ARRAY_TASK_ID"]
-	elseif if "SLURM_JOB_ID" in keys(ENV)
+	elseif "SLURM_JOB_ID" in keys(ENV)
 		ENV["SLURM_JOB_ID"]
 	else
 		Dates.format(now(), "YMMddHHmm")
