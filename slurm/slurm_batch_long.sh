@@ -3,9 +3,10 @@
 #SBATCH --job-name=train
 #SBATCH --account=tipes
 #SBATCH --partition=standard
+#SBATCH --qos=medium
 #SBATCH --cpus-per-task=16
 #SBATCH --mem=80G
-#SBATCH --time=16:00:00
+#SBATCH --time=48:00:00
 #SBATCH --output=/home/linushe/outputs/%x.%A_%4a.out
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=linus.heck@rwth-aachen.de

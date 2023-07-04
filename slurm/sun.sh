@@ -4,11 +4,11 @@ fixed_args="/home/linushe/neuralsdeexploration/notebooks/sde_train.jl -m sun --b
 
 variable_args=(
     # base experiment
-    "--eta 8.0 --learning-rate 0.015 --latent-dims 1 --hidden-size 64"
+    "--eta 0.1 --learning-rate 0.015 --latent-dims 1 --hidden-size 64"
 
     # beta cycling
-    "--eta 4.0 --learning-rate 0.015 --latent-dims 1 --hidden-size 64"
-    "--eta 32.0 --learning-rate 0.015 --latent-dims 1 --hidden-size 64"
+    "--eta 0.05 --learning-rate 0.015 --latent-dims 1 --hidden-size 64"
+    "--eta 1.0 --learning-rate 0.015 --latent-dims 1 --hidden-size 64"
 
     # network size 
     "--eta 8.0 --learning-rate 0.015 --latent-dims 1 --hidden-size 8"
