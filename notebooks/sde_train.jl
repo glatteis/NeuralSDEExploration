@@ -622,7 +622,7 @@ end
 if enabletraining
 	println("First Zygote call")
 	@time loss(ps, select_ts(1:batch_size, timeseries), 1.0, 10)[1]
-	@time Zygote.gradient(ps -> loss(ps, select_ts(1:64, timeseries), 1.0, 1)[1], ps)[1]
+	@time Zygote.gradient(ps -> loss(ps, select_ts(1:128, timeseries), 1.0, 1)[1], ps)[1]
 end
 
 # ╔═╡ 67e5ae14-3062-4a93-9492-fc6e9861577f

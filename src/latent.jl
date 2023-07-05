@@ -188,12 +188,7 @@ end
 
 # from https://github.com/google-research/torchsde/blob/master/examples/latent_sde.py
 function stable_divide(a, b, eps=1e-4)
-    ChainRulesCore.ignore_derivatives() do
-        if any([abs(x) <= eps for x in b])
-            @warn "diffusion too small"
-        end
-    end
-    b = map(x -> abs(x) <= eps ? eps * sign(x) : x, b)
+    b = map(x -> eps + x, b)
     a ./ b
 end
 
