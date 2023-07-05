@@ -437,7 +437,8 @@ latent_sde = StandardLatentSDE(
 	timedependent=time_dependence,
 	adaptive=false,
 	# we only have this custom layer - the others are default
-	projector=projector
+	projector=projector,
+	diffusion=Lux.Scale(latent_dims, init_weight=ones, init_bias=ones, Lux.sigmoid)
 )
 
 # ╔═╡ 0f6f4520-576f-42d3-9126-2076a51a6e22
@@ -560,9 +561,7 @@ function train(lr_sched, num_steps, opt_state; kl_sched=Loop(x -> eta, 1))
 		println("Loss: $l, KL: $kl_divergence")
 		dps = Zygote.gradient(ps -> loss(ps, minibatch, eta, seed)[1], ps)
 		
-		if step % 10 == 1
-			GC.gc(true)
-		end
+		GC.gc(true)
 
 		if kidger_trick
 			dps[1].initial_prior *= length(timeseries.t)
@@ -623,7 +622,7 @@ end
 if enabletraining
 	println("First Zygote call")
 	@time loss(ps, select_ts(1:batch_size, timeseries), 1.0, 10)[1]
-	@time Zygote.gradient(ps -> loss(ps, select_ts(1:batch_size, timeseries), 1.0, 1)[1], ps)[1]
+	@time Zygote.gradient(ps -> loss(ps, select_ts(1:64, timeseries), 1.0, 1)[1], ps)[1]
 end
 
 # ╔═╡ 67e5ae14-3062-4a93-9492-fc6e9861577f

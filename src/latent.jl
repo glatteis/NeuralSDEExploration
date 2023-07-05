@@ -162,7 +162,8 @@ function sample_prior(n::LatentSDE, ps, st; b=1, seed=nothing, noise=(seed) -> n
     end
     function dudw_diffusion(u, p, t) 
         time_or_empty = n.timedependent ? [t] : []
-        vcat(reduce(vcat, n.diffusion(Tuple([vcat(x, time_or_empty) for x in u[1:end-1]]), p.diffusion, st.diffusion)[1]), 0e0)
+        # vcat(reduce(vcat, n.diffusion(Tuple([vcat(x, time_or_empty) for x in u[1:end-1]]), p.diffusion, st.diffusion)[1]), 0e0)
+        vcat(n.diffusion(u[1:end-1], p.diffusion, st.diffusion)[1], 0e0)
     end
 
     initialdists_prior = get_distributions(n.initial_prior, ps.initial_prior, st.initial_prior, [1.0e0])
@@ -282,9 +283,10 @@ function (n::LatentSDE)(timeseries::Timeseries, ps::ComponentVector, st;
 
         prior = n.drift_prior(u, p.drift_prior, st.drift_prior)[1]
         posterior = n.drift_posterior(posterior_net_input, p.drift_posterior, st.drift_posterior)[1]
-        # The diffusion is diagonal, so a single network is invoked on each dimension
-        
-        diffusion = reduce(vcat, n.diffusion(([n.timedependent ? vcat(x, t) : [x] for x in u]...,), p.diffusion, st.diffusion)[1])
+
+        # # The diffusion is diagonal, so a single network is invoked on each dimension
+        # diffusion = reduce(vcat, n.diffusion(([n.timedependent ? vcat(x, t) : [x] for x in u]...,), p.diffusion, st.diffusion)[1])
+        diffusion = n.diffusion(u, p.diffusion, st.diffusion)[1]
 
         # The augmented term for computing the KL divergence
         u_term = stable_divide(posterior .- prior, diffusion)
@@ -296,7 +298,8 @@ function (n::LatentSDE)(timeseries::Timeseries, ps::ComponentVector, st;
         p = info.ps
         time_or_empty = n.timedependent ? [t] : []
         u = vcat(u_in[1:end-1], time_or_empty)
-        diffusion = reduce(vcat, n.diffusion(([n.timedependent ? vcat(x, t) : [x] for x in u]...,), p.diffusion, st.diffusion)[1])
+        # diffusion = reduce(vcat, n.diffusion(([n.timedependent ? vcat(x, t) : [x] for x in u]...,), p.diffusion, st.diffusion)[1])
+        diffusion = n.diffusion(u, p.diffusion, st.diffusion)[1]
         return vcat(diffusion, 0e0)
     end
 
