@@ -1,4 +1,4 @@
-export Timeseries, filter_dims, map_dims, map_ts, select_ts, select_tspan
+export Timeseries, filter_dims, map_dims, map_ts, select_ts, select_tspan, repeat_ts
 
 """A collection of multivariate timeseries.
 This type exists to consolidate the tons of different representations that are
@@ -55,6 +55,10 @@ end
 
 function Timeseries(single_element)
     Timeseries([single_element])
+end
+
+function repeat_ts(counts, ts::Timeseries)
+    Timeseries(ts.t, repeat(ts.u, counts))
 end
 
 function select_ts(range, ts::Timeseries)

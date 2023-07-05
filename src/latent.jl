@@ -48,7 +48,6 @@ Constructs a "standard" latent sde - so you don't need to construct all of the n
     super configurable. Please just swap it out if you need a different one. Prior
 - `depth`: Depth of the prior and posterior nets.
 - `hidden_activation`: Activation of the hidden layers of the neural nets.
-- `final_activation`: Activation of the final layers of the neural nets. There's a scale layer after them, so it's fine to take a bounded activation.
 - `rnn_size`: Size of the RNN's output. There's a neural net after the RNN that goes to `context_size`.
 - `context_size`: Size of the context vector.
 - `timedependent`: Whether time is an input to prior drift, posterior drift and diffusion.
@@ -56,14 +55,13 @@ Constructs a "standard" latent sde - so you don't need to construct all of the n
 function StandardLatentSDE(solver, tspan, datasize;
         data_dims=1,
         latent_dims=2,
-        prior_size=128,
-        posterior_size=128,
+        prior_size=64,
+        posterior_size=64,
         diffusion_size=16,
         depth=1,
-        rnn_size=2,
-        context_size=2,
+        rnn_size=16,
+        context_size=16,
         hidden_activation=tanh,
-        final_activation=tanh,
         timedependent=false,
         kwargs...
     )
@@ -98,15 +96,13 @@ function StandardLatentSDE(solver, tspan, datasize;
     create_network(:drift_prior, Lux.Chain(
         Lux.Dense(in_dims => prior_size, hidden_activation),
         repeat([Lux.Dense(prior_size => prior_size, hidden_activation)], depth)...,
-        Lux.Dense(prior_size => latent_dims, final_activation),
-        Lux.Scale(latent_dims)
+        Lux.Dense(prior_size => latent_dims),
     ))
     # Drift of posterior. This is the term of an SDE when fed with the context.
     create_network(:drift_posterior, Lux.Chain(
         Lux.Dense(in_dims + context_size => posterior_size, hidden_activation),
         repeat([Lux.Dense(posterior_size => posterior_size, hidden_activation)], depth)...,
-        Lux.Dense(posterior_size => latent_dims, final_activation),
-        Lux.Scale(latent_dims)
+        Lux.Dense(posterior_size => latent_dims),
     ))
     # Prior and posterior share the same diffusion (they are not actually evaluated
     # seperately while training, only their KL divergence). This is a diagonal
