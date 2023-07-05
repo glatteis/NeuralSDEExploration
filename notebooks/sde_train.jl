@@ -382,7 +382,7 @@ CLI arg: `--kidger`
 # ╔═╡ 2bb433bb-17df-4a34-9ccf-58c0cf8b4dd3
 (sense, noise) = if backsolve
 	(
-		BacksolveAdjoint(autojacvec=EnzymeVJP(), checkpointing=true),
+		BacksolveAdjoint(autojacvec=ZygoteVJP(), checkpointing=true),
 		function(seed)
 			rng_tree = Xoshiro(seed)
 			VirtualBrownianTree(-3e0, fill(0e0, latent_dims + 1), tend=tspan_model[2]*2e0; tree_depth=tree_depth, rng=Threefry4x((rand(rng_tree, UInt32), rand(rng_tree, UInt32), rand(rng_tree, UInt32), rand(rng_tree, UInt32))))
@@ -434,7 +434,6 @@ latent_sde = StandardLatentSDE(
 	rnn_size=context_size,
 	context_size=context_size,
 	hidden_activation=tanh,
-    final_activation=tanh,
 	timedependent=time_dependence,
 	adaptive=false,
 	# we only have this custom layer - the others are default

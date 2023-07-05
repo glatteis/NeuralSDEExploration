@@ -238,10 +238,22 @@ plot!(posterior_plot, select_ts(1:1, first_mean_var), ribbon=2*map(only, first_m
 savefig(posterior_plot, "~/Downloads/flowchart_posterior.tikz")
 
 # ╔═╡ dd55cc42-8b6c-4e8f-a888-5427ac724ace
-prior_plot = plot(NeuralSDEExploration.sample_prior_dataspace(latent_sde,ps,st;b=10, tspan=latent_sde.tspan, datasize=latent_sde.datasize), color=:black, axis=([], false), ticks=false, grid=false, background=RGBA{Float64}(1.0,1.0,1.0,0.0))
+prior_plot = plot(NeuralSDEExploration.sample_prior_dataspace(latent_sde,ps,st;b=20, tspan=latent_sde.tspan, datasize=latent_sde.datasize), color=:black, axis=([], false), ticks=false, grid=false, background=RGBA{Float64}(1.0,1.0,1.0,0.0))
+
+# ╔═╡ aba2e1d1-aadb-4ffb-af15-055fe39e680e
+ts_plot_1 = plot(select_ts(1:25, timeseries), color=:black, axis=([], false), ticks=false, grid=false, background=RGBA{Float64}(1.0,1.0,1.0,0.0))
+
+# ╔═╡ fec4f1df-414e-4888-a0ed-c106dee64c36
+ts_plot_2 = plot(select_ts(26:50, timeseries), color=:black, axis=([], false), ticks=false, grid=false, background=RGBA{Float64}(1.0,1.0,1.0,0.0))
 
 # ╔═╡ c8d890f6-b816-4711-aaba-27052b8365ab
 savefig(posterior_plot, "~/Downloads/flowchart_prior.tikz")
+
+# ╔═╡ 92be8ae1-9448-4c60-af3f-227f54672518
+savefig(ts_plot_1, "~/Downloads/flowchart_prior_1.tikz")
+
+# ╔═╡ 359da2dc-8454-4817-99db-ff5fa48e8859
+savefig(ts_plot_2, "~/Downloads/flowchart_prior_2.tikz")
 
 # ╔═╡ ef3614bf-8462-4e17-80b2-768c9ac7ab28
 pgfplotsx(size=(500, 250))
@@ -303,5 +315,9 @@ pgfplotsx(size=(500, 250))
 # ╠═091e784b-b12f-466a-84fc-2865220f2856
 # ╠═97bc8a9b-a1da-45ee-915e-d342adc44e50
 # ╠═dd55cc42-8b6c-4e8f-a888-5427ac724ace
+# ╠═aba2e1d1-aadb-4ffb-af15-055fe39e680e
+# ╠═fec4f1df-414e-4888-a0ed-c106dee64c36
 # ╠═c8d890f6-b816-4711-aaba-27052b8365ab
+# ╠═92be8ae1-9448-4c60-af3f-227f54672518
+# ╠═359da2dc-8454-4817-99db-ff5fa48e8859
 # ╠═ef3614bf-8462-4e17-80b2-768c9ac7ab28
