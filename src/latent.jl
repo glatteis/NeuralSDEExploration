@@ -102,25 +102,25 @@ function StandardLatentSDE(solver, tspan, datasize;
     create_network(:drift_posterior, Lux.Chain(
         Lux.Dense(in_dims + context_size => posterior_size, hidden_activation),
         repeat([Lux.Dense(posterior_size => posterior_size, hidden_activation)], depth)...,
-        Lux.Dense(posterior_size => latent_dims),
+        Lux.Dense(posterior_size => latent_dims, init_weight=zeros, init_bias=zeros),
     ))
     # Prior and posterior share the same diffusion (they are not actually evaluated
     # seperately while training, only their KL divergence). This is a diagonal
     # diffusion, i.e. every term in the latent space has its own independent
     # Wiener process.
-    create_network(:diffusion, Lux.Parallel(nothing, [
-            Lux.Chain(
-                Lux.Dense((timedependent ? 2 : 1) => diffusion_size, tanh),
-                Lux.Dense(diffusion_size => 1, Lux.sigmoid_fast)
-            )
-            # Lux.Scale(1, init_weight=ones, init_bias=ones)
-        for i in 1:latent_dims]...
-    ))
+    # create_network(:diffusion, Lux.Parallel(nothing, [
+    #         Lux.Chain(
+    #             Lux.Dense((timedependent ? 2 : 1) => diffusion_size, tanh),
+    #             Lux.Dense(diffusion_size => 1, Lux.sigmoid_fast)
+    #         )
+    #         # Lux.Scale(1, init_weight=ones, init_bias=ones)
+    #     for i in 1:latent_dims]...
+    # ))
     
     create_network(:diffusion,
         Lux.Chain(
-            Lux.Scale(latent_dims, init_weight=ones, init_bias=ones, Lux.sigmoid),
-            Lux.WrappedFunction(WrappedFunction(Base.Fix1(broadcast, (x) -> x + 1e-4)))
+            Lux.Scale(latent_dims, init_weight=Lux.glorot_uniform, Lux.sigmoid),
+            Lux.WrappedFunction(Base.Fix1(broadcast, (x) -> x + 0.01))
         )
     )
 

@@ -6,7 +6,7 @@ struct OrnsteinUhlenbeck <: TimeseriesModel
     psi
 end
 
-OrnsteinUhlenbeck() = OrnsteinUhlenbeck(0.02, 0.1, 0.4)
+OrnsteinUhlenbeck() = OrnsteinUhlenbeck(0.02, 0.1, 0.3)
 
 drift(u, ou::OrnsteinUhlenbeck, t) = (ou.mu * t - ou.sigma * u)
 diffusion(u, ou::OrnsteinUhlenbeck, t) = ou.psi
