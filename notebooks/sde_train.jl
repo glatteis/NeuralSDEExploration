@@ -165,7 +165,7 @@ elseif model_name == "fhn"
 	)
 elseif model_name == "ou"
 	(
-		[only(rand(Normal(0e0, 1e0), 1)) for i in 1:n],
+		[only(rand(Normal(0.5, 0.1), 1)) for i in 1:n],
 		NeuralSDEExploration.OrnsteinUhlenbeck()
 	)
 elseif model_name == "ouli"
@@ -437,8 +437,7 @@ latent_sde = StandardLatentSDE(
 	timedependent=time_dependence,
 	adaptive=false,
 	# we only have this custom layer - the others are default
-	projector=projector,
-	diffusion=Lux.Scale(latent_dims, init_weight=ones, init_bias=ones, Lux.sigmoid)
+	projector=projector
 )
 
 # ╔═╡ 0f6f4520-576f-42d3-9126-2076a51a6e22

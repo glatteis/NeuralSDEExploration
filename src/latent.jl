@@ -116,6 +116,13 @@ function StandardLatentSDE(solver, tspan, datasize;
             # Lux.Scale(1, init_weight=ones, init_bias=ones)
         for i in 1:latent_dims]...
     ))
+    
+    create_network(:diffusion,
+        Lux.Chain(
+            Lux.Scale(latent_dims, init_weight=ones, init_bias=ones, Lux.sigmoid),
+            Lux.WrappedFunction(WrappedFunction(Base.Fix1(broadcast, (x) -> x + 1e-4)))
+        )
+    )
 
     # The encoder is a recurrent neural network.
     create_network(:encoder_recurrent, Lux.Recurrence(Lux.GRUCell(data_dims => rnn_size); return_sequence=true))
