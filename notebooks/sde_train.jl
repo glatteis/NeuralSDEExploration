@@ -29,6 +29,15 @@ using Optimisers, StatsBase, Zygote, Lux, DifferentialEquations, ComponentArrays
 # ╔═╡ d1440209-78f7-4a9a-9101-a06ad2534e5d
 using NeuralSDEExploration, Plots, PlutoUI, PlutoArgs
 
+# ╔═╡ 13bb80bd-5e3b-482e-9a3a-aed3f59137cb
+begin
+	using Profile, PProf
+	Profile.Allocs.clear()
+end
+
+# ╔═╡ 75964031-23b8-480f-8135-789fa8d1d69d
+using ProfileCanvas
+
 # ╔═╡ db557c9a-24d6-4008-8225-4b8867ee93db
 begin
 	if @isdefined PlutoRunner  # running inside Pluto
@@ -382,7 +391,7 @@ CLI arg: `--kidger`
 # ╔═╡ 2bb433bb-17df-4a34-9ccf-58c0cf8b4dd3
 (sense, noise) = if backsolve
 	(
-		BacksolveAdjoint(autojacvec=ZygoteVJP(), checkpointing=true),
+		BacksolveAdjoint(autojacvec=ZygoteVJP(), checkpointing=false),
 		function(seed)
 			rng_tree = Xoshiro(seed)
 			VirtualBrownianTree(-3e0, fill(0e0, latent_dims + 1), tend=tspan_model[2]*2e0; tree_depth=tree_depth, rng=Threefry4x((rand(rng_tree, UInt32), rand(rng_tree, UInt32), rand(rng_tree, UInt32), rand(rng_tree, UInt32))))
@@ -471,7 +480,7 @@ Select a seed: $(@bind seed Scrubbable(481283))
 ensemblemode = if gpu
 	EnsembleGPUKernel(CUDA.CUDABackend())
 else
-	EnsembleThreads()
+	EnsembleSerial()
 end
 
 # ╔═╡ 3ab9a483-08f2-4767-8bd5-ae1375a62dbe
@@ -617,12 +626,34 @@ function exportresults(epoch)
 	# savefig(learningfig, folder * "$(epoch)_learning.tex")
 end
 
+# ╔═╡ 57fea9d2-efec-4934-96dd-3a96ac36a981
+@profview loss(ps, select_ts(1:1000, timeseries), 1.0, 10)[1]
+
+# ╔═╡ 124680b8-4140-4b98-9fd7-009cc225992a
+@time loss(ps, select_ts(1:10, timeseries), 1.0, 10)[1]
+
 # ╔═╡ 7a7e8e9b-ca89-4826-8a5c-fe51d96152ad
 if enabletraining
 	println("First Zygote call")
-	@time loss(ps, select_ts(1:batch_size, timeseries), 1.0, 10)[1]
-	@time Zygote.gradient(ps -> loss(ps, select_ts(1:64, timeseries), 1.0, 1)[1], ps)[1]
+	@time loss(ps, select_ts(1:4, timeseries), 1.0, 10)[1]
+	Profile.Allocs.@profile Zygote.gradient(ps -> loss(ps, select_ts(1:4, timeseries), 1.0, 1)[1], ps)[1]
 end
+
+# ╔═╡ 4be69707-ee01-49d3-8c9d-5e7fe2fb5142
+# ╠═╡ disabled = true
+#=╠═╡
+@profview Zygote.gradient(ps -> loss(ps, select_ts(1:8, timeseries), 1.0, 1)[1], ps)[1]
+  ╠═╡ =#
+
+# ╔═╡ af463e80-4fc5-4389-93eb-e7ec6ad8d603
+@time Zygote.gradient(ps -> loss(ps, select_ts(1:64, timeseries), 1.0, 1)[1], ps)[1]
+
+# ╔═╡ 9f266a29-3616-4e11-abd4-e08dd909c217
+# ╠═╡ disabled = true
+#=╠═╡
+PProf.Allocs.pprof()
+
+  ╠═╡ =#
 
 # ╔═╡ 67e5ae14-3062-4a93-9492-fc6e9861577f
 kl_sched = if kl_anneal
@@ -765,7 +796,14 @@ end
 # ╠═e0a34be1-6aa2-4563-abc2-ea163a778752
 # ╠═f4a16e34-669e-4c93-bd83-e3622a747a3a
 # ╠═9789decf-c384-42df-b7aa-3c2137a69a41
+# ╠═13bb80bd-5e3b-482e-9a3a-aed3f59137cb
+# ╠═75964031-23b8-480f-8135-789fa8d1d69d
+# ╠═57fea9d2-efec-4934-96dd-3a96ac36a981
+# ╠═124680b8-4140-4b98-9fd7-009cc225992a
 # ╠═7a7e8e9b-ca89-4826-8a5c-fe51d96152ad
+# ╠═4be69707-ee01-49d3-8c9d-5e7fe2fb5142
+# ╠═af463e80-4fc5-4389-93eb-e7ec6ad8d603
+# ╠═9f266a29-3616-4e11-abd4-e08dd909c217
 # ╠═67e5ae14-3062-4a93-9492-fc6e9861577f
 # ╠═da2de05a-5d40-4293-98e0-abd20d6dcd2a
 # ╠═78aa72e2-8188-441f-9910-1bc5525fda7a
