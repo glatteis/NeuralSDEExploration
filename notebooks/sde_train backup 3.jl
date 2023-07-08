@@ -480,7 +480,7 @@ Select a seed: $(@bind seed Scrubbable(481283))
 ensemblemode = if gpu
 	EnsembleGPUKernel(CUDA.CUDABackend())
 else
-	EnsembleThreads()
+	EnsembleSerial()
 end
 
 # ╔═╡ 3ab9a483-08f2-4767-8bd5-ae1375a62dbe
@@ -633,8 +633,7 @@ end
 if enabletraining
 	println("First Zygote call")
 	@time loss(ps, select_ts(1:4, timeseries), 1.0, 10)[1]
-	ts = select_ts(1:256, timeseries)
-	@time Zygote.gradient(ps -> loss(ps, ts, 1.0, 1)[1], ps)[1]
+	Profile.Allocs.@profile Zygote.gradient(ps -> loss(ps, select_ts(1:4, timeseries), 1.0, 1)[1], ps)[1]
 end
 
 # ╔═╡ 67e5ae14-3062-4a93-9492-fc6e9861577f
@@ -764,10 +763,15 @@ gifplot()
 # ╠═9789decf-c384-42df-b7aa-3c2137a69a41
 # ╠═13bb80bd-5e3b-482e-9a3a-aed3f59137cb
 # ╠═75964031-23b8-480f-8135-789fa8d1d69d
+# ╠═57fea9d2-efec-4934-96dd-3a96ac36a981
 # ╠═124680b8-4140-4b98-9fd7-009cc225992a
 # ╠═7a7e8e9b-ca89-4826-8a5c-fe51d96152ad
+# ╠═4be69707-ee01-49d3-8c9d-5e7fe2fb5142
+# ╠═af463e80-4fc5-4389-93eb-e7ec6ad8d603
+# ╠═9f266a29-3616-4e11-abd4-e08dd909c217
 # ╠═67e5ae14-3062-4a93-9492-fc6e9861577f
 # ╠═da2de05a-5d40-4293-98e0-abd20d6dcd2a
 # ╠═78aa72e2-8188-441f-9910-1bc5525fda7a
 # ╠═830f7e7a-71d0-43c8-8e74-d1709b8a6707
 # ╠═763e07e6-dd46-42d6-b57a-8f1994386302
+# ╠═655877c5-d636-4c1c-85c6-82129c1a4999

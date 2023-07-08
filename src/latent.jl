@@ -119,7 +119,7 @@ function StandardLatentSDE(solver, tspan, datasize;
     
     create_network(:diffusion,
         Lux.Chain(
-            Lux.Scale(latent_dims, init_weight=Lux.glorot_uniform, Lux.sigmoid),
+            Lux.Scale(latent_dims, init_weight=Lux.glorot_uniform, init_bias=Lux.glorot_uniform, Lux.sigmoid),
             Lux.WrappedFunction(Base.Fix1(broadcast, (x) -> x + 0.01))
         )
     )
@@ -205,22 +205,19 @@ function stable_divide(a::Vector{Float64}, b::Vector{Float64}, eps=1e-4)
 end
 
 
-function augmented_drift(n::LatentSDE, times::Vector{Float64}, st::NamedTuple, u_in::Vector{Float64}, info::ComponentVector{Float64}, t::Float64)
+function augmented_drift(n::LatentSDE, times::Vector{Float64}, batch::Int, st::NamedTuple, u_in::Vector{Float64}, info::ComponentVector{Float64}, t::Float64)
     # Remove augmented term from input
     u::Vector{Float64} = u_in[1:end-1]
     
     p = info.ps
     context = info.context
-    batch = info.batch
-    
+
     # Get the context for the posterior at the current time
     # initial state evolve => get the posterior at future start time
-    time_index = max(1, searchsortedlast(times, t))
-
-    timedctx = @view context[:, Int(batch), time_index]
-
-    # The posterior gets u and the context as information
-    posterior_net_input::Vector{Float64} = vcat(u, timedctx)
+    posterior_net_input::Vector{Float64} = ChainRulesCore.ignore_derivatives() do
+        time_index = max(1, searchsortedlast(times, t))
+        vcat(u, @view context[:, batch, time_index])
+    end
 
     prior = n.drift_prior(u, p.drift_prior, st.drift_prior)[1]
     posterior = n.drift_posterior(posterior_net_input, p.drift_posterior, st.drift_posterior)[1]
@@ -318,21 +315,27 @@ function (n::LatentSDE)(timeseries::Timeseries, ps::ComponentVector, st;
     # Deriving operations with ComponentArray is not so easy, first we have to
     # grab the axes and then re-construct using a vector
     axes = ChainRulesCore.ignore_derivatives() do
-        getaxes(ComponentArray((context=context_precomputed, batch=0.0, ps=ps)))
+        getaxes(ComponentArray((context=context_precomputed, ps=ps)))
     end
 
     vec_context = vec(context_precomputed)
 
+    info = ComponentArray(vcat(vec_context, ps), axes)
     function prob_func(prob, batch, repeat)
         noise_instance = ChainRulesCore.ignore_derivatives() do
             noise(Int(floor(seed + batch)))
         end
-        info = ComponentArray(vcat(vec_context, batch, ps), axes)
-        return SDEProblem{false}((u, p, t) -> augmented_drift(n, timeseries.t, st, u, p, t), (u, p, t) -> augmented_diffusion(n, st, u, p, t), augmented_z0[:, batch], n.tspan, info, seed=seed + Int(batch), noise=noise_instance)
+        return SDEProblem{false}((u, p, t) -> augmented_drift(n, timeseries.t, batch, st, u, p, t), (u, p, t) -> augmented_diffusion(n, st, u, p, t), augmented_z0[:, batch], n.tspan, info, seed=seed + Int(batch), noise=noise_instance)
     end
 
     ensemble = EnsembleProblem(nothing, output_func=(sol, i) -> (sol, false), prob_func=prob_func)
     solution = solve(ensemble, n.solver, ensemblemode; trajectories=length(timeseries.u), sensealg=sense, saveat=range(n.tspan[1], n.tspan[end], n.datasize), dt=(n.tspan[end] / n.datasize), n.kwargs...)
+    
+#     p = ComponentArray(vcat(vec_context, 1, ps), axes)
+#     _dy, back = Zygote.pullback(augmented_z0[:, 1], p) do u, p
+#         augmented_drift(n, timeseries.t, st, u, p, 10.0)
+#    end
+#    @time back(augmented_z0[:, 2])
 
     # If ts_start > 0, the timeseries starts after the latent sde, thus only score after ts_start
     # The timeseries could be irregularily sampled or have a different rate than the model, so search for appropiate points here
