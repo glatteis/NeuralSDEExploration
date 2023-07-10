@@ -33,9 +33,9 @@ using JLD2
     # savefig(p, "posterior_latent.pdf")
     # 
     sense = BacksolveAdjoint(autojacvec=ZygoteVJP(), checkpointing=true)
-    noise = function(seed)
+    noise = function(seed, noise_size)
         rng_tree = Xoshiro(seed)
-        VirtualBrownianTree(-5e0, fill(0e0, 2+1), tend=tspan[end]+5e0; rng=Threefry4x((rand(rng_tree, UInt32), rand(rng_tree, UInt32), rand(rng_tree, UInt32), rand(rng_tree, UInt32))))
+        VirtualBrownianTree(-5e0, fill(0e0, noise_size), tend=tspan[end]+5e0; rng=Threefry4x((rand(rng_tree, UInt32), rand(rng_tree, UInt32), rand(rng_tree, UInt32), rand(rng_tree, UInt32))))
     end
     
     input = Timeseries([input1, input1, input2, input2])

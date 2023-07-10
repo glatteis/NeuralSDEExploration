@@ -243,10 +243,8 @@ function augmented_drift_batch(n::LatentSDE, times::Array{Float64}, latent_dims:
 
     # Get the context for the posterior at the current time
     # initial state evolve => get the posterior at future start time
-    posterior_net_input::Array{Float64} = ChainRulesCore.ignore_derivatives() do
-        time_index = max(1, searchsortedlast(times, t))
-        vcat(u, @view context[:, :, time_index])
-    end
+    time_index = max(1, searchsortedlast(times, t))
+    posterior_net_input::Array{Float64} = vcat(u, context[:, :, time_index])
 
     prior = n.drift_prior(u, p.drift_prior, st.drift_prior)[1]
     posterior = n.drift_posterior(posterior_net_input, p.drift_posterior, st.drift_posterior)[1]
@@ -359,7 +357,6 @@ function (n::LatentSDE)(timeseries::Timeseries, ps::ComponentVector, st;
     vec_context = vec(context_precomputed)
 
     info = ComponentArray(vcat(vec_context, ps), axes)
-    
 
     noise_instance = ChainRulesCore.ignore_derivatives() do
         noise(Int(floor(seed)), (latent_dimensions + 1) * batch_size)

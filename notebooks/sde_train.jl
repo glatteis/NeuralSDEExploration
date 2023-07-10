@@ -30,13 +30,19 @@ using Optimisers, StatsBase, Zygote, Lux, DifferentialEquations, ComponentArrays
 using NeuralSDEExploration, Plots, PlutoUI, PlutoArgs
 
 # ╔═╡ 13bb80bd-5e3b-482e-9a3a-aed3f59137cb
+# ╠═╡ disabled = true
+#=╠═╡
 begin
 	using Profile, PProf
 	Profile.Allocs.clear()
 end
+  ╠═╡ =#
 
 # ╔═╡ 75964031-23b8-480f-8135-789fa8d1d69d
+# ╠═╡ disabled = true
+#=╠═╡
 using ProfileCanvas
+  ╠═╡ =#
 
 # ╔═╡ db557c9a-24d6-4008-8225-4b8867ee93db
 begin
@@ -633,7 +639,7 @@ end
 if enabletraining
 	println("First Zygote call")
 	@time loss(ps, select_ts(1:4, timeseries), 1.0, 10)[1]
-	ts = select_ts(1:256, timeseries)
+	ts = select_ts(1:20, timeseries)
 	@time Zygote.gradient(ps -> loss(ps, ts, 1.0, 1)[1], ps)[1]
 end
 
