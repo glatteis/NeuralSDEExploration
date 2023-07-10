@@ -102,7 +102,7 @@ function StandardLatentSDE(solver, tspan, datasize;
     create_network(:drift_posterior, Lux.Chain(
         Lux.Dense(in_dims + context_size => posterior_size, hidden_activation),
         repeat([Lux.Dense(posterior_size => posterior_size, hidden_activation)], depth)...,
-        Lux.Dense(posterior_size => latent_dims, init_weight=zeros, init_bias=zeros),
+        Lux.Dense(posterior_size => latent_dims),
     ))
     # Prior and posterior share the same diffusion (they are not actually evaluated
     # seperately while training, only their KL divergence). This is a diagonal
@@ -194,7 +194,7 @@ function sample_prior_dataspace(n::LatentSDE, ps, st; kwargs...)
 end
 
 # from https://github.com/google-research/torchsde/blob/master/examples/latent_sde.py
-function stable_divide(a::Vector{Float64}, b::Vector{Float64}, eps=1e-4)
+function stable_divide(a::Array{Float64}, b::Array{Float64}, eps=1e-4)
     ChainRulesCore.ignore_derivatives() do
         if any([abs(x) <= eps for x in b])
             @warn "diffusion too small"
@@ -233,11 +233,48 @@ function augmented_drift(n::LatentSDE, times::Vector{Float64}, batch::Int, st::N
     vcat(posterior, augmented_term)
 end
 
+function augmented_drift_batch(n::LatentSDE, times::Array{Float64}, latent_dims::Int, batch_size::Int, st::NamedTuple, u_in_vec::Array{Float64}, info::ComponentVector{Float64}, t::Float64)
+    u_in = reshape(u_in_vec, latent_dims + 1, batch_size)
+    # Remove augmented term from input
+    u::Array{Float64} = u_in[1:end-1, :]
+
+    p = info.ps
+    context = info.context
+
+    # Get the context for the posterior at the current time
+    # initial state evolve => get the posterior at future start time
+    posterior_net_input::Array{Float64} = ChainRulesCore.ignore_derivatives() do
+        time_index = max(1, searchsortedlast(times, t))
+        vcat(u, @view context[:, :, time_index])
+    end
+
+    prior = n.drift_prior(u, p.drift_prior, st.drift_prior)[1]
+    posterior = n.drift_posterior(posterior_net_input, p.drift_posterior, st.drift_posterior)[1]
+
+    # # The diffusion is diagonal, so a single network is invoked on each dimension
+    # diffusion = reduce(vcat, n.diffusion(([n.timedependent ? vcat(x, t) : [x] for x in u]...,), p.diffusion, st.diffusion)[1])
+    diffusion = n.diffusion(u, p.diffusion, st.diffusion)[1]
+
+    # The augmented term for computing the KL divergence
+    u_term = stable_divide(posterior .- prior, diffusion)
+    augmented_term = 0.5e0 * sum(abs2, u_term; dims=1)
+
+    reshape(vcat(posterior, augmented_term), (latent_dims + 1) * batch_size)
+end
+
 function augmented_diffusion(n::LatentSDE, st::NamedTuple, u_in::Vector{Float64}, info::ComponentVector{Float64}, t::Float64)
     p = info.ps
     # diffusion = reduce(vcat, n.diffusion(([n.timedependent ? vcat(x, t) : [x] for x in u]...,), p.diffusion, st.diffusion)[1])
     diffusion = n.diffusion(u_in[1:end-1], p.diffusion, st.diffusion)[1]
     return vcat(diffusion, 0e0)
+end
+
+function augmented_diffusion_batch(n::LatentSDE, latent_dims::Int, batch_size::Int, st::NamedTuple, u_in_vec::Array{Float64}, info::ComponentVector{Float64}, t::Float64)
+    p = info.ps
+    # diffusion = reduce(vcat, n.diffusion(([n.timedependent ? vcat(x, t) : [x] for x in u]...,), p.diffusion, st.diffusion)[1])
+    u_in = reshape(u_in_vec, latent_dims + 1, batch_size)
+    diffusion = n.diffusion(u_in[1:end-1, :], p.diffusion, st.diffusion)[1]
+    reshape(vcat(diffusion, zeros(size(u_in[end:end, :]))), (latent_dims + 1) * batch_size)
 end
 
 
@@ -262,10 +299,13 @@ function (n::LatentSDE)(timeseries::Timeseries, ps::ComponentVector, st;
     sense=InterpolatingAdjoint(autojacvec=ZygoteVJP(), checkpointing=false),
     ensemblemode=EnsembleThreads(),
     seed=nothing,
-    noise=(seed) -> nothing,
+    noise=(seed, noise_size) -> nothing,
     likelihood_dist=Normal,
     likelihood_scale=0.01e0,
 )
+    latent_dimensions = n.initial_prior.out_dims ÷ 2
+    batch_size = length(timeseries.u)
+
     # We are using matrices with the following dimensions:
     # 1 = latent space dimension
     # 2 = batch number
@@ -274,8 +314,6 @@ function (n::LatentSDE)(timeseries::Timeseries, ps::ComponentVector, st;
         if seed !== nothing
             Random.seed!(seed)
         end
-        latent_dimensions = n.initial_prior.out_dims ÷ 2
-        batch_size = length(timeseries.u)
         (rand(Normal{Float64}(0.0e0, 1.0e0), (latent_dimensions, batch_size)), rand(UInt32))
     end
 
@@ -321,36 +359,38 @@ function (n::LatentSDE)(timeseries::Timeseries, ps::ComponentVector, st;
     vec_context = vec(context_precomputed)
 
     info = ComponentArray(vcat(vec_context, ps), axes)
-    function prob_func(prob, batch, repeat)
-        noise_instance = ChainRulesCore.ignore_derivatives() do
-            noise(Int(floor(seed + batch)))
-        end
-        return SDEProblem{false}((u, p, t) -> augmented_drift(n, timeseries.t, batch, st, u, p, t), (u, p, t) -> augmented_diffusion(n, st, u, p, t), augmented_z0[:, batch], n.tspan, info, seed=seed + Int(batch), noise=noise_instance)
-    end
-
-    ensemble = EnsembleProblem(nothing, output_func=(sol, i) -> (sol, false), prob_func=prob_func)
-    solution = solve(ensemble, n.solver, ensemblemode; trajectories=length(timeseries.u), sensealg=sense, saveat=range(n.tspan[1], n.tspan[end], n.datasize), dt=(n.tspan[end] / n.datasize), n.kwargs...)
     
-#     p = ComponentArray(vcat(vec_context, 1, ps), axes)
-#     _dy, back = Zygote.pullback(augmented_z0[:, 1], p) do u, p
-#         augmented_drift(n, timeseries.t, st, u, p, 10.0)
-#    end
-#    @time back(augmented_z0[:, 2])
+
+    noise_instance = ChainRulesCore.ignore_derivatives() do
+        noise(Int(floor(seed)), (latent_dimensions + 1) * batch_size)
+    end
+    sde_problem = SDEProblem{false}(
+        (u, p, t) -> augmented_drift_batch(n, timeseries.t, latent_dimensions, batch_size, st, u, p, t),
+        (u, p, t) -> augmented_diffusion_batch(n, latent_dimensions, batch_size, st, u, p, t),
+        reshape(augmented_z0, (latent_dimensions + 1) * batch_size),
+        n.tspan,
+        info,
+        seed=seed,
+        noise=noise_instance
+    )
+    solution = solve(sde_problem, n.solver; sensealg=sense, saveat=range(n.tspan[1], n.tspan[end], n.datasize), dt=(n.tspan[end] / n.datasize), n.kwargs...)
 
     # If ts_start > 0, the timeseries starts after the latent sde, thus only score after ts_start
     # The timeseries could be irregularily sampled or have a different rate than the model, so search for appropiate points here
     # TODO: Interpolate this?
     ts_indices = ChainRulesCore.ignore_derivatives() do
-        [searchsortedfirst(solution[1].t, t) for t in timeseries.t]
+        [searchsortedfirst(solution.t, t) for t in timeseries.t]
     end
     ts_start = ChainRulesCore.ignore_derivatives() do
         ts_indices[1]
     end
+    
+    sol = reduce(timecat, [reshape(x, latent_dimensions + 1, batch_size) for x in solution.u])
+    posterior_latent = sol[1:end-1, :, :]
+    kl_divergence_time = sol[end:end, :, :]
 
-    posterior_latent = reduce(hcat, [reduce(timecat, [reshape(u[1:end-1], :, 1, 1) for u in batch.u]) for batch in solution.u])
-    logterm = reduce(hcat, [reduce(timecat, [reshape(u[end:end], :, 1, 1) for u in batch.u]) for batch in solution.u])
     initialdists_kl = reduce(hcat, [reshape([KullbackLeibler(a, b) for (a, b) in zip(initialdists_posterior[:, batch], initialdists_prior)], :, 1) for batch in eachindex(timeseries.u)])
-    kl_divergence = sum(initialdists_kl, dims=1) .+ logterm[:, :, end]
+    kl_divergence = sum(initialdists_kl, dims=1) .+ sol[:, :, end]
 
     projected_z0 = n.projector(z0, ps.projector, st.projector)[1]
     projected_ts = reduce(timecat, [n.projector(x, ps.projector, st.projector)[1] for x in eachslice(posterior_latent, dims=3)])
@@ -368,7 +408,7 @@ function (n::LatentSDE)(timeseries::Timeseries, ps::ComponentVector, st;
     likelihoods_time = sum([logp(x, y) for (x, y) in zip(tsmatrix, projected_ts[:, :, ts_indices])], dims=3)[:, :, 1]
     likelihoods = likelihoods_initial .+ likelihoods_time
 
-    return posterior_latent, projected_ts, logterm, kl_divergence, likelihoods
+    return posterior_latent, projected_ts, kl_divergence_time, kl_divergence, likelihoods
 end
 
 function loss(n::LatentSDE, timeseries, ps, st, beta; kwargs...)

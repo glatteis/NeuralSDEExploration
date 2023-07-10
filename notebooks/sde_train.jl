@@ -392,15 +392,15 @@ CLI arg: `--kidger`
 (sense, noise) = if backsolve
 	(
 		BacksolveAdjoint(autojacvec=ZygoteVJP(), checkpointing=false),
-		function(seed)
+		function(seed, noise_size)
 			rng_tree = Xoshiro(seed)
-			VirtualBrownianTree(-3e0, fill(0e0, latent_dims + 1), tend=tspan_model[2]*2e0; tree_depth=tree_depth, rng=Threefry4x((rand(rng_tree, UInt32), rand(rng_tree, UInt32), rand(rng_tree, UInt32), rand(rng_tree, UInt32))))
+			VirtualBrownianTree(-3e0, fill(0e0, noise_size), tend=tspan_model[2]*2e0; tree_depth=tree_depth, rng=Threefry4x((rand(rng_tree, UInt32), rand(rng_tree, UInt32), rand(rng_tree, UInt32), rand(rng_tree, UInt32))))
 		end,
 	)
 else
 	(
 		InterpolatingAdjoint(autojacvec=ZygoteVJP()),
-		(seed) -> nothing,
+		(seed, noise_size) -> nothing,
 	)
 end
 
@@ -485,7 +485,7 @@ end
 
 # ╔═╡ 3ab9a483-08f2-4767-8bd5-ae1375a62dbe
 function plot_prior(priorsamples; rng=rng, tspan=latent_sde.tspan, datasize=latent_sde.datasize)
-	prior = NeuralSDEExploration.sample_prior_dataspace(latent_sde,ps,st;seed=abs(rand(rng, Int)),b=priorsamples, noise=(seed) -> noise(seed), tspan=tspan, datasize=datasize)
+	prior = NeuralSDEExploration.sample_prior_dataspace(latent_sde,ps,st;seed=abs(rand(rng, Int)),b=priorsamples, tspan=tspan, datasize=datasize)
 	return plot(prior, linewidth=.5,color=:black,legend=false,title="projected prior")
 end
 
@@ -495,7 +495,7 @@ function plotmodel()
 	rng_plot = Xoshiro(0)
 	nums = sample(rng_plot, 1:length(timeseries.u), n; replace=false)
 	
-	posterior_latent, posterior_data, logterm_, kl_divergence_, distance_ = latent_sde(select_ts(nums, timeseries), ps, st, seed=seed, noise=noise)
+	posterior_latent, posterior_data, logterm_, kl_divergence_, distance_ = latent_sde(select_ts(nums, timeseries), ps, st, seed=seed)
 	
 	priorsamples = 25
 	priornums = sample(rng_plot, 1:length(timeseries.u), priorsamples; replace=false)
