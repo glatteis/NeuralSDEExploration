@@ -565,6 +565,12 @@ function train(lr_sched, num_steps, opt_state; kl_sched=Loop(x -> eta, 1))
 		lr = popfirst!(lr_sched)
 
 		l, kl_divergence, likelihood = loss(ps, minibatch, eta, seed)
+		
+		# heuristic to throw out "kl spikes"
+		if length(recorded_kl) > 0 && kl_divergence > 10 * recorded_kl[end] && kl_divergence > 10.0
+			@warn "Throwing out a KL spike"
+			continue
+		end
 
 		push!(recorded_loss, l)
 		push!(recorded_kl, kl_divergence)
