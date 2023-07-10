@@ -120,7 +120,7 @@ function StandardLatentSDE(solver, tspan, datasize;
     create_network(:diffusion,
         Lux.Chain(
             Lux.Scale(latent_dims, init_weight=Lux.glorot_uniform, init_bias=Lux.glorot_uniform, Lux.sigmoid),
-            Lux.WrappedFunction(Base.Fix1(broadcast, (x) -> x + 0.01))
+            Lux.WrappedFunction(Base.Fix1(broadcast, (x) -> x + 0.0001))
         )
     )
 
