@@ -283,7 +283,7 @@ CLI arg: `--fixed-projector`
 """
 
 # ╔═╡ ad6247f6-6cb9-4a57-92d3-6328cbd84ecd
-in_dims = latent_dims + (time_dependence ? 1 : 0)
+in_dims = latent_dims
 
 # ╔═╡ 60b5397d-7350-460b-9117-319dc127cc7e
 md"""
