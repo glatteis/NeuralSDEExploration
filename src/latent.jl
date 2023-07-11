@@ -1,6 +1,6 @@
 export LatentSDE, StandardLatentSDE, sample_prior, sample_prior_dataspace
 
-mutable struct LatentSDE{N1,N2,N3,N4,N5,N6,N7,N8,S,T,D,TD,K} <: LuxCore.AbstractExplicitContainerLayer{(:initial_prior, :initial_posterior, :drift_prior, :drift_posterior, :diffusion, :encoder_recurrent, :encoder_net, :projector,)}
+mutable struct LatentSDE{N1,N2,N3,N4,N5,N6,N7,N8,S,T,D,K} <: LuxCore.AbstractExplicitContainerLayer{(:initial_prior, :initial_posterior, :drift_prior, :drift_posterior, :diffusion, :encoder_recurrent, :encoder_net, :projector,)}
     initial_prior::N1
     initial_posterior::N2
     drift_prior::N3
@@ -12,18 +12,17 @@ mutable struct LatentSDE{N1,N2,N3,N4,N5,N6,N7,N8,S,T,D,TD,K} <: LuxCore.Abstract
     solver::S
     tspan::T
     datasize::D
-    timedependent::TD
     kwargs::K
 end
 
-function LatentSDE(initial_prior, initial_posterior, drift_prior, drift_posterior, diffusion, encoder_recurrent, encoder_net, projector, solver, tspan, datasize; timedependent=false, kwargs...)
+function LatentSDE(initial_prior, initial_posterior, drift_prior, drift_posterior, diffusion, encoder_recurrent, encoder_net, projector, solver, tspan, datasize; kwargs...)
     models = [initial_prior, initial_posterior, drift_prior, drift_posterior, diffusion, encoder_recurrent, encoder_net, projector]
     LatentSDE{
         [typeof(x) for x in models]...,
-        typeof(solver),typeof(tspan),typeof(datasize),typeof(timedependent),typeof(kwargs)
+        typeof(solver),typeof(tspan),typeof(datasize),typeof(kwargs)
     }(
         models...,
-        solver, tspan, datasize, timedependent, kwargs
+        solver, tspan, datasize, kwargs
     )
 end
 
@@ -50,7 +49,6 @@ Constructs a "standard" latent sde - so you don't need to construct all of the n
 - `hidden_activation`: Activation of the hidden layers of the neural nets.
 - `rnn_size`: Size of the RNN's output. There's a neural net after the RNN that goes to `context_size`.
 - `context_size`: Size of the context vector.
-- `timedependent`: Whether time is an input to prior drift, posterior drift and diffusion.
 """
 function StandardLatentSDE(solver, tspan, datasize;
         data_dims=1,
@@ -62,7 +60,6 @@ function StandardLatentSDE(solver, tspan, datasize;
         rnn_size=16,
         context_size=16,
         hidden_activation=tanh,
-        timedependent=false,
         kwargs...
     )
     
@@ -83,7 +80,7 @@ function StandardLatentSDE(solver, tspan, datasize;
         end
     end
 
-    in_dims = latent_dims + (timedependent ? 1 : 0)
+    in_dims = latent_dims
 
     # The initial_posterior net is the posterior for the initial state. It
     # takes the context and outputs a mean and standard devation for the
@@ -108,20 +105,12 @@ function StandardLatentSDE(solver, tspan, datasize;
     # seperately while training, only their KL divergence). This is a diagonal
     # diffusion, i.e. every term in the latent space has its own independent
     # Wiener process.
-    # create_network(:diffusion, Lux.Parallel(nothing, [
-    #         Lux.Chain(
-    #             Lux.Dense((timedependent ? 2 : 1) => diffusion_size, tanh),
-    #             Lux.Dense(diffusion_size => 1, Lux.sigmoid_fast)
-    #         )
-    #         # Lux.Scale(1, init_weight=ones, init_bias=ones)
-    #     for i in 1:latent_dims]...
-    # ))
-    
-    create_network(:diffusion,
-        Lux.Chain(
-            Lux.Scale(latent_dims, init_weight=Lux.glorot_uniform, init_bias=Lux.glorot_uniform, Lux.sigmoid),
-            Lux.WrappedFunction(Base.Fix1(broadcast, (x) -> x + 0.0001))
-        )
+    create_network(:diffusion, Diagonal([
+            Lux.Chain(
+                Lux.Dense(1 => diffusion_size, tanh),
+                Lux.Dense(diffusion_size => diffusion_size, tanh),
+                Lux.Dense(diffusion_size => 1, Lux.sigmoid_fast)
+            ) for i in 1:latent_dims]...)
     )
 
     # The encoder is a recurrent neural network.
@@ -164,12 +153,9 @@ function sample_prior(n::LatentSDE, ps, st; b=1, seed=nothing, noise=(seed) -> n
 
     # We vcat 0e0 to these so that the prior has the same dimensions as the posterior (for noise reasons)
     function dudt_prior(u, p, t) 
-        time_or_empty = n.timedependent ? [t] : []
-        vcat(n.drift_prior(vcat(u[1:end-1], time_or_empty), p.drift_prior, st.drift_prior)[1], 0e0)
+        vcat(n.drift_prior(u[1:end-1], p.drift_prior, st.drift_prior)[1], 0e0)
     end
     function dudw_diffusion(u, p, t) 
-        time_or_empty = n.timedependent ? [t] : []
-        # vcat(reduce(vcat, n.diffusion(Tuple([vcat(x, time_or_empty) for x in u[1:end-1]]), p.diffusion, st.diffusion)[1]), 0e0)
         vcat(n.diffusion(u[1:end-1], p.diffusion, st.diffusion)[1], 0e0)
     end
 
@@ -223,7 +209,6 @@ function augmented_drift(n::LatentSDE, times::Vector{Float64}, batch::Int, st::N
     posterior = n.drift_posterior(posterior_net_input, p.drift_posterior, st.drift_posterior)[1]
 
     # # The diffusion is diagonal, so a single network is invoked on each dimension
-    # diffusion = reduce(vcat, n.diffusion(([n.timedependent ? vcat(x, t) : [x] for x in u]...,), p.diffusion, st.diffusion)[1])
     diffusion = n.diffusion(u, p.diffusion, st.diffusion)[1]
 
     # The augmented term for computing the KL divergence
@@ -250,7 +235,6 @@ function augmented_drift_batch(n::LatentSDE, times::Array{Float64}, latent_dims:
     posterior = n.drift_posterior(posterior_net_input, p.drift_posterior, st.drift_posterior)[1]
 
     # # The diffusion is diagonal, so a single network is invoked on each dimension
-    # diffusion = reduce(vcat, n.diffusion(([n.timedependent ? vcat(x, t) : [x] for x in u]...,), p.diffusion, st.diffusion)[1])
     diffusion = n.diffusion(u, p.diffusion, st.diffusion)[1]
 
     # The augmented term for computing the KL divergence
@@ -262,14 +246,12 @@ end
 
 function augmented_diffusion(n::LatentSDE, st::NamedTuple, u_in::Vector{Float64}, info::ComponentVector{Float64}, t::Float64)
     p = info.ps
-    # diffusion = reduce(vcat, n.diffusion(([n.timedependent ? vcat(x, t) : [x] for x in u]...,), p.diffusion, st.diffusion)[1])
     diffusion = n.diffusion(u_in[1:end-1], p.diffusion, st.diffusion)[1]
     return vcat(diffusion, 0e0)
 end
 
 function augmented_diffusion_batch(n::LatentSDE, latent_dims::Int, batch_size::Int, st::NamedTuple, u_in_vec::Array{Float64}, info::ComponentVector{Float64}, t::Float64)
     p = info.ps
-    # diffusion = reduce(vcat, n.diffusion(([n.timedependent ? vcat(x, t) : [x] for x in u]...,), p.diffusion, st.diffusion)[1])
     u_in = reshape(u_in_vec, latent_dims + 1, batch_size)
     diffusion = n.diffusion(u_in[1:end-1, :], p.diffusion, st.diffusion)[1]
     reshape(vcat(diffusion, zeros(size(u_in[end:end, :]))), (latent_dims + 1) * batch_size)

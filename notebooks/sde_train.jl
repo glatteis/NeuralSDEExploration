@@ -29,21 +29,6 @@ using Optimisers, StatsBase, Zygote, Lux, DifferentialEquations, ComponentArrays
 # ╔═╡ d1440209-78f7-4a9a-9101-a06ad2534e5d
 using NeuralSDEExploration, Plots, PlutoUI, PlutoArgs
 
-# ╔═╡ 13bb80bd-5e3b-482e-9a3a-aed3f59137cb
-# ╠═╡ disabled = true
-#=╠═╡
-begin
-	using Profile, PProf
-	Profile.Allocs.clear()
-end
-  ╠═╡ =#
-
-# ╔═╡ 75964031-23b8-480f-8135-789fa8d1d69d
-# ╠═╡ disabled = true
-#=╠═╡
-using ProfileCanvas
-  ╠═╡ =#
-
 # ╔═╡ db557c9a-24d6-4008-8225-4b8867ee93db
 begin
 	if @isdefined PlutoRunner  # running inside Pluto
@@ -291,12 +276,6 @@ $(@bind depth Arg("depth", NumberField(1:100, 2), required=false)).
 CLI arg: `--depth`
 """
 
-# ╔═╡ 9382314d-c076-4b95-8171-71d903bb9271
-md"""
-Time dependence: $(@bind time_dependence Arg("time-dep", CheckBox(), required=false))
-CLI arg: `--time-dep`
-"""
-
 # ╔═╡ 03a21651-9c95-49e8-bb07-b03640f7e5b7
 md"""
 Fix projector to just use first dimension: $(@bind fixed_projector Arg("fixed-projector", CheckBox(), required=false))
@@ -449,7 +428,6 @@ latent_sde = StandardLatentSDE(
 	rnn_size=context_size,
 	context_size=context_size,
 	hidden_activation=tanh,
-	timedependent=time_dependence,
 	adaptive=false,
 	# we only have this custom layer - the others are default
 	projector=projector
@@ -638,6 +616,21 @@ function exportresults(epoch)
 	# savefig(learningfig, folder * "$(epoch)_learning.tex")
 end
 
+# ╔═╡ 13bb80bd-5e3b-482e-9a3a-aed3f59137cb
+# ╠═╡ disabled = true
+#=╠═╡
+begin
+	using Profile, PProf
+	Profile.Allocs.clear()
+end
+  ╠═╡ =#
+
+# ╔═╡ 75964031-23b8-480f-8135-789fa8d1d69d
+# ╠═╡ disabled = true
+#=╠═╡
+using ProfileCanvas
+  ╠═╡ =#
+
 # ╔═╡ 124680b8-4140-4b98-9fd7-009cc225992a
 @time loss(ps, select_ts(1:64, timeseries), 1.0, 10)[1]
 
@@ -645,7 +638,7 @@ end
 if enabletraining
 	println("First Zygote call")
 	@time loss(ps, select_ts(1:4, timeseries), 1.0, 10)[1]
-	ts = select_ts(1:20, timeseries)
+	ts = select_ts(1:128, timeseries)
 	@time Zygote.gradient(ps -> loss(ps, ts, 1.0, 1)[1], ps)[1]
 end
 
@@ -736,7 +729,6 @@ gifplot()
 # ╟─6489b190-e08f-466c-93c4-92a723f8e594
 # ╟─b5721107-7cf5-4da3-b22a-552e3d56bcfa
 # ╟─efd438bc-13cc-457f-82c1-c6e0711079b3
-# ╟─9382314d-c076-4b95-8171-71d903bb9271
 # ╟─03a21651-9c95-49e8-bb07-b03640f7e5b7
 # ╟─ad6247f6-6cb9-4a57-92d3-6328cbd84ecd
 # ╟─60b5397d-7350-460b-9117-319dc127cc7e

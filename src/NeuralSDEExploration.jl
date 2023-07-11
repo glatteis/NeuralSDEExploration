@@ -25,5 +25,6 @@ include("util.jl")
 include("timeseries/timeseries.jl")
 include("latent.jl")
 include("analysis.jl")
+include("layers.jl")
 
 end # module NeuralSDEExploration
