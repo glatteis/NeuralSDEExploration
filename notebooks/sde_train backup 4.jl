@@ -211,15 +211,25 @@ begin
     datamin = min([min(x...) for x in solution.u]...) |> only
 
     function normalize(x)
-        return Float32((x - datamin) / (datamax - datamin))
+        return ((x - datamin) / (datamax - datamin))
     end
 end
 
 # ╔═╡ 5d78e254-4134-4c2a-8092-03f6df7d5092
 println((datamin=datamin, datamax=datamax))
 
+# ╔═╡ c79a3a3a-5599-4585-83a4-c7b6bc017436
+function corrupt(value)
+	value + only(rand(Normal{Float32}(0e0, Float32(scale)), 1))
+end
+
 # ╔═╡ 9a5c942f-9e2d-4c6c-9cb1-b0dffd8050a0
 timeseries = map_dims(x -> map(normalize, x), solution)
+
+# ╔═╡ da11fb69-a8a1-456d-9ce7-63180ef27a83
+md"""
+We are going to build a simple latent SDE. Define a few constants...
+"""
 
 # ╔═╡ 8280424c-b86f-49f5-a854-91e7abcf13ec
 md"""
@@ -280,12 +290,6 @@ md"""
 Use GPU: $(@bind gpu_enabled Arg("gpu", CheckBox(), required=false))
 CLI arg: `--gpu`
 """
-
-# ╔═╡ 6c0086c5-df79-4bc9-bada-f1c656525164
-if gpu_enabled
-	using Metal
-	println(Metal.functional())
-end
 
 # ╔═╡ 16c12354-5ab6-4c0e-833d-265642119ed2
 md"""
@@ -375,7 +379,7 @@ CLI arg: `--kidger`
 		BacksolveAdjoint(autojacvec=ZygoteVJP(), checkpointing=true),
 		function(seed, noise_size)
 			rng_tree = Xoshiro(seed)
-			VirtualBrownianTree(-3f0, fill(0f0, noise_size), tend=tspan_model[2]*2f0; tree_depth=tree_depth, rng=Threefry4x((rand(rng_tree, UInt32), rand(rng_tree, UInt32), rand(rng_tree, UInt32), rand(rng_tree, UInt32))))
+			VirtualBrownianTree(-3e0, fill(0e0, noise_size), tend=tspan_model[2]*2e0; tree_depth=tree_depth, rng=Threefry4x((rand(rng_tree, UInt32), rand(rng_tree, UInt32), rand(rng_tree, UInt32), rand(rng_tree, UInt32))))
 		end,
 	)
 else
@@ -394,7 +398,11 @@ md"""
 """
 
 # ╔═╡ 08759cda-2a2a-41ff-af94-5b1000c9e53f
-solver = EulerHeun()
+solver = if gpu_enabled
+	GPUEulerHeun()
+else
+	EulerHeun()
+end
 
 # ╔═╡ ec41b765-2f73-43a5-a575-c97a5a107c4e
 println("Steps that will be derived: $(steps(tspan_model, dt))")
@@ -404,13 +412,6 @@ projector = if fixed_projector
 	error("Fixed projector isn't implemented!!")
 else
 	Lux.Dense(latent_dims => data_dims)
-end
-
-# ╔═╡ f813e728-3bf9-4e05-bcf3-7f14992e1588
-u0_constructor = if gpu_enabled
-	(x) -> MtlArray(x)
-else
-	(x) -> x
 end
 
 # ╔═╡ 001c318e-b7a6-48a5-bfd5-6dd0368873ac
@@ -444,20 +445,27 @@ md"""
 
 # ╔═╡ 05568880-f931-4394-b31e-922850203721
 ps_, st = if gpu_enabled
-	Lux.setup(rng, latent_sde) |> gpu
+	Lux.setup(rng, latent_sde) |> Lux.gpu
 else
 	Lux.setup(rng, latent_sde)
 end
 
 # ╔═╡ b0692162-bdd2-4cb8-b99c-1ebd2177a3fd
 begin
-	ps = ComponentArray{Float32}(ps_) |> Lux.gpu
+	ps = ComponentArray{Float32}(ps_)
 end
 
 # ╔═╡ ee3d4a2e-0960-430e-921a-17d340af497c
 md"""
 Select a seed: $(@bind seed Scrubbable(481283))
 """
+
+# ╔═╡ 1af41258-0c18-464d-af91-036f5a4c074c
+ensemblemode = if gpu_enabled
+	EnsembleGPUKernel(CUDA.CUDABackend())
+else
+	EnsembleThreads()
+end
 
 # ╔═╡ 3ab9a483-08f2-4767-8bd5-ae1375a62dbe
 function plot_prior(priorsamples; rng=rng, tspan=latent_sde.tspan, datasize=latent_sde.datasize)
@@ -518,7 +526,7 @@ end
 
 # ╔═╡ e0a34be1-6aa2-4563-abc2-ea163a778752
 function loss(ps, minibatch, eta, seed)
-	_, _, _, kl_divergence, likelihood = latent_sde(minibatch, ps, st; sense=sense, noise=noise, seed=seed, likelihood_scale=scale, u0_constructor=u0_constructor)
+	_, _, _, kl_divergence, likelihood = latent_sde(minibatch, ps, st; sense=sense, noise=noise, ensemblemode=ensemblemode, seed=seed, likelihood_scale=scale)
 	return mean(-likelihood .+ (eta * kl_divergence)), mean(kl_divergence), mean(likelihood)
 end
 
@@ -609,15 +617,13 @@ function exportresults(epoch)
 end
 
 # ╔═╡ 124680b8-4140-4b98-9fd7-009cc225992a
-@time loss(ps, select_ts(1:64, timeseries), 1f0, 10)[1]
-
-# ╔═╡ 5123933d-0972-4fe3-9d65-556ecf81cf3c
-ts = select_ts(1:128, timeseries) |> gpu
+@time loss(ps, select_ts(1:64, timeseries), 1.0, 10)[1]
 
 # ╔═╡ 7a7e8e9b-ca89-4826-8a5c-fe51d96152ad
 if enabletraining
 	println("First Zygote call")
 	@time loss(ps, select_ts(1:4, timeseries), 1.0, 10)[1]
+	ts = select_ts(1:128, timeseries)
 	@time Zygote.gradient(ps -> loss(ps, ts, 1.0, 1)[1], ps)[1]
 end
 
@@ -698,7 +704,9 @@ gifplot()
 # ╟─f4651b27-135e-45f1-8647-64ab08c2e8e8
 # ╠═aff1c9d9-b29b-4b2c-b3f1-1e06a9370f64
 # ╠═5d78e254-4134-4c2a-8092-03f6df7d5092
+# ╠═c79a3a3a-5599-4585-83a4-c7b6bc017436
 # ╠═9a5c942f-9e2d-4c6c-9cb1-b0dffd8050a0
+# ╟─da11fb69-a8a1-456d-9ce7-63180ef27a83
 # ╟─8280424c-b86f-49f5-a854-91e7abcf13ec
 # ╟─fdceee23-b91e-4b2e-af78-776c01733de3
 # ╟─97d724c2-24b0-415c-b90f-6a36e877e9d1
@@ -723,19 +731,18 @@ gifplot()
 # ╟─cb1c2b2e-a2a2-45ed-9fc1-655d28f267d1
 # ╟─7f219c33-b37b-480a-9d21-9ea8d898d5d5
 # ╠═2bb433bb-17df-4a34-9ccf-58c0cf8b4dd3
-# ╠═db88cae4-cb25-4628-9298-5a694c4b29ef
-# ╠═6c0086c5-df79-4bc9-bada-f1c656525164
+# ╟─db88cae4-cb25-4628-9298-5a694c4b29ef
 # ╟─b8b2f4b5-e90c-4066-8dad-27e8dfa1d7c5
 # ╠═08759cda-2a2a-41ff-af94-5b1000c9e53f
 # ╟─ec41b765-2f73-43a5-a575-c97a5a107c4e
 # ╠═63960546-2157-4a23-8578-ec27f27d5185
-# ╠═f813e728-3bf9-4e05-bcf3-7f14992e1588
 # ╠═001c318e-b7a6-48a5-bfd5-6dd0368873ac
 # ╠═0f6f4520-576f-42d3-9126-2076a51a6e22
 # ╟─1938e122-2c05-46fc-b179-db38322530ff
 # ╠═05568880-f931-4394-b31e-922850203721
 # ╠═b0692162-bdd2-4cb8-b99c-1ebd2177a3fd
 # ╟─ee3d4a2e-0960-430e-921a-17d340af497c
+# ╠═1af41258-0c18-464d-af91-036f5a4c074c
 # ╠═3ab9a483-08f2-4767-8bd5-ae1375a62dbe
 # ╠═b5c6d43c-8252-4602-8232-b3d1b0bcee33
 # ╟─225791b1-0ffc-48e2-8131-7f54848d8d83
@@ -744,8 +751,9 @@ gifplot()
 # ╠═e0a34be1-6aa2-4563-abc2-ea163a778752
 # ╠═f4a16e34-669e-4c93-bd83-e3622a747a3a
 # ╠═9789decf-c384-42df-b7aa-3c2137a69a41
+# ╠═13bb80bd-5e3b-482e-9a3a-aed3f59137cb
+# ╠═75964031-23b8-480f-8135-789fa8d1d69d
 # ╠═124680b8-4140-4b98-9fd7-009cc225992a
-# ╠═5123933d-0972-4fe3-9d65-556ecf81cf3c
 # ╠═7a7e8e9b-ca89-4826-8a5c-fe51d96152ad
 # ╠═67e5ae14-3062-4a93-9492-fc6e9861577f
 # ╠═da2de05a-5d40-4293-98e0-abd20d6dcd2a

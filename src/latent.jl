@@ -87,7 +87,7 @@ function StandardLatentSDE(solver, tspan, datasize;
     # position zero of the posterior. The initial_prior is a fixed gaussian
     # distribution.
     create_network(:initial_prior, Lux.Dense(1 => latent_dims + latent_dims) )
-    create_network(:initial_posterior, Lux.Dense(context_size => latent_dims + latent_dims; init_weight=zeros))
+    create_network(:initial_posterior, Lux.Dense(context_size => latent_dims + latent_dims))
     
     # Drift of prior. This is just an SDE drift in the latent space
     create_network(:drift_prior, Lux.Chain(
@@ -139,7 +139,7 @@ function get_distributions(model, model_p, st, context)
     # output ordered like [norm, var, norm, var, ...]
     halfindices = 1:Int(length(normsandvars[:, 1]) / 2)
 
-    return hcat([reshape([Normal{Float64}(normsandvars[2*i-1, j], exp(0.5e0 * normsandvars[2*i, j])) for i in halfindices], :, 1) for j in batch_indices]...)
+    return hcat([reshape([Normal{Float32}(normsandvars[2*i-1, j], exp(0.5f0 * normsandvars[2*i, j])) for i in halfindices], :, 1) for j in batch_indices]...)
 end
 
 function sample_prior(n::LatentSDE, ps, st; b=1, seed=nothing, noise=(seed) -> nothing, tspan=n.tspan, datasize=n.datasize)
@@ -148,25 +148,25 @@ function sample_prior(n::LatentSDE, ps, st; b=1, seed=nothing, noise=(seed) -> n
             Random.seed!(seed)
         end
         latent_dimensions = n.initial_prior.out_dims ÷ 2
-        (rand(Normal{Float64}(0.0e0, 1.0e0), (latent_dimensions, b)), rand(UInt32))
+        (rand(Normal{Float32}(0.0f0, 1.0f0), (latent_dimensions, b)), rand(UInt32))
     end
 
-    # We vcat 0e0 to these so that the prior has the same dimensions as the posterior (for noise reasons)
+    # We vcat 0f0 to these so that the prior has the same dimensions as the posterior (for noise reasons)
     function dudt_prior(u, p, t) 
-        vcat(n.drift_prior(u[1:end-1], p.drift_prior, st.drift_prior)[1], 0e0)
+        vcat(n.drift_prior(u[1:end-1], p.drift_prior, st.drift_prior)[1], 0f0)
     end
     function dudw_diffusion(u, p, t) 
-        vcat(n.diffusion(u[1:end-1], p.diffusion, st.diffusion)[1], 0e0)
+        vcat(n.diffusion(u[1:end-1], p.diffusion, st.diffusion)[1], 0f0)
     end
 
-    initialdists_prior = get_distributions(n.initial_prior, ps.initial_prior, st.initial_prior, [1.0e0])
+    initialdists_prior = get_distributions(n.initial_prior, ps.initial_prior, st.initial_prior, [1.0f0])
     distributions_with_eps = [zip(initialdists_prior, eps_batch) for eps_batch in eachslice(eps, dims=2)]
     z0 = hcat([reshape([x.μ + ep * x.σ for (x, ep) in d], :, 1) for d in distributions_with_eps]...)
     function prob_func(prob, batch, repeat)
         noise_instance = ChainRulesCore.ignore_derivatives() do
             noise(Int(floor(seed + batch)))
         end
-        SDEProblem{false}(dudt_prior, dudw_diffusion, vcat(z0[:, batch], 0e0), tspan, ps, seed=seed + batch, noise=noise_instance)
+        SDEProblem{false}(dudt_prior, dudw_diffusion, vcat(z0[:, batch], 0f0), tspan, ps, seed=seed + batch, noise=noise_instance)
     end
 
     ensemble = EnsembleProblem(nothing, output_func=(sol, i) -> (sol, false), prob_func=prob_func)
@@ -180,7 +180,7 @@ function sample_prior_dataspace(n::LatentSDE, ps, st; kwargs...)
 end
 
 # from https://github.com/google-research/torchsde/blob/master/examples/latent_sde.py
-function stable_divide(a::Array{Float64}, b::Array{Float64}, eps=1e-4)
+function stable_divide(a::AbstractArray{Float32}, b::AbstractArray{Float32}, eps=1e-4)
     ChainRulesCore.ignore_derivatives() do
         if any([abs(x) <= eps for x in b])
             @warn "diffusion too small"
@@ -191,16 +191,16 @@ function stable_divide(a::Array{Float64}, b::Array{Float64}, eps=1e-4)
 end
 
 
-function augmented_drift(n::LatentSDE, times::Vector{Float64}, batch::Int, st::NamedTuple, u_in::Vector{Float64}, info::ComponentVector{Float64}, t::Float64)
+function augmented_drift(n::LatentSDE, times::AbstractVector{Float32}, batch::Int, st::NamedTuple, u_in::AbstractVector{Float32}, info::ComponentVector{Float32}, t::Float32)
     # Remove augmented term from input
-    u::Vector{Float64} = u_in[1:end-1]
+    u::AbstractVector{Float32} = u_in[1:end-1]
     
     p = info.ps
     context = info.context
 
     # Get the context for the posterior at the current time
     # initial state evolve => get the posterior at future start time
-    posterior_net_input::Vector{Float64} = ChainRulesCore.ignore_derivatives() do
+    posterior_net_input::AbstractVector{Float32} = ChainRulesCore.ignore_derivatives() do
         time_index = max(1, searchsortedlast(times, t))
         vcat(u, @view context[:, batch, time_index])
     end
@@ -213,15 +213,15 @@ function augmented_drift(n::LatentSDE, times::Vector{Float64}, batch::Int, st::N
 
     # The augmented term for computing the KL divergence
     u_term = stable_divide(posterior .- prior, diffusion)
-    augmented_term = 0.5e0 * sum(abs2, u_term; dims=[1])
+    augmented_term = 0.5f0 * sum(abs2, u_term; dims=[1])
 
     vcat(posterior, augmented_term)
 end
 
-function augmented_drift_batch(n::LatentSDE, times::Array{Float64}, latent_dims::Int, batch_size::Int, st::NamedTuple, u_in_vec::Array{Float64}, info::ComponentVector{Float64}, t::Float64)
+function augmented_drift_batch(n::LatentSDE, times::AbstractArray{Float32}, latent_dims::Int, batch_size::Int, st::NamedTuple, u_in_vec::AbstractArray{Float32}, info::ComponentVector{Float32}, t::Float32)
     u_in = reshape(u_in_vec, latent_dims + 1, batch_size)
     # Remove augmented term from input
-    u::Array{Float64} = u_in[1:end-1, :]
+    u::AbstractArray{Float32} = u_in[1:end-1, :]
 
     p = info.ps
     context = info.context
@@ -229,7 +229,7 @@ function augmented_drift_batch(n::LatentSDE, times::Array{Float64}, latent_dims:
     # Get the context for the posterior at the current time
     # initial state evolve => get the posterior at future start time
     time_index = max(1, searchsortedlast(times, t))
-    posterior_net_input::Array{Float64} = vcat(u, context[:, :, time_index])
+    posterior_net_input::AbstractArray{Float32} = vcat(u, context[:, :, time_index])
 
     prior = n.drift_prior(u, p.drift_prior, st.drift_prior)[1]
     posterior = n.drift_posterior(posterior_net_input, p.drift_posterior, st.drift_posterior)[1]
@@ -239,22 +239,22 @@ function augmented_drift_batch(n::LatentSDE, times::Array{Float64}, latent_dims:
 
     # The augmented term for computing the KL divergence
     u_term = stable_divide(posterior .- prior, diffusion)
-    augmented_term = 0.5e0 * sum(abs2, u_term; dims=1)
+    augmented_term = 0.5f0 * sum(abs2, u_term; dims=1)
 
     reshape(vcat(posterior, augmented_term), (latent_dims + 1) * batch_size)
 end
 
-function augmented_diffusion(n::LatentSDE, st::NamedTuple, u_in::Vector{Float64}, info::ComponentVector{Float64}, t::Float64)
+function augmented_diffusion(n::LatentSDE, st::NamedTuple, u_in::AbstractVector{Float32}, info::ComponentVector{Float32}, t::Float32)
     p = info.ps
     diffusion = n.diffusion(u_in[1:end-1], p.diffusion, st.diffusion)[1]
-    return vcat(diffusion, 0e0)
+    return vcat(diffusion, 0f0)
 end
 
-function augmented_diffusion_batch(n::LatentSDE, latent_dims::Int, batch_size::Int, st::NamedTuple, u_in_vec::Array{Float64}, info::ComponentVector{Float64}, t::Float64)
+function augmented_diffusion_batch(n::LatentSDE, latent_dims::Int, batch_size::Int, st::NamedTuple, u_in_vec::AbstractArray{Float32}, info::ComponentVector{Float32}, t::Float32)
     p = info.ps
     u_in = reshape(u_in_vec, latent_dims + 1, batch_size)
     diffusion = n.diffusion(u_in[1:end-1, :], p.diffusion, st.diffusion)[1]
-    reshape(vcat(diffusion, zeros(size(u_in[end:end, :]))), (latent_dims + 1) * batch_size)
+    reshape(vcat(diffusion, zeros32(size(u_in[end:end, :]))), (latent_dims + 1) * batch_size)
 end
 
 
@@ -269,7 +269,6 @@ Autodiff this function to train the Latent SDE.
 ## Arguments
 
 - `sense`: Sensitivity Algorithm. Consult https://docs.sciml.ai/SciMLSensitivity/stable/manual/differential_equation_sensitivities/
-- `ensemblemode`: We use ensembles, this is the evaluation mode (serial / parallel / GPU). Consult https://docs.sciml.ai/DiffEqDocs/stable/features/ensemble/
 - `seed`: Seed for simulations, we use `seed`, `seed + 1`, `seed + 2`, and so on. If no seed is provided, it's generated by the global RNG.
 - `noise`: Function from `seed` to the noise used.
 - `likelihood_dist`: Distribution for computing log-likelihoods (as a way of computing distance).
@@ -277,11 +276,11 @@ Autodiff this function to train the Latent SDE.
 """
 function (n::LatentSDE)(timeseries::Timeseries, ps::ComponentVector, st;
     sense=InterpolatingAdjoint(autojacvec=ZygoteVJP(), checkpointing=false),
-    ensemblemode=EnsembleThreads(),
     seed=nothing,
     noise=(seed, noise_size) -> nothing,
     likelihood_dist=Normal,
-    likelihood_scale=0.01e0,
+    likelihood_scale=0.01f0,
+    u0_constructor=(x) -> x,
 )
     latent_dimensions = n.initial_prior.out_dims ÷ 2
     batch_size = length(timeseries.u)
@@ -294,11 +293,11 @@ function (n::LatentSDE)(timeseries::Timeseries, ps::ComponentVector, st;
         if seed !== nothing
             Random.seed!(seed)
         end
-        (rand(Normal{Float64}(0.0e0, 1.0e0), (latent_dimensions, batch_size)), rand(UInt32))
+        (rand(Normal{Float32}(0.0f0, 1.0f0), (latent_dimensions, batch_size)), rand(UInt32))
     end
 
     tsmatrix = ChainRulesCore.ignore_derivatives() do
-        reduce(hcat, [reshape(map(only, u), 1, 1, :) for u in timeseries.u])
+        u0_constructor(reduce(hcat, [reshape(map(only, u), 1, 1, :) for u in timeseries.u]))
     end
 
     timecat = ChainRulesCore.ignore_derivatives() do
@@ -322,13 +321,13 @@ function (n::LatentSDE)(timeseries::Timeseries, ps::ComponentVector, st;
     # batch: dimension 2
     context_precomputed = reduce(timecat, context_flipped)
 
-    initialdists_prior = get_distributions(n.initial_prior, ps.initial_prior, st.initial_prior, [1.0e0])
+    initialdists_prior = get_distributions(n.initial_prior, ps.initial_prior, st.initial_prior, [1.0f0])
 
     initialdists_posterior = get_distributions(n.initial_posterior, ps.initial_posterior, st.initial_posterior, context_precomputed[:, :, 1])
     distributions_with_eps = [zip(dist, eps_batch) for (dist, eps_batch) in zip(eachslice(initialdists_posterior, dims=2), eachslice(eps, dims=2))]
     z0 = hcat([reshape([x.μ + ep * x.σ for (x, ep) in d], :, 1) for d in distributions_with_eps]...)
 
-    augmented_z0 = vcat(z0, zeros(1, length(z0[1, :])))
+    augmented_z0 = vcat(z0, zeros32(1, length(z0[1, :])))
 
     # Deriving operations with ComponentArray is not so easy, first we have to
     # grab the axes and then re-construct using a vector
@@ -343,10 +342,12 @@ function (n::LatentSDE)(timeseries::Timeseries, ps::ComponentVector, st;
     noise_instance = ChainRulesCore.ignore_derivatives() do
         noise(Int(floor(seed)), (latent_dimensions + 1) * batch_size)
     end
+    u0 = reshape(augmented_z0, (latent_dimensions + 1) * batch_size)
+    println(u0)
     sde_problem = SDEProblem{false}(
         (u, p, t) -> augmented_drift_batch(n, timeseries.t, latent_dimensions, batch_size, st, u, p, t),
         (u, p, t) -> augmented_diffusion_batch(n, latent_dimensions, batch_size, st, u, p, t),
-        reshape(augmented_z0, (latent_dimensions + 1) * batch_size),
+        u0,
         n.tspan,
         info,
         seed=seed,
@@ -382,7 +383,7 @@ function (n::LatentSDE)(timeseries::Timeseries, ps::ComponentVector, st;
     likelihoods_initial = if ts_start == 1
         [logp(x, y) for (x, y) in zip(tsmatrix[:, :, 1], z0[1:1, :])]
     else
-        fill(0.0e0, size(projected_z0))
+        fill(0.0f0, size(projected_z0))
     end
     likelihoods_time = sum([logp(x, y) for (x, y) in zip(tsmatrix, projected_ts[:, :, ts_indices])], dims=3)[:, :, 1]
     likelihoods = likelihoods_initial .+ likelihoods_time

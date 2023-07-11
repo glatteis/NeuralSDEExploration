@@ -2,7 +2,7 @@
 
 julia_version = "1.9.0"
 manifest_format = "2.0"
-project_hash = "49af453c08c7ed292819cb807ec861af2971bdc9"
+project_hash = "d1d0129a83c566914ccbe376db59c1b78536d7ea"
 
 [[deps.AbstractAlgebra]]
 deps = ["GroupsCore", "InteractiveUtils", "LinearAlgebra", "MacroTools", "Random", "RandomExtensions", "SparseArrays", "Test"]
@@ -1809,6 +1809,18 @@ git-tree-sha1 = "c13304c81eec1ed3af7fc20e75fb6b26092a1102"
 uuid = "442fdcdd-2543-5da2-b0f3-8c86c306513e"
 version = "0.3.2"
 
+[[deps.Metal]]
+deps = ["Adapt", "CEnum", "ExprTools", "GPUArrays", "GPUCompiler", "KernelAbstractions", "LLVM", "LinearAlgebra", "Metal_LLVM_Tools_jll", "ObjectiveC", "Random", "Reexport", "StaticArrays"]
+git-tree-sha1 = "3cfd7fb317dd0a087cf557c5c857bb5cbbd795e4"
+uuid = "dde4c033-4e86-420c-a63e-0dd931031962"
+version = "0.3.0"
+
+[[deps.Metal_LLVM_Tools_jll]]
+deps = ["Artifacts", "JLLWrappers", "LazyArtifacts", "Libdl", "Pkg", "TOML", "Zlib_jll"]
+git-tree-sha1 = "aca98c1b3884c9597962801c2491553798cc2175"
+uuid = "0418c028-ff8c-56b8-a53e-0f9676ed36fc"
+version = "0.3.0+2"
+
 [[deps.MicroCollections]]
 deps = ["BangBang", "InitialValues", "Setfield"]
 git-tree-sha1 = "629afd7d10dbc6935ec59b32daeb33bc4460a42e"
@@ -1952,6 +1964,12 @@ deps = ["Reexport", "StructIO"]
 git-tree-sha1 = "55ce61d43409b1fb0279d1781bf3b0f22c83ab3b"
 uuid = "d8793406-e978-5875-9003-1fc021f44a92"
 version = "0.3.7"
+
+[[deps.ObjectiveC]]
+deps = ["CEnum"]
+git-tree-sha1 = "5b3c98aacd5429e9c367e551134d9466e40ed6d5"
+uuid = "e86c9b32-1129-44ac-8ea0-90d5bb39ded9"
+version = "0.1.0"
 
 [[deps.Observables]]
 git-tree-sha1 = "6862738f9796b3edc1c09d0890afce4eca9e7e93"
