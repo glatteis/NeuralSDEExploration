@@ -461,7 +461,7 @@ Select a seed: $(@bind seed Scrubbable(481283))
 """
 
 # ╔═╡ 1af41258-0c18-464d-af91-036f5a4c074c
-ensemblemode = if gpu
+ensemblemode = if gpu_enabled
 	EnsembleGPUKernel(CUDA.CUDABackend())
 else
 	EnsembleThreads()
