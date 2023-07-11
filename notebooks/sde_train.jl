@@ -287,7 +287,7 @@ in_dims = latent_dims
 
 # ╔═╡ 60b5397d-7350-460b-9117-319dc127cc7e
 md"""
-Use GPU: $(@bind gpu Arg("gpu", CheckBox(), required=false))
+Use GPU: $(@bind gpu_enabled Arg("gpu", CheckBox(), required=false))
 CLI arg: `--gpu`
 """
 
@@ -398,7 +398,7 @@ md"""
 """
 
 # ╔═╡ 08759cda-2a2a-41ff-af94-5b1000c9e53f
-solver = if gpu
+solver = if gpu_enabled
 	GPUEulerHeun()
 else
 	EulerHeun()
@@ -444,8 +444,8 @@ md"""
 """
 
 # ╔═╡ 05568880-f931-4394-b31e-922850203721
-ps_, st = if gpu
-	Lux.setup(rng, latent_sde) |> gpu
+ps_, st = if gpu_enabled
+	Lux.setup(rng, latent_sde) |> Lux.gpu
 else
 	Lux.setup(rng, latent_sde)
 end
