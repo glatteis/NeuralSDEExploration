@@ -80,7 +80,7 @@ Used model: $(@bind model_name Arg("model", Select(["sun", "fhn", "ou", "ouli", 
 
 # ╔═╡ 95bdd676-d8df-4fef-bdd7-cce85b717018
 md"""
-Noise term size: $(@bind noise_term Arg("noise", NumberField(0.0:1.0, 0.135), required=false)), CLI arg: `--noise`
+Noise term size: $(@bind noise_term Arg("noise", NumberField(0f0:1f0, 0.135f0), required=false)), CLI arg: `--noise`
 """
 
 # ╔═╡ 4c3b8784-368d-49c3-a875-c54960ec9be5
@@ -88,45 +88,45 @@ md"""
 Number of timeseries in data: $(@bind n Arg("num-data", NumberField(1:1000000, default=5000), required=false)), CLI arg: `--num-data`
 """
 
-# ╔═╡ a65a7405-d1de-4de5-9391-dcb971ae0413
+# ╔═╡ a65a7405-d1de-4de5-9391-dcb971af0413
 md"""
-Timestep size: $(@bind dt Arg("dt", NumberField(0.0:1.0, 0.05), required=false)), CLI arg: `--dt`
+Timestep size: $(@bind dt Arg("dt", NumberField(0.0f0:1.0f0, 0.05f0), required=false)), CLI arg: `--dt`
 """
 
 # ╔═╡ e6a71aae-9d81-45a9-af9a-c4188dda2787
 md"""
-Timespan start of data generation: $(@bind tspan_start_data Arg("tspan-start-data", NumberField(0e0:100.0e0, 0e0), required=false)), CLI arg: `--tspan-start-data`
+Timespan start of data generation: $(@bind tspan_start_data Arg("tspan-start-data", NumberField(0f0:100.0f0, 0f0), required=false)), CLI arg: `--tspan-start-data`
 """
 
-# ╔═╡ 71a38a66-dd66-4000-b664-fc3e04f6d4b8
+# ╔═╡ 71a38a66-dd66-4000-b664-fc3f04f6d4b8
 md"""
-Timespan end of data generation: $(@bind tspan_end_data Arg("tspan-end-data", NumberField(0.5e0:100e0, 1e0), required=false)), CLI arg: `--tspan-end-data`
+Timespan end of data generation: $(@bind tspan_end_data Arg("tspan-end-data", NumberField(0.5f0:100f0, 1f0), required=false)), CLI arg: `--tspan-end-data`
 """
 
-# ╔═╡ bae92e09-2e87-4a1e-aa2e-906f33985f6d
+# ╔═╡ bae92f09-2e87-4a1e-aa2e-906f33985f6d
 md"""
-Timespan start of training data: $(@bind tspan_start_train Arg("tspan-start-train", NumberField(0.5e0:100e0, tspan_start_data), required=false)), CLI arg: `--tspan-start-train`
+Timespan start of training data: $(@bind tspan_start_train Arg("tspan-start-train", NumberField(0.5f0:100f0, tspan_start_data), required=false)), CLI arg: `--tspan-start-train`
 """
 
 # ╔═╡ bd7acf1a-c09a-4531-ad2c-b5e7e28af382
 md"""
-Timespan end of training data: $(@bind tspan_end_train Arg("tspan-end-train", NumberField(0.5e0:100e0, tspan_end_data), required=false)), CLI arg: `--tspan-end-train`
+Timespan end of training data: $(@bind tspan_end_train Arg("tspan-end-train", NumberField(0.5f0:100f0, tspan_end_data), required=false)), CLI arg: `--tspan-end-train`
 """
 
 # ╔═╡ 42ece6c1-9e8a-45e7-adf4-6f353da6a4e5
 md"""
-Timespan start of model: $(@bind tspan_start_model Arg("tspan-start-model", NumberField(0.5e0:100.0e0, tspan_start_train), required=false)), CLI arg: `--tspan-start-model`
+Timespan start of model: $(@bind tspan_start_model Arg("tspan-start-model", NumberField(0.5f0:100.0f0, tspan_start_train), required=false)), CLI arg: `--tspan-start-model`
 """
 
 # ╔═╡ 3665efa6-6527-4771-82fd-285c3c0f8b41
 md"""
-Timespan end of model: $(@bind tspan_end_model Arg("tspan-end-model", NumberField(0.5e0:100e0, tspan_end_train), required=false)), CLI arg: `--tspan-end-model`
+Timespan end of model: $(@bind tspan_end_model Arg("tspan-end-model", NumberField(0.5f0:100f0, tspan_end_train), required=false)), CLI arg: `--tspan-end-model`
 """
 
 # ╔═╡ 10c206ef-2321-4c64-bdf4-7f4e9934d911
 md"""
 Likelihood scale
-$(@bind scale Arg("scale", NumberField(0.001:1.0, 0.01), required=false)).
+$(@bind scale Arg("scale", NumberField(0.001f0:1.0f0, 0.01f0), required=false)).
 CLI arg: `--scale`
 """
 
@@ -170,12 +170,12 @@ elseif model_name == "ou"
 	)
 elseif model_name == "ouli"
 	(
-		[0e0 for i in 1:n],
+		[0.0 for i in 1:n],
 		NeuralSDEExploration.OrnsteinUhlenbeck(0.0, 1.0, 0.5)
 	)
 elseif model_name == "zero"
 	(
-		[0e0],
+		[0.0],
 		NeuralSDEExploration.Zeroes()
 	)
 else
@@ -197,7 +197,7 @@ md"""
 Let's also plot some example trajectories:
 """
 
-# ╔═╡ 455263ef-2f94-4f3e-8401-e0da7fb3e493
+# ╔═╡ 455263ef-2f94-4f3e-8401-f0da7fb3e493
 plot(select_ts(1:40, solution_full))
 
 # ╔═╡ f4651b27-135e-45f1-8647-64ab08c2e8e8
@@ -205,13 +205,13 @@ md"""
 Let's normalize our data for training:
 """
 
-# ╔═╡ aff1c9d9-b29b-4b2c-b3f1-1e06a9370f64
+# ╔═╡ aff1c9d9-b29b-4b2c-b3f1-1f06a9370f64
 begin
     datamax = max([max(x...) for x in solution.u]...) |> only
     datamin = min([min(x...) for x in solution.u]...) |> only
 
     function normalize(x)
-        return Float32((x - datamin) / (datamax - datamin))
+        return 2f0 * (Float32((x - datamin) / (datamax - datamin)) - 0.5f0)
     end
 end
 
@@ -245,7 +245,7 @@ $(@bind hidden_size Arg("hidden-size", NumberField(1:1000000, 64), required=fals
 CLI arg: `--hidden-size`
 """
 
-# ╔═╡ 6489b190-e08f-466c-93c4-92a723f8e594
+# ╔═╡ 6489b190-f08f-466c-93c4-92a723f8e594
 md"""
 The hidden layer size for the prior:
 $(@bind prior_size Arg("prior-size", NumberField(1:1000000, hidden_size), required=false)).
@@ -259,7 +259,7 @@ $(@bind latent_dims Arg("latent-dims", NumberField(1:100, 2), required=false)).
 CLI arg: `--latent-dims`
 """
 
-# ╔═╡ efd438bc-13cc-457f-82c1-c6e0711079b3
+# ╔═╡ efd438bc-13cc-457f-82c1-c6f0711079b3
 md"""
 Neural network depth:
 $(@bind depth Arg("depth", NumberField(1:100, 2), required=false)).
@@ -297,32 +297,32 @@ CLI arg: `--batch-size`
 # ╔═╡ f12633b6-c770-439d-939f-c41b74a5c309
 md"""
 Eta
-$(@bind eta Arg("eta", NumberField(0.1:1000.0, 1.0), required=false)).
+$(@bind eta Arg("eta", NumberField(0.1f0:1000.0f0, 1.0f0), required=false)).
 CLI arg: `--eta`
 """
 
 # ╔═╡ 3c630a3a-7714-41c7-8cc3-601cd6efbceb
 md"""
 Learning rate
-$(@bind learning_rate Arg("learning-rate", NumberField(0.0001:1000.0, 0.03), required=false)).
+$(@bind learning_rate Arg("learning-rate", NumberField(0.0001f0:1000.0f0, 0.03f0), required=false)).
 CLI arg: `--learning-rate`
 """
 
 # ╔═╡ 2961879e-cb52-4980-931b-6f8de1f26fa4
 md"""
 Max learning rate
-$(@bind max_learning_rate Arg("max-learning-rate", NumberField(0.0001:1000.0, 2*learning_rate), required=false)).
+$(@bind max_learning_rate Arg("max-learning-rate", NumberField(0.0001f0:1000.0f0, 2*learning_rate), required=false)).
 CLI arg: `--max-learning-rate`
 """
 
 # ╔═╡ 7c23c32f-97bc-4c8d-ac54-42753be61345
 md"""
 Learning rate decay
-$(@bind decay Arg("decay", NumberField(0.0001:2.0, 0.999), required=false)).
+$(@bind decay Arg("decay", NumberField(0.0001f0:2.0f0, 0.999f0), required=false)).
 CLI arg: `--decay`
 """
 
-# ╔═╡ 64e7bba4-fb17-4ed8-851f-de9204e0f42d
+# ╔═╡ 64e7bba4-fb17-4ed8-851f-de9204f0f42d
 md"""
 LR Cycling Enabled: $(@bind lr_cycle Arg("lr-cycle", CheckBox(), required=false))
 CLI arg: `--lr-cycle`
@@ -351,7 +351,7 @@ CLI arg: `--kl-rate`
 # ╔═╡ 9767a8ea-bdda-43fc-b636-8681d150d29f
 data_dims = length(solution.u[1][1]) # Dimensions of our input data.
 
-# ╔═╡ 3db229e0-0e13-4d80-8680-58b89161db35
+# ╔═╡ 3db229f0-0e13-4d80-8680-58b89161db35
 md"""
 Use backsolve: $(@bind backsolve Arg("backsolve", CheckBox(true), required=false))
 CLI arg: `--backsolve`
@@ -365,14 +365,14 @@ CLI arg: `--tree-depth`
 
 # ╔═╡ 7f219c33-b37b-480a-9d21-9ea8d898d5d5
 md"""
-Use Kidger's initial state trick: $(@bind kidger_trick Arg("kidger", CheckBox(false), required=false))
+Use Kidger's initial state trick: $(@bind kidger_trick Arg("kidger", CheckBox(true), required=false))
 CLI arg: `--kidger`
 """
 
 # ╔═╡ 2bb433bb-17df-4a34-9ccf-58c0cf8b4dd3
 (sense, noise) = if backsolve
 	(
-		BacksolveAdjoint(autojacvec=ZygoteVJP(), checkpointing=true),
+		BacksolveAdjoint(autojacvec=ZygoteVJP(), checkpointing=false),
 		function(seed, noise_size)
 			rng_tree = Xoshiro(seed)
 			VirtualBrownianTree(-3f0, fill(0f0, noise_size), tend=tspan_model[2]*2f0; tree_depth=tree_depth, rng=Threefry4x((rand(rng_tree, UInt32), rand(rng_tree, UInt32), rand(rng_tree, UInt32), rand(rng_tree, UInt32))))
@@ -406,7 +406,7 @@ else
 	Lux.Dense(latent_dims => data_dims)
 end
 
-# ╔═╡ f813e728-3bf9-4e05-bcf3-7f14992e1588
+# ╔═╡ f813e728-3bf9-4f05-bcf3-7f14992e1588
 u0_constructor = if gpu_enabled
 	(x) -> MtlArray(x)
 else
@@ -426,7 +426,7 @@ latent_sde = StandardLatentSDE(
 	depth=depth,
 	rnn_size=context_size,
 	context_size=context_size,
-	hidden_activation=tanh,
+	hidden_activation=Lux.softplus,
 	adaptive=false,
 	# we only have this custom layer - the others are default
 	projector=projector
@@ -516,6 +516,33 @@ function plotlearning()
 	plot(plots...; layout=l)
 end
 
+# ╔═╡ f0a34be1-6aa2-4563-abc2-ea163a778752
+# ╠═╡ disabled = true
+#=╠═╡
+function loss(ps, minibatch, eta, seed)
+	batches = length(minibatch.u)
+	chunks = ChainRulesCore.ignore_derivatives() do
+		collect(Iterators.partition(1:batches, batches ÷ Threads.nthreads()))
+	end
+	tasks = map(chunks) do chunk
+	   Threads.@spawn latent_sde(select_ts(chunk, minibatch), ps, st; sense=sense, noise=noise, seed=seed, likelihood_scale=scale, u0_constructor=u0_constructor)
+    end
+    results = fetch.(tasks)
+	
+	kl_divergences = reduce(vcat, [x[4] for x in results])
+	likelihoods = reduce(vcat, [x[5] for x in results])
+	
+	return mean(-likelihoods .+ (eta * kl_divergences)), mean(kl_divergences), mean(likelihoods)
+end
+  ╠═╡ =#
+
+# ╔═╡ 24110995-82ce-4ba3-8307-6b6a5de88163
+function loss(ps, minibatch, eta, seed)
+	_, _, _, kl_divergence, likelihood = latent_sde(minibatch, ps, st; sense=sense, noise=noise, seed=seed, likelihood_scale=scale, u0_constructor=u0_constructor)
+	return mean(-likelihood .+ (eta * kl_divergence)), mean(kl_divergence), mean(likelihood)
+end
+
+
 # ╔═╡ f4a16e34-669e-4c93-bd83-e3622a747a3a
 function train(lr_sched, num_steps, opt_state; kl_sched=Loop(x -> eta, 1))
 	for step in 1:num_steps
@@ -525,16 +552,10 @@ function train(lr_sched, num_steps, opt_state; kl_sched=Loop(x -> eta, 1))
 		
 		seed = rand(rng, UInt32)
 
-		eta = popfirst!(kl_sched)
-		lr = popfirst!(lr_sched)
+		eta = Float32(popfirst!(kl_sched))
+		lr = Float32(popfirst!(lr_sched))
 
 		l, kl_divergence, likelihood = loss(ps, minibatch, eta, seed)
-		
-		# heuristic to throw out "kl spikes"
-		# if length(recorded_kl) > 0 && kl_divergence > 100.0 * recorded_kl[end] && kl_divergence > 100.0
-		# 	@warn "Throwing out a KL spike"
-		# 	continue
-		# end
 
 		push!(recorded_loss, l)
 		push!(recorded_kl, kl_divergence)
@@ -622,7 +643,7 @@ else
 	Iterators.Stateful(Loop(x -> eta, 1))
 end
 
-# ╔═╡ da2de05a-5d40-4293-98e0-abd20d6dcd2a
+# ╔═╡ da2df05a-5d40-4293-98f0-abd20d6dcd2a
 lr_sched = if lr_cycle
 	Iterators.Stateful(CosAnneal(learning_rate, max_learning_rate, lr_rate))
 else
@@ -651,7 +672,7 @@ function gifplot()
 	plot(p1, p2, layout=@layout[a;b],size=(600,700))
 end
 
-# ╔═╡ 763e07e6-dd46-42d6-b57a-8f1994386302
+# ╔═╡ 763f07e6-dd46-42d6-b57a-8f1994386302
 gifplot()
 
 # ╔═╡ 2b876f31-21c3-4782-a8a8-8da89d899719
@@ -662,33 +683,6 @@ if enabletraining  # running as job
 		gifplot()
 	end
 end
-
-# ╔═╡ e0a34be1-6aa2-4563-abc2-ea163a778752
-# ╠═╡ disabled = true
-#=╠═╡
-function loss(ps, minibatch, eta, seed)
-	batches = length(minibatch.u)
-	chunks = ChainRulesCore.ignore_derivatives() do
-		collect(Iterators.partition(1:batches, batches ÷ Threads.nthreads()))
-	end
-	tasks = map(chunks) do chunk
-	   Threads.@spawn latent_sde(select_ts(chunk, minibatch), ps, st; sense=sense, noise=noise, seed=seed, likelihood_scale=scale, u0_constructor=u0_constructor)
-    end
-    results = fetch.(tasks)
-	
-	kl_divergences = reduce(vcat, [x[4] for x in results])
-	likelihoods = reduce(vcat, [x[5] for x in results])
-	
-	return mean(-likelihoods .+ (eta * kl_divergences)), mean(kl_divergences), mean(likelihoods)
-end
-  ╠═╡ =#
-
-# ╔═╡ 24110995-82ce-4ba3-8307-6b6a5de88163
-function loss(ps, minibatch, eta, seed)
-	_, _, _, kl_divergence, likelihood = latent_sde(minibatch, ps, st; sense=sense, noise=noise, seed=seed, likelihood_scale=scale, u0_constructor=u0_constructor)
-	return mean(-likelihood .+ (eta * kl_divergence)), mean(kl_divergence), mean(likelihood)
-end
-
 
 # ╔═╡ Cell order:
 # ╠═67cb574d-7bd6-40d9-9dc3-d57f4226cc83
@@ -705,10 +699,10 @@ end
 # ╟─cb3a270e-0f2a-4be3-9ab3-ea5e4c56d0e7
 # ╟─95bdd676-d8df-4fef-bdd7-cce85b717018
 # ╟─4c3b8784-368d-49c3-a875-c54960ec9be5
-# ╟─a65a7405-d1de-4de5-9391-dcb971ae0413
+# ╟─a65a7405-d1de-4de5-9391-dcb971af0413
 # ╟─e6a71aae-9d81-45a9-af9a-c4188dda2787
-# ╟─71a38a66-dd66-4000-b664-fc3e04f6d4b8
-# ╟─bae92e09-2e87-4a1e-aa2e-906f33985f6d
+# ╟─71a38a66-dd66-4000-b664-fc3f04f6d4b8
+# ╟─bae92f09-2e87-4a1e-aa2e-906f33985f6d
 # ╟─bd7acf1a-c09a-4531-ad2c-b5e7e28af382
 # ╟─42ece6c1-9e8a-45e7-adf4-6f353da6a4e5
 # ╟─3665efa6-6527-4771-82fd-285c3c0f8b41
@@ -724,18 +718,18 @@ end
 # ╟─5691fcc5-29b3-4236-9154-59c6fede49ce
 # ╠═15cef7cc-30b6-499d-b968-775b3251dedb
 # ╟─1502612c-1489-4abf-8a8b-5b2d03a68cb1
-# ╠═455263ef-2f94-4f3e-8401-e0da7fb3e493
+# ╠═455263ef-2f94-4f3e-8401-f0da7fb3e493
 # ╟─f4651b27-135e-45f1-8647-64ab08c2e8e8
-# ╠═aff1c9d9-b29b-4b2c-b3f1-1e06a9370f64
+# ╠═aff1c9d9-b29b-4b2c-b3f1-1f06a9370f64
 # ╠═5d78e254-4134-4c2a-8092-03f6df7d5092
 # ╠═9a5c942f-9e2d-4c6c-9cb1-b0dffd8050a0
 # ╟─8280424c-b86f-49f5-a854-91e7abcf13ec
 # ╟─fdceee23-b91e-4b2e-af78-776c01733de3
 # ╟─97d724c2-24b0-415c-b90f-6a36e877e9d1
 # ╟─d81ccb5f-de1c-4a01-93ce-3e7302caedc0
-# ╟─6489b190-e08f-466c-93c4-92a723f8e594
+# ╟─6489b190-f08f-466c-93c4-92a723f8e594
 # ╟─b5721107-7cf5-4da3-b22a-552e3d56bcfa
-# ╟─efd438bc-13cc-457f-82c1-c6e0711079b3
+# ╟─efd438bc-13cc-457f-82c1-c6f0711079b3
 # ╟─03a21651-9c95-49e8-bb07-b03640f7e5b7
 # ╟─ad6247f6-6cb9-4a57-92d3-6328cbd84ecd
 # ╟─60b5397d-7350-460b-9117-319dc127cc7e
@@ -744,12 +738,12 @@ end
 # ╟─3c630a3a-7714-41c7-8cc3-601cd6efbceb
 # ╟─2961879e-cb52-4980-931b-6f8de1f26fa4
 # ╟─7c23c32f-97bc-4c8d-ac54-42753be61345
-# ╟─64e7bba4-fb17-4ed8-851f-de9204e0f42d
+# ╟─64e7bba4-fb17-4ed8-851f-de9204f0f42d
 # ╟─33d53264-3c8f-4f63-9dd2-46ebd00f4e28
 # ╟─8bb3084f-5fde-413e-b0fe-8b2e19673fae
 # ╟─2c64b173-d4ad-477d-afde-5f3916e922ef
 # ╟─9767a8ea-bdda-43fc-b636-8681d150d29f
-# ╟─3db229e0-0e13-4d80-8680-58b89161db35
+# ╟─3db229f0-0e13-4d80-8680-58b89161db35
 # ╟─cb1c2b2e-a2a2-45ed-9fc1-655d28f267d1
 # ╟─7f219c33-b37b-480a-9d21-9ea8d898d5d5
 # ╠═2bb433bb-17df-4a34-9ccf-58c0cf8b4dd3
@@ -759,7 +753,7 @@ end
 # ╠═08759cda-2a2a-41ff-af94-5b1000c9e53f
 # ╟─ec41b765-2f73-43a5-a575-c97a5a107c4e
 # ╠═63960546-2157-4a23-8578-ec27f27d5185
-# ╠═f813e728-3bf9-4e05-bcf3-7f14992e1588
+# ╠═f813e728-3bf9-4f05-bcf3-7f14992e1588
 # ╠═001c318e-b7a6-48a5-bfd5-6dd0368873ac
 # ╠═0f6f4520-576f-42d3-9126-2076a51a6e22
 # ╟─1938e122-2c05-46fc-b179-db38322530ff
@@ -771,7 +765,7 @@ end
 # ╟─225791b1-0ffc-48e2-8131-7f54848d8d83
 # ╠═550d8974-cd19-4d0b-9492-adb4e14a04b1
 # ╠═fa43f63d-8293-43cc-b099-3b69dbbf4b6a
-# ╠═e0a34be1-6aa2-4563-abc2-ea163a778752
+# ╠═f0a34be1-6aa2-4563-abc2-ea163a778752
 # ╠═24110995-82ce-4ba3-8307-6b6a5de88163
 # ╠═f4a16e34-669e-4c93-bd83-e3622a747a3a
 # ╠═9789decf-c384-42df-b7aa-3c2137a69a41
@@ -779,8 +773,8 @@ end
 # ╠═5123933d-0972-4fe3-9d65-556ecf81cf3c
 # ╠═7a7e8e9b-ca89-4826-8a5c-fe51d96152ad
 # ╠═67e5ae14-3062-4a93-9492-fc6e9861577f
-# ╠═da2de05a-5d40-4293-98e0-abd20d6dcd2a
+# ╠═da2df05a-5d40-4293-98f0-abd20d6dcd2a
 # ╠═78aa72e2-8188-441f-9910-1bc5525fda7a
 # ╠═830f7e7a-71d0-43c8-8e74-d1709b8a6707
-# ╠═763e07e6-dd46-42d6-b57a-8f1994386302
+# ╠═763f07e6-dd46-42d6-b57a-8f1994386302
 # ╠═2b876f31-21c3-4782-a8a8-8da89d899719

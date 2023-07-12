@@ -67,7 +67,7 @@ begin
     )
 	ps__, st = Lux.setup(rng, latent_sde)
 	println(ps__)
-	ps_ = (initial_prior = (weight = [0.0; 0.0; 0.0; 0.0;;],), initial_posterior = (weight = [0.0; 0.0; 0.0; 0.0;;],), drift_prior = (weight = [1.0 1.0; 1.0 1.0],), drift_posterior = (weight = [1.0 1.0 1.0; 1.0 1.0 1.0],), diffusion = (layer_1 = (weight = [0.0;;], bias = [1.0;;]), layer_2 = (weight = [0.0;;], bias = [1.0;;])), encoder_recurrent = (weight_ih = [1.0;;], weight_hh = [1.0;;], bias = [0.0]), encoder_net = (weight = [1.0;;],), projector = (weight = [1.0 1.0],))
+	ps_ = (initial_prior = (weight = [0.1; 0.0; 0.1; 0.0;;],), initial_posterior = (weight = [0.0; 0.0; 0.0; 0.0;;],), drift_prior = (weight = [1.0 1.0; 1.0 1.0],), drift_posterior = (weight = [1.0 1.0 1.0; 1.0 1.0 1.0],), diffusion = (layer_1 = (weight = [0.0;;], bias = [1.0;;]), layer_2 = (weight = [0.0;;], bias = [1.0;;])), encoder_recurrent = (weight_ih = [1.0;;], weight_hh = [1.0;;], bias = [0.0]), encoder_net = (weight = [1.0;;],), projector = (weight = [1.0 1.0],))
 	ps = ComponentArray{Float32}(ps_)
 end
 
@@ -87,7 +87,7 @@ drift_posterior(reshape([42.0, 11.0, 0.0], :, 1), ps.drift_posterior, st.drift_p
 display(ps_)
 
 # ╔═╡ af673c70-c7bf-4fe6-92c0-b5e09fd99195
-inputs = [(t=range(tspan[1],tspan[end],datasize),u=[f(x) for x in range(tspan[1],tspan[end],datasize)]) for f in [(x)->-x,(x)->x]]
+inputs = [(t=range(tspan[1],tspan[end],datasize),u=[f(x) for x in range(tspan[1],tspan[end],datasize)]) for f in [(x)->-x,(x)->x,(x)->2*x,(x)->-2*x]]
 
 # ╔═╡ 24d1e95b-08d1-463c-87c5-b71dc6397624
 timeseries = Timeseries(inputs)

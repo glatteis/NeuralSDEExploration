@@ -13,17 +13,17 @@ using JLD2
 
 @testset "Latent SDE" begin
     solver = EulerHeun()
-    tspan = (0e0, 5e0)
+    tspan = (0f0, 5f0)
     datasize = 50
     
     rng = Xoshiro()
 
     latent_sde = StandardLatentSDE(solver, tspan, datasize, prior_size=2, posterior_size=2, diffusion_size=2)
     ps_, st = Lux.setup(rng, latent_sde)
-    ps = ComponentArray{Float64}(ps_)
+    ps = ComponentArray{Float32}(ps_)
 
-    input1 = (t=collect(range(tspan[1],tspan[end],datasize)),u=collect(range(0e0, 1e0, datasize)))
-    input2 = (t=collect(range(tspan[1],tspan[end],datasize)),u=collect(range(2e0, 1e0, datasize)))
+    input1 = (t=collect(range(tspan[1],tspan[end],datasize)),u=collect(range(0f0, 1f0, datasize)))
+    input2 = (t=collect(range(tspan[1],tspan[end],datasize)),u=collect(range(2f0, 1f0, datasize)))
     
     seed = rand(rng, UInt32)
 
@@ -32,15 +32,15 @@ using JLD2
     # p = plot(posterior_latent)
     # savefig(p, "posterior_latent.pdf")
     # 
-    sense = BacksolveAdjoint(autojacvec=EnzymeVJP(), checkpointing=true)
+    sense = BacksolveAdjoint(autojacvec=ZygoteVJP(), checkpointing=true)
     noise = function(seed, noise_size)
         rng_tree = Xoshiro(seed)
-        VirtualBrownianTree(-5e0, fill(0e0, noise_size), tend=tspan[end]+5e0; rng=Threefry4x((rand(rng_tree, UInt32), rand(rng_tree, UInt32), rand(rng_tree, UInt32), rand(rng_tree, UInt32))))
+        VirtualBrownianTree(-5f0, fill(0f0, noise_size), tend=tspan[end]+5f0; rng=Threefry4x((rand(rng_tree, UInt32), rand(rng_tree, UInt32), rand(rng_tree, UInt32), rand(rng_tree, UInt32))))
     end
     
     input = Timeseries([input1, input1, input2, input2])
     function loss(ps)
-        sum(NeuralSDEExploration.loss(latent_sde, input, ps, st, 1e0; seed=seed, sense=sense, noise=noise))
+        sum(NeuralSDEExploration.loss(latent_sde, input, ps, st, 1f0; seed=seed, sense=sense, noise=noise))
     end
     
     @test loss(ps) == loss(ps)
@@ -92,11 +92,11 @@ end
     interpolating = InterpolatingAdjoint(autojacvec=ZygoteVJP())
     tree = function(seed)
         rng_tree = Xoshiro(seed)
-        VirtualBrownianTree(-5e0, fill(0e0, hidden_dims + 1), tend=new_tspan[end]+5e0; rng=Threefry4x((rand(rng_tree, UInt32), rand(rng_tree, UInt32), rand(rng_tree, UInt32), rand(rng_tree, UInt32))))
+        VirtualBrownianTree(-5f0, fill(0f0, hidden_dims + 1), tend=new_tspan[end]+5f0; rng=Threefry4x((rand(rng_tree, UInt32), rand(rng_tree, UInt32), rand(rng_tree, UInt32), rand(rng_tree, UInt32))))
     end
     
     function loss(ps, sense, noise)
-        sum(NeuralSDEExploration.loss(latent_sde, minibatch, ps, st, 1e0; seed=seed, sense=sense, noise=noise))
+        sum(NeuralSDEExploration.loss(latent_sde, minibatch, ps, st, 1f0; seed=seed, sense=sense, noise=noise))
     end
     
     @test loss(ps, nothing, (seed) -> nothing) == loss(ps, nothing, (seed) -> nothing)
