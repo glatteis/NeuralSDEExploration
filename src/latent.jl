@@ -181,11 +181,11 @@ end
 
 # from https://github.com/google-research/torchsde/blob/master/examples/latent_sde.py
 function stable_divide(a::AbstractArray{Float32}, b::AbstractArray{Float32}, eps=1e-4)
-    ChainRulesCore.ignore_derivatives() do
-        if any([abs(x) <= eps for x in b])
-            @warn "diffusion too small"
-        end
-    end
+    # ChainRulesCore.ignore_derivatives() do
+    #     if any([abs(x) <= eps for x in b])
+    #         @warn "diffusion too small"
+    #     end
+    # end
     b = map(x -> abs(x) <= eps ? eps * sign(x) : x, b)
     a ./ b
 end
@@ -312,7 +312,7 @@ function (n::LatentSDE)(timeseries::Timeseries, ps::ComponentVector, st;
     tsmatrix_flipped = ChainRulesCore.ignore_derivatives() do
         reverse(permutedims(tsmatrix, (1, 3, 2)), dims=2)
     end
-
+    
     precontext_flipped = reverse(n.encoder_recurrent(tsmatrix_flipped, ps.encoder_recurrent, st.encoder_recurrent)[1])
     context_flipped = [n.encoder_net(x, ps.encoder_net, st.encoder_net)[1] for x in precontext_flipped]
 
@@ -320,7 +320,7 @@ function (n::LatentSDE)(timeseries::Timeseries, ps::ComponentVector, st;
     # latent space: dimension 1
     # batch: dimension 2
     context_precomputed = reduce(timecat, context_flipped)
-
+    
     initialdists_prior = get_distributions(n.initial_prior, ps.initial_prior, st.initial_prior, [1.0f0])
 
     initialdists_posterior = get_distributions(n.initial_posterior, ps.initial_posterior, st.initial_posterior, context_precomputed[:, :, 1])
@@ -343,7 +343,6 @@ function (n::LatentSDE)(timeseries::Timeseries, ps::ComponentVector, st;
         noise(Int(floor(seed)), (latent_dimensions + 1) * batch_size)
     end
     u0 = reshape(augmented_z0, (latent_dimensions + 1) * batch_size)
-    println(u0)
     sde_problem = SDEProblem{false}(
         (u, p, t) -> augmented_drift_batch(n, timeseries.t, latent_dimensions, batch_size, st, u, p, t),
         (u, p, t) -> augmented_diffusion_batch(n, latent_dimensions, batch_size, st, u, p, t),
@@ -370,7 +369,7 @@ function (n::LatentSDE)(timeseries::Timeseries, ps::ComponentVector, st;
     kl_divergence_time = sol[end:end, :, :]
 
     initialdists_kl = reduce(hcat, [reshape([KullbackLeibler(a, b) for (a, b) in zip(initialdists_posterior[:, batch], initialdists_prior)], :, 1) for batch in eachindex(timeseries.u)])
-    kl_divergence = sum(initialdists_kl, dims=1) .+ sol[:, :, end]
+    kl_divergence = sum(initialdists_kl, dims=1) .+ sol[end:end, :, end]
 
     projected_z0 = n.projector(z0, ps.projector, st.projector)[1]
     projected_ts = reduce(timecat, [n.projector(x, ps.projector, st.projector)[1] for x in eachslice(posterior_latent, dims=3)])

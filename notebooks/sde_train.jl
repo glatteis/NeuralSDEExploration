@@ -24,7 +24,7 @@ begin
 end
 
 # ╔═╡ b6abba94-db07-4095-98c9-443e31832e7d
-using Optimisers, StatsBase, Zygote, Lux, DifferentialEquations, ComponentArrays, ParameterSchedulers, Random, Distributed, ForwardDiff, LuxCore, Dates, JLD2, SciMLSensitivity, JLD2, Random123, Distributions, DiffEqBase
+using Optimisers, StatsBase, Zygote, Lux, DifferentialEquations, ComponentArrays, ParameterSchedulers, Random, Distributed, ForwardDiff, LuxCore, Dates, JLD2, SciMLSensitivity, JLD2, Random123, Distributions, DiffEqBase, ChainRulesCore
 
 # ╔═╡ d1440209-78f7-4a9a-9101-a06ad2534e5d
 using NeuralSDEExploration, Plots, PlutoUI, PlutoArgs
@@ -516,12 +516,6 @@ function plotlearning()
 	plot(plots...; layout=l)
 end
 
-# ╔═╡ e0a34be1-6aa2-4563-abc2-ea163a778752
-function loss(ps, minibatch, eta, seed)
-	_, _, _, kl_divergence, likelihood = latent_sde(minibatch, ps, st; sense=sense, noise=noise, seed=seed, likelihood_scale=scale, u0_constructor=u0_constructor)
-	return mean(-likelihood .+ (eta * kl_divergence)), mean(kl_divergence), mean(likelihood)
-end
-
 # ╔═╡ f4a16e34-669e-4c93-bd83-e3622a747a3a
 function train(lr_sched, num_steps, opt_state; kl_sched=Loop(x -> eta, 1))
 	for step in 1:num_steps
@@ -609,7 +603,7 @@ function exportresults(epoch)
 end
 
 # ╔═╡ 124680b8-4140-4b98-9fd7-009cc225992a
-@time loss(ps, select_ts(1:64, timeseries), 1f0, 10)[1]
+@time loss(ps, select_ts(1:64, timeseries), 1f0, 4)[1]
 
 # ╔═╡ 5123933d-0972-4fe3-9d65-556ecf81cf3c
 ts = select_ts(1:128, timeseries) |> gpu
@@ -618,7 +612,7 @@ ts = select_ts(1:128, timeseries) |> gpu
 if enabletraining
 	println("First Zygote call")
 	@time loss(ps, select_ts(1:4, timeseries), 1.0, 10)[1]
-	@time Zygote.gradient(ps -> loss(ps, ts, 1.0, 1)[1], ps)[1]
+	@time dps = Zygote.gradient(ps -> loss(ps, ts, 1.0, 1)[1], ps)[1]
 end
 
 # ╔═╡ 67e5ae14-3062-4a93-9492-fc6e9861577f
@@ -659,6 +653,42 @@ end
 
 # ╔═╡ 763e07e6-dd46-42d6-b57a-8f1994386302
 gifplot()
+
+# ╔═╡ 2b876f31-21c3-4782-a8a8-8da89d899719
+if enabletraining  # running as job
+	opt_state_notebook = Optimisers.setup(Optimisers.Adam(), ps)
+	@gif for epoch in 1:200
+		train(lr_sched, 1, opt_state_notebook; kl_sched=kl_sched)
+		gifplot()
+	end
+end
+
+# ╔═╡ e0a34be1-6aa2-4563-abc2-ea163a778752
+# ╠═╡ disabled = true
+#=╠═╡
+function loss(ps, minibatch, eta, seed)
+	batches = length(minibatch.u)
+	chunks = ChainRulesCore.ignore_derivatives() do
+		collect(Iterators.partition(1:batches, batches ÷ Threads.nthreads()))
+	end
+	tasks = map(chunks) do chunk
+	   Threads.@spawn latent_sde(select_ts(chunk, minibatch), ps, st; sense=sense, noise=noise, seed=seed, likelihood_scale=scale, u0_constructor=u0_constructor)
+    end
+    results = fetch.(tasks)
+	
+	kl_divergences = reduce(vcat, [x[4] for x in results])
+	likelihoods = reduce(vcat, [x[5] for x in results])
+	
+	return mean(-likelihoods .+ (eta * kl_divergences)), mean(kl_divergences), mean(likelihoods)
+end
+  ╠═╡ =#
+
+# ╔═╡ 24110995-82ce-4ba3-8307-6b6a5de88163
+function loss(ps, minibatch, eta, seed)
+	_, _, _, kl_divergence, likelihood = latent_sde(minibatch, ps, st; sense=sense, noise=noise, seed=seed, likelihood_scale=scale, u0_constructor=u0_constructor)
+	return mean(-likelihood .+ (eta * kl_divergence)), mean(kl_divergence), mean(likelihood)
+end
+
 
 # ╔═╡ Cell order:
 # ╠═67cb574d-7bd6-40d9-9dc3-d57f4226cc83
@@ -742,6 +772,7 @@ gifplot()
 # ╠═550d8974-cd19-4d0b-9492-adb4e14a04b1
 # ╠═fa43f63d-8293-43cc-b099-3b69dbbf4b6a
 # ╠═e0a34be1-6aa2-4563-abc2-ea163a778752
+# ╠═24110995-82ce-4ba3-8307-6b6a5de88163
 # ╠═f4a16e34-669e-4c93-bd83-e3622a747a3a
 # ╠═9789decf-c384-42df-b7aa-3c2137a69a41
 # ╠═124680b8-4140-4b98-9fd7-009cc225992a
@@ -752,3 +783,4 @@ gifplot()
 # ╠═78aa72e2-8188-441f-9910-1bc5525fda7a
 # ╠═830f7e7a-71d0-43c8-8e74-d1709b8a6707
 # ╠═763e07e6-dd46-42d6-b57a-8f1994386302
+# ╠═2b876f31-21c3-4782-a8a8-8da89d899719
