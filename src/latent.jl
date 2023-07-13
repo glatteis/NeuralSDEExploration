@@ -109,7 +109,7 @@ function StandardLatentSDE(solver, tspan, datasize;
             Lux.Chain(
                 Lux.Dense(1 => diffusion_size, hidden_activation),
                 Lux.Dense(diffusion_size => diffusion_size, hidden_activation),
-                Lux.Dense(diffusion_size => 1)
+                Lux.Dense(diffusion_size => 1, Lux.sigmoid)
             ) for i in 1:latent_dims]...)
     )
 
@@ -180,12 +180,12 @@ function sample_prior_dataspace(n::LatentSDE, ps, st; kwargs...)
 end
 
 # from https://github.com/google-research/torchsde/blob/master/examples/latent_sde.py
-function stable_divide(a::AbstractArray{Float32}, b::AbstractArray{Float32}, eps=1e-4)
-    # ChainRulesCore.ignore_derivatives() do
-    #     if any([abs(x) <= eps for x in b])
-    #         @warn "diffusion too small"
-    #     end
-    # end
+function stable_divide(a::AbstractArray{Float32}, b::AbstractArray{Float32}, eps=1f-5)
+    ChainRulesCore.ignore_derivatives() do
+        if any([abs(x) <= eps for x in b])
+            @warn "diffusion too small"
+        end
+    end
     b = map(x -> abs(x) <= eps ? eps * sign(x) : x, b)
     a ./ b
 end

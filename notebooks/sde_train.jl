@@ -57,16 +57,8 @@ md"""
 # Model Definition
 """
 
-# ╔═╡ 32be3e35-a529-4d16-8ba0-ec4e223ae401
-md"""
-Let's train a Neural SDE from a modified form of the simple zero-dimensional energy balance model. First, let's just instantiate the predefined model from the package...
-"""
-
 # ╔═╡ c799a418-d85e-4f9b-af7a-ed667fab21b6
 println("Running on $(Threads.nthreads()) threads")
-
-# ╔═╡ cc2418c2-c355-4291-b5d7-d9019787834f
-md"Let's generate the data and plot a quick example:"
 
 # ╔═╡ 0eec0598-7520-47ec-b13a-a7b9da550014
 md"""
@@ -304,7 +296,7 @@ CLI arg: `--eta`
 # ╔═╡ 3c630a3a-7714-41c7-8cc3-601cd6efbceb
 md"""
 Learning rate
-$(@bind learning_rate Arg("learning-rate", NumberField(0.0001f0:1000.0f0, 0.03f0), required=false)).
+$(@bind learning_rate Arg("learning-rate", NumberField(0.0001f0:1000.0f0, 0.005f0), required=false)).
 CLI arg: `--learning-rate`
 """
 
@@ -426,7 +418,7 @@ latent_sde = StandardLatentSDE(
 	depth=depth,
 	rnn_size=context_size,
 	context_size=context_size,
-	hidden_activation=Lux.softplus,
+	hidden_activation=tanh,
 	adaptive=false,
 	# we only have this custom layer - the others are default
 	projector=projector
@@ -566,7 +558,7 @@ function train(lr_sched, num_steps, opt_state; kl_sched=Loop(x -> eta, 1))
 		println("Loss: $l, KL: $kl_divergence")
 		dps = Zygote.gradient(ps -> loss(ps, minibatch, eta, seed)[1], ps)
 		
-		GC.gc(true)
+		#GC.gc(true)
 
 		if kidger_trick
 			dps[1].initial_prior *= length(timeseries.t)
@@ -678,7 +670,7 @@ gifplot()
 # ╔═╡ 2b876f31-21c3-4782-a8a8-8da89d899719
 if enabletraining  # running as job
 	opt_state_notebook = Optimisers.setup(Optimisers.Adam(), ps)
-	@gif for epoch in 1:200
+	@gif for epoch in 1:100
 		train(lr_sched, 1, opt_state_notebook; kl_sched=kl_sched)
 		gifplot()
 	end
@@ -692,9 +684,7 @@ end
 # ╟─d38b3460-4c01-4bba-b726-150d207c020b
 # ╟─13ef3cd9-7f58-459e-a659-abc35b550326
 # ╟─ff15555b-b1b5-4b42-94a9-da77daa546d0
-# ╟─32be3e35-a529-4d16-8ba0-ec4e223ae401
 # ╟─c799a418-d85e-4f9b-af7a-ed667fab21b6
-# ╟─cc2418c2-c355-4291-b5d7-d9019787834f
 # ╟─0eec0598-7520-47ec-b13a-a7b9da550014
 # ╟─cb3a270e-0f2a-4be3-9ab3-ea5e4c56d0e7
 # ╟─95bdd676-d8df-4fef-bdd7-cce85b717018
