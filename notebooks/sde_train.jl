@@ -536,11 +536,12 @@ end
 
 
 # ╔═╡ f4a16e34-669e-4c93-bd83-e3622a747a3a
-function train(lr_sched, num_steps, opt_state; kl_sched=Loop(x -> eta, 1))
-	for step in 1:num_steps
-		s = sample(rng, 1:length(timeseries.u), batch_size)
-		
-		minibatch = select_ts(s, timeseries)
+function train(lr_sched, opt_state; kl_sched=Iterators.Stateful(Loop(x -> eta, 1)))
+	num_samples = length(timeseries.u)
+	indices = shuffle(1:num_samples)
+	for iteration in 1:batch_size:num_samples - batch_size
+		train_on = indices[iteration:iteration+batch_size-1]
+		minibatch = select_ts(train_on, timeseries)
 		
 		seed = rand(rng, UInt32)
 
@@ -624,7 +625,7 @@ ts = select_ts(1:128, timeseries) |> gpu
 # ╔═╡ 7a7e8e9b-ca89-4826-8a5c-fe51d96152ad
 if enabletraining
 	println("First Zygote call")
-	@time loss(ps, select_ts(1:4, timeseries), 1.0, 10)[1]
+	@time loss(ps, ts, 1.0, 1)[1]
 	@time dps = Zygote.gradient(ps -> loss(ps, ts, 1.0, 1)[1], ps)[1]
 end
 
@@ -650,7 +651,7 @@ begin
 		# precompile exportresults because there are some memory problems
 		exportresults(0)
 		for epoch in 1:1000
-			train(lr_sched, 100, opt_state_job; kl_sched=kl_sched)
+			train(lr_sched, opt_state_job; kl_sched=kl_sched)
 			exportresults(epoch)
 			GC.gc(true)
 		end
@@ -671,7 +672,7 @@ gifplot()
 if enabletraining  # running as job
 	opt_state_notebook = Optimisers.setup(Optimisers.Adam(), ps)
 	@gif for epoch in 1:100
-		train(lr_sched, 1, opt_state_notebook; kl_sched=kl_sched)
+		train(lr_sched, opt_state_notebook; kl_sched=kl_sched)
 		gifplot()
 	end
 end
