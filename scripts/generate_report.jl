@@ -97,8 +97,8 @@ for f in ARGS
             "4x extrapolation" => (latent_sde.tspan[2], extrapolate_tspan(latent_sde.tspan, 4)[2]),
         )
         for (title, tspan) in tspans
-            histogram_latent_sde = timeseries_histogram(select_tspan(tspan, latent_sde_sample), 0.0:0.01:2.0)
-            histogram_data_model = timeseries_histogram(select_tspan(tspan, data_model_sample), 0.0:0.01:2.0)
+            histogram_latent_sde = timeseries_histogram(select_tspan(tspan, latent_sde_sample), -2.0:0.01:2.0)
+            histogram_data_model = timeseries_histogram(select_tspan(tspan, data_model_sample), -2.0:0.01:2.0)
             p_hist = plot([
                 histogram_latent_sde,
                 histogram_data_model,
