@@ -67,7 +67,7 @@ begin
     )
 	ps__, st = Lux.setup(rng, latent_sde)
 	println(ps__)
-	ps_ = (initial_prior = (weight = [0.1; 0.0; 0.1; 0.0;;],), initial_posterior = (weight = [0.0; 0.0; 0.0; 0.0;;],), drift_prior = (weight = [1.0 1.0; 1.0 1.0],), drift_posterior = (weight = [1.0 1.0 1.0; 1.0 1.0 1.0],), diffusion = (layer_1 = (weight = [0.0;;], bias = [1.0;;]), layer_2 = (weight = [0.0;;], bias = [1.0;;])), encoder_recurrent = (weight_ih = [1.0;;], weight_hh = [1.0;;], bias = [0.0]), encoder_net = (weight = [1.0;;],), projector = (weight = [1.0 1.0],))
+	ps_ = (initial_prior = (weight = [0.1; 0.0; 0.1; 0.0;;],), initial_posterior = (weight = [0.0; 0.0; 0.0; 0.0;;],), drift_prior = (weight = [0.8 1.0; 1.0 1.0],), drift_posterior = (weight = [1.0 0.5 0.0; 1.0 0.1 0.0],), diffusion = (layer_1 = (weight = [0.5;;], bias = [1.0;;]), layer_2 = (weight = [0.0;;], bias = [1.0;;])), encoder_recurrent = (weight_ih = [1.0;;], weight_hh = [1.0;;], bias = [0.0]), encoder_net = (weight = [1.0;;],), projector = (weight = [1.0 1.0],))
 	ps = ComponentArray{Float32}(ps_)
 end
 
@@ -111,7 +111,13 @@ m3 = cat(m1, m2; dims=3)
 plot(timeseries)
 
 # ╔═╡ e8ef1773-8087-4f47-abfe-11e73f28a269
-posterior_latent, posterior_data, logterm_, kl_divergence_, distance_ = latent_sde(timeseries, ps, st)
+posterior_latent, posterior_data, logterm_, kl_divergence_, distance_ = latent_sde(select_ts(1:1, timeseries), ps, st, seed=0)
+
+# ╔═╡ b4caf08a-6a9a-403d-b537-a80a197d8c31
+kl_divergence_
+
+# ╔═╡ 1d7ea638-dff8-44c6-9ccf-97c898916834
+distance_
 
 # ╔═╡ 0615efd2-c125-48cc-9600-0e2fb6a25a0d
 plot(sample_prior(latent_sde, ps, st))
@@ -179,10 +185,15 @@ end
 
 
 # ╔═╡ 6bf6a59c-549c-495b-a574-caa12c87e055
+# ╠═╡ disabled = true
+#=╠═╡
 dps = Zygote.gradient(ps -> mean(NeuralSDEExploration.loss(latent_sde, timeseries, ps, st, 1.0; seed=1)), ps)[1]
+  ╠═╡ =#
 
 # ╔═╡ ada03e49-be82-418a-a915-efbc78a81368
+#=╠═╡
 println(dps)
+  ╠═╡ =#
 
 # ╔═╡ e99e0f6a-950b-4ccc-8798-a3a10730b4f5
 println(ps_flux)
@@ -215,6 +226,8 @@ println(dps_flux)
 # ╠═0903e805-2147-42fd-919f-5bf2103df859
 # ╠═ccad1e15-c7d7-4d66-a637-7108fab46841
 # ╠═e8ef1773-8087-4f47-abfe-11e73f28a269
+# ╠═b4caf08a-6a9a-403d-b537-a80a197d8c31
+# ╠═1d7ea638-dff8-44c6-9ccf-97c898916834
 # ╠═0615efd2-c125-48cc-9600-0e2fb6a25a0d
 # ╠═7fabae7c-abef-4d2c-a3b5-b9d2f683dc26
 # ╠═937d5963-eddc-4296-9b6e-9532eb57bdf2

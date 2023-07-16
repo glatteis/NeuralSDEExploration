@@ -67,7 +67,7 @@ md"""
 
 # ╔═╡ cb3a270e-0f2a-4be3-9ab3-ea5e4c56d0e7
 md"""
-Used model: $(@bind model_name Arg("model", Select(["sun", "fhn", "ou", "ouli", "zero"]), short_name="m")), CLI arg: `--model`, `-m` (required!)
+Used model: $(@bind model_name Arg("model", Select(["sun", "fhn", "ou", "gbm", "zero"]), short_name="m")), CLI arg: `--model`, `-m` (required!)
 """
 
 # ╔═╡ 95bdd676-d8df-4fef-bdd7-cce85b717018
@@ -160,10 +160,10 @@ elseif model_name == "ou"
 		[only(rand(Normal(0.5, 0.1), 1)) for i in 1:n],
 		NeuralSDEExploration.OrnsteinUhlenbeck()
 	)
-elseif model_name == "ouli"
+elseif model_name == "gbm"
 	(
-		[0.0 for i in 1:n],
-		NeuralSDEExploration.OrnsteinUhlenbeck(0.0, 1.0, 0.5)
+		[only(rand(Normal(0.1, 0.03^2), 1)) for i in 1:n],
+		NeuralSDEExploration.GeometricBM()
 	)
 elseif model_name == "zero"
 	(
