@@ -238,11 +238,8 @@ function augmented_drift_batch(n::LatentSDE, times::AbstractArray{Float32}, late
     diffusion = n.diffusion(u, p.diffusion, st.diffusion)[1]
 
     # The augmented term for computing the KL divergence
-    println("u is $u")
-    println("stable_divide on $posterior, $prior, $diffusion")
     u_term = stable_divide(posterior .- prior, diffusion)
     augmented_term = 0.5f0 * sum(abs2, u_term; dims=1)
-    println(augmented_term)
 
     reshape(vcat(posterior, augmented_term), (latent_dims + 1) * batch_size)
 end
