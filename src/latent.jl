@@ -139,7 +139,7 @@ function get_distributions(model, model_p, st, context)
     # output ordered like [norm, var, norm, var, ...]
     halfindices = 1:Int(length(normsandvars[:, 1]) / 2)
 
-    return hcat([reshape([Normal{Float32}(normsandvars[2*i-1, j], exp(0.5f0 * normsandvars[2*i, j])) for i in halfindices], :, 1) for j in batch_indices]...)
+    return hcat([reshape([Normal{Float32}(normsandvars[2*i-1, j], 0.1f0 * exp(0.5f0 * normsandvars[2*i, j])) for i in halfindices], :, 1) for j in batch_indices]...)
 end
 
 function sample_prior(n::LatentSDE, ps, st; b=1, seed=nothing, noise=(seed) -> nothing, tspan=n.tspan, datasize=n.datasize)
