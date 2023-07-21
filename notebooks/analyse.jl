@@ -207,7 +207,7 @@ plot(NeuralSDEExploration.sample_prior(latent_sde,ps_new,st;b=3,tspan=(0e0,10e0)
 )
 
 # ╔═╡ b8422a5a-d5a9-4f58-8fc7-3cf58a9bc335
-first_ts = select_ts(1:1, timeseries)
+first_ts = select_ts(1:20, timeseries)
 
 # ╔═╡ b75050c4-ce60-420c-b8ec-c8df76faa8ca
 repeat_ts = Timeseries(first_ts.t, repeat(first_ts.u, 40))
@@ -231,6 +231,9 @@ savefig(data_plot, "~/Downloads/flowchart_data.tikz")
 plot!(posterior_plot, select_ts(1:1, first_mean_var), ribbon=2*map(only, first_mean_var.u[2]))
 
 
+# ╔═╡ 3fc7f82c-4384-4d6c-97c6-de23b9b5e6b9
+plot!(posterior_plot, first_ts, color=:red, axis=([], false), ticks=false, grid=false, background=RGBA{Float64}(1.0,1.0,1.0,0.0))
+
 # ╔═╡ 091e784b-b12f-466a-84fc-2865220f2856
 
 
@@ -244,7 +247,7 @@ prior_plot = plot(NeuralSDEExploration.sample_prior_dataspace(latent_sde,ps,st;b
 savefig(prior_plot, "~/Downloads/flowchart_prior.tikz")
 
 # ╔═╡ ef3614bf-8462-4e17-80b2-768c9ac7ab28
-pgfplotsx(size=(500, 250))
+pgfplotsx(size=(1000, 500))
 
 # ╔═╡ Cell order:
 # ╠═7a6bbfd6-ffb7-11ed-39d7-5b673fe4cdae
@@ -273,7 +276,7 @@ pgfplotsx(size=(500, 250))
 # ╠═851ac161-d44c-47a7-89d5-c6c97d3ac8a6
 # ╠═5fc6a274-5185-4d3f-808b-b1326f92081a
 # ╠═de7959b4-87bd-4374-8fbd-c7a9e0e57d5a
-# ╟─c275150e-e90c-4895-99c8-2f6364505dc0
+# ╠═c275150e-e90c-4895-99c8-2f6364505dc0
 # ╠═2a1ca1d0-163d-41b8-9f2d-8a3a475cc75d
 # ╠═bf819c97-3ed9-484c-a499-7449244cb840
 # ╠═0dc46a16-e26d-4ec2-a74e-675e83959ab2
@@ -300,6 +303,7 @@ pgfplotsx(size=(500, 250))
 # ╠═3dc42e02-1d6f-4c9c-8572-fcbe006b70a0
 # ╠═82b3ee10-a447-4007-8178-dcf469afa3e8
 # ╠═858f2092-5a21-458f-9c47-fc93486b9b9d
+# ╠═3fc7f82c-4384-4d6c-97c6-de23b9b5e6b9
 # ╠═091e784b-b12f-466a-84fc-2865220f2856
 # ╠═97bc8a9b-a1da-45ee-915e-d342adc44e50
 # ╠═dd55cc42-8b6c-4e8f-a888-5427ac724ace

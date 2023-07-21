@@ -139,7 +139,7 @@ function get_distributions(model, model_p, st, context)
     # output ordered like [norm, var, norm, var, ...]
     halfindices = 1:Int(length(normsandvars[:, 1]) / 2)
 
-    return hcat([reshape([Normal{Float32}(normsandvars[2*i-1, j], 0.1f0 * exp(0.5f0 * normsandvars[2*i, j])) for i in halfindices], :, 1) for j in batch_indices]...)
+    return hcat([reshape([Normal{Float32}(normsandvars[2*i-1, j], normsandvars[2*i, j]) for i in halfindices], :, 1) for j in batch_indices]...)
 end
 
 function sample_prior(n::LatentSDE, ps, st; b=1, seed=nothing, noise=(seed) -> nothing, tspan=n.tspan, datasize=n.datasize)
@@ -354,16 +354,10 @@ function (n::LatentSDE)(timeseries::Timeseries, ps::ComponentVector, st;
     )
     solution = solve(sde_problem, n.solver; sensealg=sense, saveat=range(n.tspan[1], n.tspan[end], n.datasize), dt=(n.tspan[end] / n.datasize), n.kwargs...)
 
-    # If ts_start > 0, the timeseries starts after the latent sde, thus only score after ts_start
-    # The timeseries could be irregularily sampled or have a different rate than the model, so search for appropiate points here
-    # TODO: Interpolate this?
     ts_indices = ChainRulesCore.ignore_derivatives() do
         [searchsortedfirst(solution.t, t) for t in timeseries.t]
     end
-    ts_start = ChainRulesCore.ignore_derivatives() do
-        ts_indices[1]
-    end
-    
+
     sol = reduce(timecat, [reshape(x, latent_dimensions + 1, batch_size) for x in solution.u])
     posterior_latent = sol[1:end-1, :, :]
     kl_divergence_time = sol[end:end, :, :]
@@ -371,7 +365,6 @@ function (n::LatentSDE)(timeseries::Timeseries, ps::ComponentVector, st;
     initialdists_kl = reduce(hcat, [reshape([KullbackLeibler(a, b) for (a, b) in zip(initialdists_posterior[:, batch], initialdists_prior)], :, 1) for batch in eachindex(timeseries.u)])
     kl_divergence = sum(initialdists_kl, dims=1) .+ sol[end:end, :, end]
 
-    projected_z0 = n.projector(z0, ps.projector, st.projector)[1]
     projected_ts = reduce(timecat, [n.projector(x, ps.projector, st.projector)[1] for x in eachslice(posterior_latent, dims=3)])
 
     logp = ChainRulesCore.ignore_derivatives() do
@@ -379,13 +372,7 @@ function (n::LatentSDE)(timeseries::Timeseries, ps::ComponentVector, st;
             loglikelihood(likelihood_dist(y, likelihood_scale), x)
         end
     end
-    likelihoods_initial = if ts_start == 1
-        [logp(x, y) for (x, y) in zip(tsmatrix[:, :, 1], z0[1:1, :])]
-    else
-        fill(0.0f0, size(projected_z0))
-    end
-    likelihoods_time = sum([logp(x, y) for (x, y) in zip(tsmatrix, projected_ts[:, :, ts_indices])], dims=3)[:, :, 1]
-    likelihoods = likelihoods_initial .+ likelihoods_time
+    likelihoods = sum([logp(x, y) for (x, y) in zip(tsmatrix, projected_ts[:, :, ts_indices])], dims=3)[:, :, 1]
 
     return posterior_latent, projected_ts, kl_divergence_time, kl_divergence, likelihoods
 end

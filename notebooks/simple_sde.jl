@@ -67,7 +67,7 @@ begin
     )
 	ps__, st = Lux.setup(rng, latent_sde)
 	println(ps__)
-	ps_ = (initial_prior = (weight = [0.1; 0.0; 0.1; 0.0;;],), initial_posterior = (weight = [0.0; 0.0; 0.0; 0.0;;],), drift_prior = (weight = [0.8 1.0; 1.0 1.0],), drift_posterior = (weight = [1.0 0.5 0.0; 1.0 0.1 0.0],), diffusion = (layer_1 = (weight = [0.5;;], bias = [1.0;;]), layer_2 = (weight = [0.0;;], bias = [1.0;;])), encoder_recurrent = (weight_ih = [1.0;;], weight_hh = [1.0;;], bias = [0.0]), encoder_net = (weight = [1.0;;],), projector = (weight = [1.0 1.0],))
+	ps_ = (initial_prior = (weight = [0.1; 0.0; 0.1; 0.0;;],), initial_posterior = (weight = [1.0; 1.0; 1.0; 1.0;;],), drift_prior = (weight = [0.8 1.0; 1.0 1.0],), drift_posterior = (weight = [1.0 0.5 0.0; 1.0 0.1 0.0],), diffusion = (layer_1 = (weight = [0.5;;], bias = [1.0;;]), layer_2 = (weight = [0.0;;], bias = [1.0;;])), encoder_recurrent = (weight_ih = [1.0;;], weight_hh = [1.0;;], bias = [0.0]), encoder_net = (weight = [1.0;;],), projector = (weight = [1.0 1.0],))
 	ps = ComponentArray{Float32}(ps_)
 end
 
@@ -87,7 +87,7 @@ drift_posterior(reshape([42.0, 11.0, 0.0], :, 1), ps.drift_posterior, st.drift_p
 display(ps_)
 
 # ╔═╡ af673c70-c7bf-4fe6-92c0-b5e09fd99195
-inputs = [(t=range(tspan[1],tspan[end],datasize),u=[f(x) for x in range(tspan[1],tspan[end],datasize)]) for f in [(x)->-x,(x)->x,(x)->2*x,(x)->-2*x]]
+inputs = [(t=range(tspan[1],tspan[end],datasize),u=[f(x) for x in range(tspan[1],tspan[end],datasize)]) for f in [(x)->100+x, (x)->100+x, (x)->-x-100, (x)->100+x]]
 
 # ╔═╡ 24d1e95b-08d1-463c-87c5-b71dc6397624
 timeseries = Timeseries(inputs)
@@ -111,7 +111,7 @@ m3 = cat(m1, m2; dims=3)
 plot(timeseries)
 
 # ╔═╡ e8ef1773-8087-4f47-abfe-11e73f28a269
-posterior_latent, posterior_data, logterm_, kl_divergence_, distance_ = latent_sde(select_ts(1:1, timeseries), ps, st, seed=0)
+posterior_latent, posterior_data, logterm_, kl_divergence_, distance_ = latent_sde(timeseries, ps, st, seed=2)
 
 # ╔═╡ b4caf08a-6a9a-403d-b537-a80a197d8c31
 kl_divergence_
@@ -126,7 +126,10 @@ plot(sample_prior(latent_sde, ps, st))
 plot(logterm_[1, :, :]', label="KL-Divergence")
 
 # ╔═╡ 937d5963-eddc-4296-9b6e-9532eb57bdf2
-plot(posterior_data[1, :, :]', label="posterior")
+plot(Timeseries(collect(range(tspan[1],tspan[end],datasize)), posterior_latent), label="posterior")
+
+# ╔═╡ 445423ba-5b52-438b-afbf-e6399c133779
+posterior_latent
 
 # ╔═╡ 7072a7d4-fd83-40a8-87fe-bd47c5a430eb
 function loss(ps, minibatch)
@@ -181,28 +184,11 @@ function train(learning_rate, num_steps)
 	end
 end
 
-# ╔═╡ 04d8ee06-9872-4481-8df5-26d47862261b
-
-
 # ╔═╡ 6bf6a59c-549c-495b-a574-caa12c87e055
 # ╠═╡ disabled = true
 #=╠═╡
 dps = Zygote.gradient(ps -> mean(NeuralSDEExploration.loss(latent_sde, timeseries, ps, st, 1.0; seed=1)), ps)[1]
   ╠═╡ =#
-
-# ╔═╡ ada03e49-be82-418a-a915-efbc78a81368
-#=╠═╡
-println(dps)
-  ╠═╡ =#
-
-# ╔═╡ e99e0f6a-950b-4ccc-8798-a3a10730b4f5
-println(ps_flux)
-
-# ╔═╡ 83e1b7df-9cc4-4504-936e-69028ed7ee02
-dps_flux = Zygote.gradient(ps -> mean(NeuralSDEExploration.loss(latent_sde_flux, ps, inputs, 1.0; seed=1, ensemblemode=EnsembleSerial())), ps_flux)[1]
-
-# ╔═╡ 07e32ac3-f419-46a5-91cb-4f88eb57c7e3
-println(dps_flux)
 
 # ╔═╡ Cell order:
 # ╠═65947e8c-d1f3-11ed-2067-93e06230d83c
@@ -231,13 +217,9 @@ println(dps_flux)
 # ╠═0615efd2-c125-48cc-9600-0e2fb6a25a0d
 # ╠═7fabae7c-abef-4d2c-a3b5-b9d2f683dc26
 # ╠═937d5963-eddc-4296-9b6e-9532eb57bdf2
+# ╠═445423ba-5b52-438b-afbf-e6399c133779
 # ╠═7072a7d4-fd83-40a8-87fe-bd47c5a430eb
 # ╠═0ec36eba-8887-4ec2-9893-7ae5774c9337
 # ╠═7e231cb4-f76b-49b9-91f5-785603a4afd9
 # ╠═ee76f88c-069e-45b1-bce0-6019983b5260
-# ╠═04d8ee06-9872-4481-8df5-26d47862261b
 # ╠═6bf6a59c-549c-495b-a574-caa12c87e055
-# ╠═ada03e49-be82-418a-a915-efbc78a81368
-# ╠═e99e0f6a-950b-4ccc-8798-a3a10730b4f5
-# ╠═83e1b7df-9cc4-4504-936e-69028ed7ee02
-# ╠═07e32ac3-f419-46a5-91cb-4f88eb57c7e3
