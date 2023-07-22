@@ -4,6 +4,8 @@
 #SBATCH --account=tipes
 #SBATCH --partition=standard
 #SBATCH --cpus-per-task=4
+#SBATCH --partition=gpu
+#SBATCH --gres=gpu:v100:1
 #SBATCH --time=24:00:00
 #SBATCH --output=/home/linushe/outputs/pluto-%j.log
 

@@ -17,7 +17,7 @@ for f in ARGS
     datamin = dict["datamin"]
     datamax = dict["datamax"]
     function normalize(x)
-        return 2f0 * (Float32((x - datamin) / (datamax - datamin)) - 0.5f0)
+        return 2f0 * (((x - datamin) / (datamax - datamin)) - 0.5f0)
     end
 
     seed = 1
