@@ -86,7 +86,7 @@ function StandardLatentSDE(solver, tspan, datasize;
     # takes the context and outputs a mean and standard devation for the
     # position zero of the posterior. The initial_prior is a fixed gaussian
     # distribution.
-    create_network(:initial_prior, Lux.Dense(1 => latent_dims + latent_dims, use_bias=false, init_weight=Lux.zeros32, init_bias=Lux.zeros32))
+    create_network(:initial_prior, Lux.Dense(1 => latent_dims + latent_dims, use_bias=false))
     create_network(:initial_posterior, Lux.Dense(context_size => latent_dims + latent_dims))
     
     # Drift of prior. This is just an SDE drift in the latent space
@@ -139,7 +139,7 @@ function get_distributions(model, model_p, st, context)
     # output ordered like [norm, var, norm, var, ...]
     halfindices = 1:Int(length(normsandvars[:, 1]) / 2)
 
-    return hcat([reshape([Normal{Float32}(normsandvars[2*i-1, j], normsandvars[2*i, j]) for i in halfindices], :, 1) for j in batch_indices]...)
+    return hcat([reshape([Normal{Float32}(normsandvars[2*i-1, j], exp(normsandvars[2*i, j])) for i in halfindices], :, 1) for j in batch_indices]...)
 end
 
 function sample_prior(n::LatentSDE, ps, st; b=1, seed=nothing, noise=(seed) -> nothing, tspan=n.tspan, datasize=n.datasize)
