@@ -24,7 +24,7 @@ begin
 end
 
 # ╔═╡ ae7d6e11-55da-44a2-a5b6-60d11caa9dbf
-using NeuralSDEExploration, Plots, PlutoUI, PlutoArgs, JLD2, Random, StatsBase, Random123, DiffEqNoiseProcess, Distributions
+using NeuralSDEExploration, Plots, PlutoUI, PlutoArgs, JLD2, Random, StatsBase, Random123, DiffEqNoiseProcess, Distributions, ComponentArrays
 
 # ╔═╡ 6995cd16-0c69-49c7-9523-4c842c0db339
 begin
@@ -142,22 +142,20 @@ md"""
 Histogram span: $(@bind hspan RangeSlider(1:20))
 """
 
+# ╔═╡ bd6a1df4-f423-4297-be6b-0a3cc41ef5a9
+md"""
+-0.0223082
+-0.28795
+"""
+
+# ╔═╡ bb1b3a4d-a775-4f51-bd5b-ac1e59dce3fa
+ps["initial_prior"]
+
+# ╔═╡ b74643d9-783f-4c55-be3d-eb1f51d2ddc0
+ps["initial_prior"] = ComponentArray([-0f0, -4f0])
+
 # ╔═╡ 0d74625b-edf2-45a7-9b16-08fc29d83eb0
-loss(ps, select_ts(1:10, timeseries), 30.0, rand(UInt32))
-
-# ╔═╡ fe157d5e-eead-4921-a310-467e56e33fb7
-begin
-	ts = vcat(reduce(vcat, [s.u[hspan] for s in timeseries])...)
-	histogram_data = fit(Histogram, ts, 0.0:0.01:1.0)
-end
-
-# ╔═╡ 2812e069-6bf9-4c80-91d7-f7fcf6c338fb
-begin
-	p_hist = plot([
-		histogram_data,
-		histogram_prior,
-	], alpha=0.5, labels=["data" "prior"], title="marginal probabilities")
-end
+loss(ps, select_ts(1:20, timeseries), 30.0, 0)
 
 # ╔═╡ fe1ae4b3-2f1f-4b6c-a076-0d215f222e6c
 plot_prior(25, rng=Xoshiro(), tspan=(0e0, 10e0), datasize=100)
@@ -169,14 +167,10 @@ plot(NeuralSDEExploration.sample_prior(latent_sde,ps,st;b=40,tspan=(0e0,10e0),da
 plot(NeuralSDEExploration.sample_prior_dataspace(latent_sde,ps,st;b=1,tspan=(0e0,10e0),datasize=5000,seed=1), title="Neural SDE")
 
 # ╔═╡ 63e3e80c-6d03-4e42-a718-5bf30ad7182f
-plot(filter_dims(1:1, NeuralSDEExploration.series(model, initial_condition[1:10], (0e0, 10e0), 5000,seed=1)), title="FitzHugh-Nagumo")
+plot(filter_dims(1:1, NeuralSDEExploration.series(model, initial_condition[1:10], (0e0, 10e0), 5000,seed=1)), title="longer timespan of model")
 
 # ╔═╡ 9f8c49a0-2098-411b-976a-2b43cbb20a44
 plot(NeuralSDEExploration.series(model, [[0e0, 0e0]], (0e0, 10e0), 5000))
-
-# ╔═╡ ff5519b9-2a69-41aa-8f55-fc63fa176d3f
- plot(sample(timeseries, 25),linewidth=.5,color=:black,legend=false,title="data")
-
 
 # ╔═╡ 91a99de2-84b3-4ed7-b8de-97652c59137f
 ps_new = copy(ps)
@@ -219,10 +213,10 @@ first_posterior = Timeseries(first_ts.t, latent_sde(repeat_ts, ps, st)[2])
 first_mean_var = NeuralSDEExploration.mean_and_var(first_posterior)
 
 # ╔═╡ 2abb2284-f71b-4e38-87c0-334d79ee9f2a
-posterior_plot = plot(select_ts(1:10, first_posterior), color=:black, axis=([], false), ticks=false, grid=false, background=RGBA{Float64}(1.0,1.0,1.0,0.0))
+posterior_plot = plot(select_ts(1:10, first_posterior), color=:black)#, axis=([], false), ticks=false, grid=false, background=RGBA{Float64}(1.0,1.0,1.0,0.0))
 
 # ╔═╡ 3dc42e02-1d6f-4c9c-8572-fcbe006b70a0
-data_plot = plot(first_ts, color=:black, axis=([], false), ticks=false, grid=false, background=RGBA{Float64}(1.0,1.0,1.0,0.0))
+data_plot = plot(first_ts, color=:black)#, axis=([], false), ticks=false, grid=false, background=RGBA{Float64}(1.0,1.0,1.0,0.0))
 
 # ╔═╡ 82b3ee10-a447-4007-8178-dcf469afa3e8
 savefig(data_plot, "~/Downloads/flowchart_data.tikz")
@@ -234,9 +228,6 @@ plot!(posterior_plot, select_ts(1:1, first_mean_var), ribbon=2*map(only, first_m
 # ╔═╡ 3fc7f82c-4384-4d6c-97c6-de23b9b5e6b9
 plot!(posterior_plot, first_ts, color=:red, axis=([], false), ticks=false, grid=false, background=RGBA{Float64}(1.0,1.0,1.0,0.0))
 
-# ╔═╡ 091e784b-b12f-466a-84fc-2865220f2856
-
-
 # ╔═╡ 97bc8a9b-a1da-45ee-915e-d342adc44e50
 savefig(posterior_plot, "~/Downloads/flowchart_posterior.tikz")
 
@@ -247,7 +238,7 @@ prior_plot = plot(NeuralSDEExploration.sample_prior_dataspace(latent_sde,ps,st;b
 savefig(prior_plot, "~/Downloads/flowchart_prior.tikz")
 
 # ╔═╡ ef3614bf-8462-4e17-80b2-768c9ac7ab28
-pgfplotsx(size=(1000, 500))
+pgfplotsx(size=(700, 500))
 
 # ╔═╡ Cell order:
 # ╠═7a6bbfd6-ffb7-11ed-39d7-5b673fe4cdae
@@ -284,15 +275,15 @@ pgfplotsx(size=(1000, 500))
 # ╠═905a440f-4a56-4205-aba0-558fd28e0bc0
 # ╠═99b80546-740e-485e-82a1-948f837ed696
 # ╟─96c0423f-214e-4995-a2e4-fe5c84d5a7c3
+# ╟─bd6a1df4-f423-4297-be6b-0a3cc41ef5a9
+# ╠═bb1b3a4d-a775-4f51-bd5b-ac1e59dce3fa
+# ╠═b74643d9-783f-4c55-be3d-eb1f51d2ddc0
 # ╠═0d74625b-edf2-45a7-9b16-08fc29d83eb0
-# ╠═fe157d5e-eead-4921-a310-467e56e33fb7
-# ╠═2812e069-6bf9-4c80-91d7-f7fcf6c338fb
 # ╠═fe1ae4b3-2f1f-4b6c-a076-0d215f222e6c
 # ╠═72045fd0-2769-4868-9b67-e7a41e3f1d7d
 # ╟─ae0c9dae-e490-4965-9353-c820a3ce3645
-# ╟─63e3e80c-6d03-4e42-a718-5bf30ad7182f
+# ╠═63e3e80c-6d03-4e42-a718-5bf30ad7182f
 # ╠═9f8c49a0-2098-411b-976a-2b43cbb20a44
-# ╠═ff5519b9-2a69-41aa-8f55-fc63fa176d3f
 # ╠═91a99de2-84b3-4ed7-b8de-97652c59137f
 # ╠═5f3db28c-b3bb-4461-b457-e7af3e273674
 # ╠═b8422a5a-d5a9-4f58-8fc7-3cf58a9bc335
@@ -304,7 +295,6 @@ pgfplotsx(size=(1000, 500))
 # ╠═82b3ee10-a447-4007-8178-dcf469afa3e8
 # ╠═858f2092-5a21-458f-9c47-fc93486b9b9d
 # ╠═3fc7f82c-4384-4d6c-97c6-de23b9b5e6b9
-# ╠═091e784b-b12f-466a-84fc-2865220f2856
 # ╠═97bc8a9b-a1da-45ee-915e-d342adc44e50
 # ╠═dd55cc42-8b6c-4e8f-a888-5427ac724ace
 # ╠═c8d890f6-b816-4711-aaba-27052b8365ab
