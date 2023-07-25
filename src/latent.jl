@@ -111,7 +111,7 @@ function StandardLatentSDE(solver, tspan, datasize;
             Lux.Chain(
                 Lux.Dense(1 => diffusion_size, hidden_activation),
                 Lux.Dense(diffusion_size => diffusion_size, hidden_activation),
-                Lux.Dense(diffusion_size => 1, Lux.sigmoid)
+                Lux.Dense(diffusion_size => 1, Lux.sigmoid),
                 Lux.Scale(1)
             ) for i in 1:latent_dims]...)
     )
