@@ -142,17 +142,9 @@ md"""
 Histogram span: $(@bind hspan RangeSlider(1:20))
 """
 
-# ╔═╡ bd6a1df4-f423-4297-be6b-0a3cc41ef5a9
-md"""
--0.0223082
--0.28795
-"""
-
-# ╔═╡ bb1b3a4d-a775-4f51-bd5b-ac1e59dce3fa
-ps["initial_prior"]
-
 # ╔═╡ b74643d9-783f-4c55-be3d-eb1f51d2ddc0
-ps["initial_prior"] = ComponentArray([-0f0, -4f0])
+ps["initial_prior"] = ComponentArray{Float32}([0.108988
+, -0.78384])
 
 # ╔═╡ 0d74625b-edf2-45a7-9b16-08fc29d83eb0
 loss(ps, select_ts(1:20, timeseries), 30.0, 0)
@@ -201,7 +193,7 @@ plot(NeuralSDEExploration.sample_prior(latent_sde,ps_new,st;b=3,tspan=(0e0,10e0)
 )
 
 # ╔═╡ b8422a5a-d5a9-4f58-8fc7-3cf58a9bc335
-first_ts = select_ts(1:20, timeseries)
+first_ts = select_ts(1:1, timeseries)
 
 # ╔═╡ b75050c4-ce60-420c-b8ec-c8df76faa8ca
 repeat_ts = Timeseries(first_ts.t, repeat(first_ts.u, 40))
@@ -275,8 +267,6 @@ pgfplotsx(size=(700, 500))
 # ╠═905a440f-4a56-4205-aba0-558fd28e0bc0
 # ╠═99b80546-740e-485e-82a1-948f837ed696
 # ╟─96c0423f-214e-4995-a2e4-fe5c84d5a7c3
-# ╟─bd6a1df4-f423-4297-be6b-0a3cc41ef5a9
-# ╠═bb1b3a4d-a775-4f51-bd5b-ac1e59dce3fa
 # ╠═b74643d9-783f-4c55-be3d-eb1f51d2ddc0
 # ╠═0d74625b-edf2-45a7-9b16-08fc29d83eb0
 # ╠═fe1ae4b3-2f1f-4b6c-a076-0d215f222e6c

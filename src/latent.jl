@@ -93,13 +93,15 @@ function StandardLatentSDE(solver, tspan, datasize;
     create_network(:drift_prior, Lux.Chain(
         Lux.Dense(in_dims => prior_size, hidden_activation),
         repeat([Lux.Dense(prior_size => prior_size, hidden_activation)], depth)...,
-        Lux.Dense(prior_size => latent_dims),
+        Lux.Dense(prior_size => latent_dims, hidden_activation),
+        Lux.Scale(latent_dims)
     ))
     # Drift of posterior. This is the term of an SDE when fed with the context.
     create_network(:drift_posterior, Lux.Chain(
         Lux.Dense(in_dims + context_size => posterior_size, hidden_activation),
         repeat([Lux.Dense(posterior_size => posterior_size, hidden_activation)], depth)...,
-        Lux.Dense(posterior_size => latent_dims),
+        Lux.Dense(posterior_size => latent_dims, hidden_activation),
+        Lux.Scale(latent_dims)
     ))
     # Prior and posterior share the same diffusion (they are not actually evaluated
     # seperately while training, only their KL divergence). This is a diagonal
@@ -110,6 +112,7 @@ function StandardLatentSDE(solver, tspan, datasize;
                 Lux.Dense(1 => diffusion_size, hidden_activation),
                 Lux.Dense(diffusion_size => diffusion_size, hidden_activation),
                 Lux.Dense(diffusion_size => 1, Lux.sigmoid)
+                Lux.Scale(1)
             ) for i in 1:latent_dims]...)
     )
 
@@ -363,7 +366,7 @@ function (n::LatentSDE)(timeseries::Timeseries, ps::ComponentVector, st;
     kl_divergence_time = sol[end:end, :, :]
 
     initialdists_kl = reduce(hcat, [reshape([KullbackLeibler(a, b) for (a, b) in zip(initialdists_posterior[:, batch], initialdists_prior)], :, 1) for batch in eachindex(timeseries.u)])
-    kl_divergence = sum(initialdists_kl, dims=1) .+ sol[end:end, :, end]
+    kl_divergence = sum(initialdists_kl, dims=1) .+ sol[end, :, end]
 
     projected_ts = reduce(timecat, [n.projector(x, ps.projector, st.projector)[1] for x in eachslice(posterior_latent, dims=3)])
 

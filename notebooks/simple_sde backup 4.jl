@@ -67,7 +67,7 @@ begin
     )
 	ps__, st = Lux.setup(rng, latent_sde)
 	println(ps__)
-	ps_ = (initial_prior = (weight = [0.0; 0.0; 0.0; 0.0;;],), initial_posterior = (weight = [0.0; 0.0; 0.0; 0.0;;],), drift_prior = (weight = [0.8 1.0; 1.0 1.0],), drift_posterior = (weight = [1.0 0.5 0.0; 1.0 0.1 0.0],), diffusion = (layer_1 = (weight = [0.5;;], bias = [1.0;;]), layer_2 = (weight = [0.0;;], bias = [1.0;;])), encoder_recurrent = (weight_ih = [1.0;;], weight_hh = [1.0;;], bias = [0.0]), encoder_net = (weight = [1.0;;],), projector = (weight = [1.0 1.0],))
+	ps_ = (initial_prior = (weight = [0.1; 0.0; 0.1; 0.0;;],), initial_posterior = (weight = [1.0; 1.0; 1.0; 1.0;;],), drift_prior = (weight = [0.8 1.0; 1.0 1.0],), drift_posterior = (weight = [1.0 0.5 0.0; 1.0 0.1 0.0],), diffusion = (layer_1 = (weight = [0.5;;], bias = [1.0;;]), layer_2 = (weight = [0.0;;], bias = [1.0;;])), encoder_recurrent = (weight_ih = [1.0;;], weight_hh = [1.0;;], bias = [0.0]), encoder_net = (weight = [1.0;;],), projector = (weight = [1.0 1.0],))
 	ps = ComponentArray{Float32}(ps_)
 end
 
@@ -111,7 +111,7 @@ m3 = cat(m1, m2; dims=3)
 plot(timeseries)
 
 # ╔═╡ e8ef1773-8087-4f47-abfe-11e73f28a269
-posterior_latent, posterior_data, logterm_, kl_divergence_, distance_ = latent_sde(timeseries, ps, st, seed=3)
+posterior_latent, posterior_data, logterm_, kl_divergence_, distance_ = latent_sde(timeseries, ps, st, seed=2)
 
 # ╔═╡ b4caf08a-6a9a-403d-b537-a80a197d8c31
 kl_divergence_
@@ -216,3 +216,4 @@ end
 # ╠═0ec36eba-8887-4ec2-9893-7ae5774c9337
 # ╠═7e231cb4-f76b-49b9-91f5-785603a4afd9
 # ╠═ee76f88c-069e-45b1-bce0-6019983b5260
+# ╠═6bf6a59c-549c-495b-a574-caa12c87e055
