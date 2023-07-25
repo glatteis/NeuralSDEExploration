@@ -93,15 +93,13 @@ function StandardLatentSDE(solver, tspan, datasize;
     create_network(:drift_prior, Lux.Chain(
         Lux.Dense(in_dims => prior_size, hidden_activation),
         repeat([Lux.Dense(prior_size => prior_size, hidden_activation)], depth)...,
-        Lux.Dense(prior_size => latent_dims, hidden_activation),
-        Lux.Scale(latent_dims)
+        Lux.Dense(prior_size => latent_dims, hidden_activation)
     ))
     # Drift of posterior. This is the term of an SDE when fed with the context.
     create_network(:drift_posterior, Lux.Chain(
         Lux.Dense(in_dims + context_size => posterior_size, hidden_activation),
         repeat([Lux.Dense(posterior_size => posterior_size, hidden_activation)], depth)...,
-        Lux.Dense(posterior_size => latent_dims, hidden_activation),
-        Lux.Scale(latent_dims)
+        Lux.Dense(posterior_size => latent_dims, hidden_activation)
     ))
     # Prior and posterior share the same diffusion (they are not actually evaluated
     # seperately while training, only their KL divergence). This is a diagonal
