@@ -193,34 +193,6 @@ function stable_divide(a::AbstractArray{Float32}, b::AbstractArray{Float32}, eps
     a ./ b
 end
 
-
-function augmented_drift(n::LatentSDE, times::AbstractVector{Float32}, batch::Int, st::NamedTuple, u_in::AbstractVector{Float32}, info::ComponentVector{Float32}, t::Float32)
-    # Remove augmented term from input
-    u::AbstractVector{Float32} = u_in[1:end-1]
-    
-    p = info.ps
-    context = info.context
-
-    # Get the context for the posterior at the current time
-    # initial state evolve => get the posterior at future start time
-    posterior_net_input::AbstractVector{Float32} = ChainRulesCore.ignore_derivatives() do
-        time_index = max(1, searchsortedlast(times, t))
-        vcat(u, @view context[:, batch, time_index])
-    end
-
-    prior = n.drift_prior(u, p.drift_prior, st.drift_prior)[1]
-    posterior = n.drift_posterior(posterior_net_input, p.drift_posterior, st.drift_posterior)[1]
-
-    # # The diffusion is diagonal, so a single network is invoked on each dimension
-    diffusion = n.diffusion(u, p.diffusion, st.diffusion)[1]
-
-    # The augmented term for computing the KL divergence
-    u_term = stable_divide(posterior .- prior, diffusion)
-    augmented_term = 0.5f0 * sum(abs2, u_term; dims=[1])
-
-    vcat(posterior, augmented_term)
-end
-
 function augmented_drift_batch(n::LatentSDE, times::AbstractArray{Float32}, latent_dims::Int, batch_size::Int, st::NamedTuple, u_in_vec::AbstractArray{Float32}, info::ComponentVector{Float32}, t::Float32)
     u_in = reshape(u_in_vec, latent_dims + 1, batch_size)
     # Remove augmented term from input
@@ -247,19 +219,12 @@ function augmented_drift_batch(n::LatentSDE, times::AbstractArray{Float32}, late
     reshape(vcat(posterior, augmented_term), (latent_dims + 1) * batch_size)
 end
 
-function augmented_diffusion(n::LatentSDE, st::NamedTuple, u_in::AbstractVector{Float32}, info::ComponentVector{Float32}, t::Float32)
-    p = info.ps
-    diffusion = n.diffusion(u_in[1:end-1], p.diffusion, st.diffusion)[1]
-    return vcat(diffusion, 0f0)
-end
-
 function augmented_diffusion_batch(n::LatentSDE, latent_dims::Int, batch_size::Int, st::NamedTuple, u_in_vec::AbstractArray{Float32}, info::ComponentVector{Float32}, t::Float32)
     p = info.ps
     u_in = reshape(u_in_vec, latent_dims + 1, batch_size)
     diffusion = n.diffusion(u_in[1:end-1, :], p.diffusion, st.diffusion)[1]
     reshape(vcat(diffusion, zeros32(size(u_in[end:end, :]))), (latent_dims + 1) * batch_size)
 end
-
 
 """
     (n::LatentSDE)(timeseries, ps::ComponentVector, st)

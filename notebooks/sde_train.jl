@@ -418,7 +418,7 @@ latent_sde = StandardLatentSDE(
 	depth=depth,
 	rnn_size=context_size,
 	context_size=context_size,
-	hidden_activation=tanh,
+	hidden_activation=Lux.softplus,
 	adaptive=false,
 	# we only have this custom layer - the others are default
 	projector=projector
@@ -627,7 +627,7 @@ end
 begin
 	if !(@isdefined PlutoRunner) && enabletraining  # running as job
 		println("Starting training")
-		opt_state_job = Optimisers.setup(Optimisers.Adam(), ps)
+		opt_state_job = Optimisers.setup(Optimisers.OptimiserChain(Optimisers.ClipGrad(1.0), Optimisers.Adam()), ps)
 		# precompile exportresults because there are some memory problems
 		exportresults(0)
 		for epoch in 1:1000
