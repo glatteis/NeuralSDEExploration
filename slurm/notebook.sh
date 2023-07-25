@@ -1,12 +1,13 @@
 #!/bin/bash
 
-#SBATCH --job-name=pluto
+
+#SBATCH --qos=gpushort
+#SBATCH --job-name=plutogpu
 #SBATCH --account=tipes
-#SBATCH --partition=standard
-#SBATCH --cpus-per-task=4
 #SBATCH --partition=gpu
 #SBATCH --gres=gpu:v100:1
-#SBATCH --time=24:00:00
+#SBATCH --cpus-per-task=2
+#SBATCH --time=02:00:00
 #SBATCH --output=/home/linushe/outputs/pluto-%j.log
 
 ###
@@ -25,7 +26,7 @@ export I_MPI_PMI_LIBRARY=/p/system/slurm/lib/libpmi.so
 module purge
 
 # Load a Julia module, if you're running Julia notebooks
-module load julia/1.8.2
+module load julia/1.9
 
 # set a random port for the notebook, in case multiple notebooks are
 # on the same compute node.

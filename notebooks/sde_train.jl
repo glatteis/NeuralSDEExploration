@@ -418,7 +418,7 @@ latent_sde = StandardLatentSDE(
 	depth=depth,
 	rnn_size=context_size,
 	context_size=context_size,
-	hidden_activation=tanh,
+	hidden_activation=Lux.softplus,
 	adaptive=false,
 	# we only have this custom layer - the others are default
 	projector=projector
