@@ -19,6 +19,7 @@ begin
 	if @isdefined PlutoRunner  # running inside Pluto
 		import Pkg
 		Pkg.activate("..")
+		Pkg.precompile("CUDA")
 		using Revise
 	end
 end
@@ -275,8 +276,7 @@ CLI arg: `--gpu`
 
 # ╔═╡ 6c0086c5-df79-4bc9-bada-f1c656525164
 if gpu_enabled
-	using Metal
-	println(Metal.functional())
+	using CUDA
 end
 
 # ╔═╡ 16c12354-5ab6-4c0e-833d-265642119ed2
@@ -400,7 +400,7 @@ end
 
 # ╔═╡ f813e728-3bf9-4f05-bcf3-7f14992e1588
 u0_constructor = if gpu_enabled
-	(x) -> MtlArray(x)
+	(x) -> CuArray(x)
 else
 	(x) -> x
 end

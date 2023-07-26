@@ -1,6 +1,6 @@
+authors = ["Linus Heck <linus.heck@rwth-aachen.de>"]
 name = "NeuralSDEExploration"
 uuid = "36435bbf-334d-4708-81f2-8ac363fc9ea1"
-authors = ["Linus Heck <linus.heck@rwth-aachen.de>"]
 version = "0.1.0"
 
 [deps]
@@ -59,3 +59,6 @@ Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 Tracker = "9f7883ad-71c0-57eb-9f7f-b5c9e6d3789c"
 TruncatedStacktraces = "781d530d-4396-4725-bb49-402e4bee1e77"
 Zygote = "e88e6eb3-aa80-5325-afca-941959d7151f"
+
+[extras]
+CUDA_Runtime_jll = "76a88914-d11a-5bdc-97e0-2f5a05c973a2"
