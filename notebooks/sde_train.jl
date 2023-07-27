@@ -284,7 +284,7 @@ in_dims = latent_dims
 
 # ╔═╡ 60b5397d-7350-460b-9117-319dc127cc7e
 md"""
-Use GPU: $(@bind gpu_enabled Arg("gpu", CheckBox(true), required=false))
+Use GPU: $(@bind gpu_enabled Arg("gpu", CheckBox(), required=false))
 CLI arg: `--gpu`
 """
 
