@@ -290,9 +290,8 @@ CLI arg: `--gpu`
 
 # ╔═╡ 6c0086c5-df79-4bc9-bada-f1c656525164
 if gpu_enabled
-	using CUDA
-	using LuxCUDA
-	println(CUDA.functional())
+	using Metal
+	println(Metal.functional())
 end
 
 # ╔═╡ 16c12354-5ab6-4c0e-833d-265642119ed2
@@ -416,7 +415,7 @@ end
 
 # ╔═╡ f813e728-3bf9-4f05-bcf3-7f14992e1588
 u0_constructor = if gpu_enabled
-	(x) -> CuArray(x)
+	(x) -> MtlArray(x)
 else
 	(x) -> x
 end
@@ -452,14 +451,14 @@ md"""
 
 # ╔═╡ 05568880-f931-4394-b31e-922850203721
 ps_, st = if gpu_enabled
-	Lux.setup(rng, latent_sde)
+	Lux.setup(rng, latent_sde) |> gpu
 else
 	Lux.setup(rng, latent_sde)
 end
 
 # ╔═╡ b0692162-bdd2-4cb8-b99c-1ebd2177a3fd
 begin
-	ps = ComponentArray{Float32}(ps_) |> gpu
+	ps = ComponentArray{Float32}(ps_) |> Lux.gpu
 end
 
 # ╔═╡ ee3d4a2e-0960-430e-921a-17d340af497c
@@ -702,7 +701,7 @@ end
 # ╟─7e6256ef-6a0a-40cc-aa0a-c467b3a524c4
 # ╠═2da6bbd4-8036-471c-b94e-10182cf8a834
 # ╠═c00a97bf-5e10-4168-8d58-f4f9270258ac
-# ╠═5691fcc5-29b3-4236-9154-59c6fede49ce
+# ╟─5691fcc5-29b3-4236-9154-59c6fede49ce
 # ╠═15cef7cc-30b6-499d-b968-775b3251dedb
 # ╟─1502612c-1489-4abf-8a8b-5b2d03a68cb1
 # ╠═455263ef-2f94-4f3e-8401-f0da7fb3e493

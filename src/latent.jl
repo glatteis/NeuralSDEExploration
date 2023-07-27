@@ -87,7 +87,7 @@ function StandardLatentSDE(solver, tspan, datasize;
     # position zero of the posterior. The initial_prior is a fixed gaussian
     # distribution.
     create_network(:initial_prior, Lux.Dense(1 => latent_dims + latent_dims, use_bias=false, init_weight=(rng, size...) -> fill(-1f0, (size...))))
-    create_network(:initial_posterior, Lux.Dense(context_size => latent_dims + latent_dims, init_weight=(rng, size...) -> fill(-1f0, (size...))))
+    create_network(:initial_posterior, Lux.Dense(context_size => latent_dims + latent_dims, init_weight=Lux.zeros32, init_bias=(rng, size...) -> fill(-1f0, (size...))))
     
     # Drift of prior. This is just an SDE drift in the latent space
     create_network(:drift_prior, Lux.Chain(
@@ -110,7 +110,7 @@ function StandardLatentSDE(solver, tspan, datasize;
                 Lux.Dense(1 => diffusion_size, hidden_activation),
                 Lux.Dense(diffusion_size => diffusion_size, hidden_activation),
                 Lux.Dense(diffusion_size => 1, Lux.sigmoid),
-                Lux.Scale(1)
+                Lux.WrappedFunction(Base.Fix1(broadcast, (x) -> x + 1f-5))
             ) for i in 1:latent_dims]...)
     )
 
