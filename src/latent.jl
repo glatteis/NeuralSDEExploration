@@ -135,12 +135,10 @@ end
 
 function get_distributions(model, model_p, st, context)
     normsandvars, _ = model(context, model_p, st)
-    # batches are on the second dimension
-    batch_indices = eachindex(context[1, :])
-    # output ordered like [norm, var, norm, var, ...]
-    halfindices = 1:Int(length(normsandvars[:, 1]) / 2)
+    
+    dim_1 = size(normsandvars)[1]
 
-    return hcat([reshape([Normal{Float32}(normsandvars[2*i-1, j], exp(normsandvars[2*i, j])) for i in halfindices], :, 1) for j in batch_indices]...)
+    return Normal{Float32}.(normsandvars[1:dim_1÷2, :], normsandvars[dim_1÷+1:dim_1, :])
 end
 
 function sample_prior(n::LatentSDE, ps, st; b=1, seed=nothing, noise=(seed) -> nothing, tspan=n.tspan, datasize=n.datasize)
