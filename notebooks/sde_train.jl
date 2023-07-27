@@ -407,7 +407,7 @@ md"""
 """
 
 # ╔═╡ 08759cda-2a2a-41ff-af94-5b1000c9e53f
-solver = EM()
+solver = EulerHeun()
 
 # ╔═╡ ec41b765-2f73-43a5-a575-c97a5a107c4e
 println("Steps that will be derived: $(steps(tspan_model, dt))")
