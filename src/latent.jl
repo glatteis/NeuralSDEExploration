@@ -214,7 +214,6 @@ function augmented_drift_batch(n::LatentSDE, times::AbstractArray{Float32}, late
 end
 
 function augmented_diffusion_batch(n::LatentSDE, latent_dims::Int, batch_size::Int, st::NamedTuple, u_in_vec::AbstractArray{Float32}, info::ComponentVector{Float32}, t::Float32)
-    return u_in_vec
     p = info.ps
     u_in = reshape(u_in_vec, latent_dims + 1, batch_size)
     diffusion = n.diffusion(u_in[1:end-1, :], p.diffusion, st.diffusion)[1]
