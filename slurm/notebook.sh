@@ -45,6 +45,6 @@ echo "To stop this notebook, run 'scancel $SLURM_JOB_ID'"
 ssh -R$TUNNELPORT:localhost:$NOTEBOOKPORT $SLURM_SUBMIT_HOST -N -f
 
 # Start the notebook
-JULIA_REVISE_POLL=1 JULIA_DEBUG=CUDA_Driver_jll srun -n1 /home/linushe/julia-1.9.0/bin/julia --project=/home/linushe/neuralsdeexploration -e "using Pluto; Pluto.run(port=$NOTEBOOKPORT)"
+JULIA_REVISE_POLL=1 JULIA_DEBUG=CUDA_Driver_jll srun -n1 /home/linushe/julia-1.9.0/bin/julia --project=/home/linushe/neuralsdeexploration_gpu -e "using Pluto; Pluto.run(port=$NOTEBOOKPORT)"
 
 # To stop the notebook, use 'scancel'
