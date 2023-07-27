@@ -67,7 +67,7 @@ md"""
 
 # ╔═╡ cb3a270e-0f2a-4be3-9ab3-ea5e4c56d0e7
 md"""
-Used model: $(@bind model_name Arg("model", Select(["sun", "fhn", "ou", "gbm", "zero", "diffusion", "const", "exp"]), short_name="m")), CLI arg: `--model`, `-m` (required!)
+Used model: $(@bind model_name Arg("model", Select(["sun", "fhn", "ou", "gbm", "zero", "diffusion", "const", "exp", "sine"]), short_name="m")), CLI arg: `--model`, `-m` (required!)
 """
 
 # ╔═╡ 95bdd676-d8df-4fef-bdd7-cce85b717018
@@ -173,12 +173,17 @@ elseif model_name == "diffusion"
 elseif model_name == "const"
 	(
 		[only(rand(Normal(1.0, 0.4^2), 1)) for i in 1:n],
-		NeuralSDEExploration.Drift(0.1, 0.0)
+		NeuralSDEExploration.Drift(0.1, 0.0, 0.0)
 	)
 elseif model_name == "exp"
 	(
 		[only(rand(Normal(1.0, 0.4^2), 1)) for i in 1:n],
-		NeuralSDEExploration.Drift(0.0, 1.0)
+		NeuralSDEExploration.Drift(0.0, 1.0, 0.0)
+	)
+elseif model_name == "sine"
+	(
+		[only(rand(Normal(1.0, 0.4^2), 1)) for i in 1:n],
+		NeuralSDEExploration.Drift(0.0, 0.0, 10.0)
 	)
 elseif model_name == "zero"
 	(

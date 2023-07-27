@@ -3,9 +3,10 @@ export OrnsteinUhlenbeck
 struct Drift <: TimeseriesModel
     constant
     exp
+    sine
 end
 
-drift(u, d::Drift, t) = d.constant + u * d.exp
+drift(u, d::Drift, t) = d.constant + u * d.exp + sin(5.0*t) * d.sine
 diffusion(u, d::Drift, t) = 0.0
 
 function series(d::Drift, u0s, tspan, datasize; seed=rand(UInt32), noise=(seed) -> nothing, kwargs...)
