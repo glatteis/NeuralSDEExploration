@@ -1,15 +1,15 @@
 # energy balance model testcases
 
-fixed_args="/home/linushe/neuralsdeexploration/notebooks/sde_train.jl -m sun --batch-size 128 --dt 0.2 --kl-anneal true --backsolve true --scale 0.005 --lr-cycle false  --tspan-start-data 0.0 --tspan-end-data 5.0 --tspan-start-train 0.0 --tspan-end-train 5.0 --tspan-start-model 0.0 --tspan-end-model 5.0 --context-size 8 --kidger true"
+fixed_args="/home/linushe/neuralsdeexploration/notebooks/sde_train.jl -m sun --batch-size 256 --dt 0.02 --kl-anneal true --backsolve true --scale 0.005 --lr-cycle false  --tspan-start-data 0.0 --tspan-end-data 0.5 --tspan-start-train 0.0 --tspan-end-train 0.5 --tspan-start-model 0.0 --tspan-end-model 0.5 --context-size 8 --kidger true"
 
 variable_args=(
     # eta
-    "--eta 0.5 --learning-rate 0.001 --latent-dims 2 --hidden-size 32 --noise 0.12 --decay 1.0 --kl-rate 1000 --depth 2"
-    "--eta 1.0 --learning-rate 0.001 --latent-dims 2 --hidden-size 32 --noise 0.12 --decay 1.0 --kl-rate 1000 --depth 2"
-    "--eta 5.0 --learning-rate 0.001 --latent-dims 2 --hidden-size 32 --noise 0.12 --decay 1.0 --kl-rate 1000 --depth 2"
-    "--eta 10.0 --learning-rate 0.001 --latent-dims 2 --hidden-size 32 --noise 0.12 --decay 1.0 --kl-rate 1000 --depth 2"
-    "--eta 10.0 --learning-rate 0.001  --latent-dims 2 --hidden-size 32 --noise 0.12 --decay 1.0 --kl-rate 1000 --depth 2"
-    "--eta 20.0 --learning-rate 0.001 --latent-dims 2 --hidden-size 32 --noise 0.12 --decay 1.0 --kl-rate 1000 --depth 2"
+    "--eta 0.5 --learning-rate 0.005 --latent-dims 2 --hidden-size 32 --noise 0.12 --decay 1.0 --kl-rate 1000 --depth 2"
+    "--eta 1.0 --learning-rate 0.005 --latent-dims 2 --hidden-size 32 --noise 0.12 --decay 1.0 --kl-rate 1000 --depth 2"
+    "--eta 5.0 --learning-rate 0.005 --latent-dims 2 --hidden-size 32 --noise 0.12 --decay 1.0 --kl-rate 1000 --depth 2"
+    "--eta 10.0 --learning-rate 0.005 --latent-dims 2 --hidden-size 32 --noise 0.12 --decay 1.0 --kl-rate 1000 --depth 2"
+    "--eta 10.0 --learning-rate 0.005  --latent-dims 2 --hidden-size 32 --noise 0.12 --decay 1.0 --kl-rate 1000 --depth 2"
+    "--eta 20.0 --learning-rate 0.005 --latent-dims 2 --hidden-size 32 --noise 0.12 --decay 1.0 --kl-rate 1000 --depth 2"
 
     # different noisiness
     "--eta 1.0 --learning-rate 0.0015 --latent-dims 1 --hidden-size 32 --noise 0.01 --decay 0.999"

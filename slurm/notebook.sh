@@ -7,8 +7,9 @@
 #SBATCH --partition=gpu
 #SBATCH --gres=gpu:v100:1
 #SBATCH --cpus-per-task=2
-#SBATCH --time=02:00:00
+#SBATCH --time=04:00:00
 #SBATCH --output=/home/linushe/outputs/pluto-%j.log
+#SBATCH --mem=50G
 
 ###
 # This script is to submitted via "sbatch" on the cluster.
@@ -24,9 +25,6 @@ echo "------------------------------------------------------------"
 # Some initial setup
 export I_MPI_PMI_LIBRARY=/p/system/slurm/lib/libpmi.so
 module purge
-
-# Load a Julia module, if you're running Julia notebooks
-module load julia/1.9
 
 # set a random port for the notebook, in case multiple notebooks are
 # on the same compute node.
@@ -47,6 +45,6 @@ echo "To stop this notebook, run 'scancel $SLURM_JOB_ID'"
 ssh -R$TUNNELPORT:localhost:$NOTEBOOKPORT $SLURM_SUBMIT_HOST -N -f
 
 # Start the notebook
-JULIA_REVISE_POLL=1 srun -n1 julia --project=. -e "using Pluto; Pluto.run(port=$NOTEBOOKPORT)"
+JULIA_REVISE_POLL=1 JULIA_DEBUG=CUDA_Driver_jll srun -n1 /home/linushe/julia-1.9.0/bin/julia --project=/home/linushe/neuralsdeexploration -e "using Pluto; Pluto.run(port=$NOTEBOOKPORT)"
 
 # To stop the notebook, use 'scancel'
