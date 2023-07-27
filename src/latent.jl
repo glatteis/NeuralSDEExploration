@@ -225,7 +225,7 @@ end
 # KL(P::Distributions.Normal, Q::Distributions.Normal) = log(Q.σ / P.σ) + (1/2) * ((P.σ / Q.σ)^2 + (P.μ - Q.μ)^2 * Q.σ^(-2) -1.)
 KL(p_norms, p_vars, q_norms, q_vars) = 
     log.(q_vars ./ p_vars) .+ # log(Q.σ / P.σ) +
-    (1/2) .* ((p_vars ./ q_vars).^2 .+ # (1/2) * ((P.σ / Q.σ)^2 +
+    (0.5f0) .* ((p_vars ./ q_vars).^2 .+ # (1/2) * ((P.σ / Q.σ)^2 +
     (p_norms .- q_norms).^2 .* q_vars.^(-2) .- 1.) # (P.μ - Q.μ)^2 * Q.σ^(-2) -1.)
 
 loglike(means, vars, obs) = -log.(vars) .- 0.5f0 .* log.(2f0 .* pi) .- 0.5f0 .* ((obs - means) ./ vars) .^2
