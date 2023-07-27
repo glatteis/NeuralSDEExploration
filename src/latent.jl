@@ -217,7 +217,7 @@ function augmented_diffusion_batch(n::LatentSDE, latent_dims::Int, batch_size::I
     p = info.ps
     u_in = reshape(u_in_vec, latent_dims + 1, batch_size)
     diffusion = n.diffusion(u_in[1:end-1, :], p.diffusion, st.diffusion)[1]
-    reshape(vcat(diffusion, zeros32(1, size(u_in)[2])), (latent_dims + 1) * batch_size)
+    reshape(vcat(diffusion, ChainRulesCore.ignore_derivatives(() -> zeros32(1, size(u_in)[2]) |> Lux.gpu)), (latent_dims + 1) * batch_size)
 end
 
 # Reference:
