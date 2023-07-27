@@ -635,8 +635,6 @@ else
 end
 
 # ╔═╡ 78aa72e2-8188-441f-9910-1bc5525fda7a
-# ╠═╡ disabled = true
-#=╠═╡
 begin
 	if !(@isdefined PlutoRunner) && enabletraining  # running as job
 		println("Starting training")
@@ -650,7 +648,6 @@ begin
 		end
 	end
 end
-  ╠═╡ =#
 
 # ╔═╡ 830f7e7a-71d0-43c8-8e74-d1709b8a6707
 function gifplot()
