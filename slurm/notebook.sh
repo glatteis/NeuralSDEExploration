@@ -9,6 +9,7 @@
 #SBATCH --cpus-per-task=2
 #SBATCH --time=04:00:00
 #SBATCH --output=/home/linushe/outputs/pluto-%j.log
+#SBATCH --mem=50G
 
 ###
 # This script is to submitted via "sbatch" on the cluster.

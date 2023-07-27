@@ -1,6 +1,6 @@
-authors = ["Linus Heck <linus.heck@rwth-aachen.de>"]
 name = "NeuralSDEExploration"
 uuid = "36435bbf-334d-4708-81f2-8ac363fc9ea1"
+authors = ["Linus Heck <linus.heck@rwth-aachen.de>"]
 version = "0.1.0"
 
 [deps]
@@ -29,6 +29,7 @@ IPMeasures = "d7dc6e0c-a753-11e8-227e-b362679e0b17"
 InformationGeometry = "ee9d1287-bbdf-432c-9920-c447cf97a828"
 JLD2 = "033835bb-8acc-5ee8-8aae-3f567f8a3819"
 Lux = "b2108857-7c20-44ae-9111-449ecde12c47"
+LuxCUDA = "d0bbae9a-e099-4d5b-a835-1c6931763bda"
 LuxCore = "bb33d45b-7691-41d6-9220-0943567d0623"
 Makie = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
 Metal = "dde4c033-4e86-420c-a63e-0dd931031962"
