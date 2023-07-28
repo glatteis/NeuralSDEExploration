@@ -385,7 +385,7 @@ CLI arg: `--kidger`
 # ╔═╡ 2bb433bb-17df-4a34-9ccf-58c0cf8b4dd3
 (sense, noise) = if backsolve
 	(
-		BacksolveAdjoint(autojacvec=ZygoteVJP(allow_nothing=true), checkpointing=false),
+		BacksolveAdjoint(autojacvec=ZygoteVJP(), checkpointing=false),
 		function(seed, noise_size)
 			rng_tree = Xoshiro(seed)
 			VirtualBrownianTree(-3f0, fill(0f0, noise_size) |> Lux.gpu, tend=tspan_model[2]*2f0; tree_depth=tree_depth, rng=Threefry4x((rand(rng_tree, UInt32), rand(rng_tree, UInt32), rand(rng_tree, UInt32), rand(rng_tree, UInt32))))

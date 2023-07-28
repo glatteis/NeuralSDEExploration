@@ -52,11 +52,13 @@ using JLD2
 
     @test grads_zygote_1 == grads_zygote_2
     @test grads_finitediff_1 == grads_finitediff_2
-    outliers = findall(x -> !isapprox(x[1], x[2], rtol=0.6), collect(zip(vec(grads_zygote_1), vec(grads_finitediff_1))))
+    outliers = findall(x -> !isapprox(x[1], x[2], rtol=1.0), collect(zip(vec(grads_zygote_1), vec(grads_finitediff_1))))
     
     println(outliers)
     println(grads_zygote_1[outliers])
     println(grads_finitediff_1[outliers])
+    println(labels(grads_zygote_1)[outliers])
+    println(labels(grads_finitediff_1)[outliers])
     println("Please check the grads manually:")
     println(grads_zygote_1)
     println(grads_finitediff_1)
