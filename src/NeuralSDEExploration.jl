@@ -2,13 +2,13 @@ module NeuralSDEExploration
 
 using ChainRulesCore
 using ComponentArrays
+using CUDA
 using Dates
 using DiffEqFlux
 using DifferentialEquations
 using Distributions
 using ForwardDiff
 using Functors
-using InformationGeometry
 using IPMeasures
 using Lux
 using LuxCore

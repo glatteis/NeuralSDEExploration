@@ -24,7 +24,7 @@ begin
 end
 
 # ╔═╡ b6abba94-db07-4095-98c9-443e31832e7d
-using Optimisers, StatsBase, Zygote, Lux, DifferentialEquations, ComponentArrays, ParameterSchedulers, Random, Distributed, ForwardDiff, LuxCore, Dates, JLD2, SciMLSensitivity, JLD2, Random123, Distributions, DiffEqBase, ChainRulesCore
+using Optimisers, StatsBase, Zygote, Lux, DifferentialEquations, ComponentArrays, ParameterSchedulers, Random, Distributed, ForwardDiff, LuxCore, Dates, JLD2, SciMLSensitivity, JLD2, Random123, Distributions, DiffEqBase, ChainRulesCore, DiffEqGPU
 
 # ╔═╡ d1440209-78f7-4a9a-9101-a06ad2534e5d
 using NeuralSDEExploration, Plots, PlutoUI, PlutoArgs
@@ -289,14 +289,15 @@ in_dims = latent_dims
 
 # ╔═╡ 60b5397d-7350-460b-9117-319dc127cc7e
 md"""
-Use GPU: $(@bind gpu_enabled Arg("gpu", CheckBox(), required=false))
+Use GPU: $(@bind gpu_enabled Arg("gpu", CheckBox(true), required=false))
 CLI arg: `--gpu`
 """
 
 # ╔═╡ 6c0086c5-df79-4bc9-bada-f1c656525164
 if gpu_enabled
-	using Metal
-	println(Metal.functional())
+	using CUDA, LuxCUDA
+	println(CUDA.functional())
+	CUDA.allowscalar(true)
 end
 
 # ╔═╡ 16c12354-5ab6-4c0e-833d-265642119ed2
@@ -384,10 +385,10 @@ CLI arg: `--kidger`
 # ╔═╡ 2bb433bb-17df-4a34-9ccf-58c0cf8b4dd3
 (sense, noise) = if backsolve
 	(
-		BacksolveAdjoint(autojacvec=ZygoteVJP(), checkpointing=false),
+		BacksolveAdjoint(autojacvec=ZygoteVJP(allow_nothing=true), checkpointing=false),
 		function(seed, noise_size)
 			rng_tree = Xoshiro(seed)
-			VirtualBrownianTree(-3f0, fill(0f0, noise_size), tend=tspan_model[2]*2f0; tree_depth=tree_depth, rng=Threefry4x((rand(rng_tree, UInt32), rand(rng_tree, UInt32), rand(rng_tree, UInt32), rand(rng_tree, UInt32))))
+			VirtualBrownianTree(-3f0, fill(0f0, noise_size) |> Lux.gpu, tend=tspan_model[2]*2f0; tree_depth=tree_depth, rng=Threefry4x((rand(rng_tree, UInt32), rand(rng_tree, UInt32), rand(rng_tree, UInt32), rand(rng_tree, UInt32))))
 		end,
 	)
 else
@@ -416,13 +417,6 @@ projector = if fixed_projector
 	error("Fixed projector isn't implemented!!")
 else
 	Lux.Dense(latent_dims => data_dims)
-end
-
-# ╔═╡ f813e728-3bf9-4f05-bcf3-7f14992e1588
-u0_constructor = if gpu_enabled
-	(x) -> MtlArray(x)
-else
-	(x) -> x
 end
 
 # ╔═╡ 001c318e-b7a6-48a5-bfd5-6dd0368873ac
@@ -455,16 +449,13 @@ md"""
 """
 
 # ╔═╡ 05568880-f931-4394-b31e-922850203721
-ps_, st = if gpu_enabled
-	Lux.setup(rng, latent_sde) |> gpu
-else
-	Lux.setup(rng, latent_sde)
-end
+ps_, st_ = Lux.setup(rng, latent_sde)
 
 # ╔═╡ b0692162-bdd2-4cb8-b99c-1ebd2177a3fd
-begin
-	ps = ComponentArray{Float32}(ps_) |> Lux.gpu
-end
+ps = ComponentArray{Float32}(ps_) |> Lux.gpu
+
+# ╔═╡ e6766502-06db-4045-af8e-9aee65a705da
+st = st_ |> Lux.gpu
 
 # ╔═╡ ee3d4a2e-0960-430e-921a-17d340af497c
 md"""
@@ -473,7 +464,7 @@ Select a seed: $(@bind seed Scrubbable(481283))
 
 # ╔═╡ 3ab9a483-08f2-4767-8bd5-ae1375a62dbe
 function plot_prior(priorsamples; rng=rng, tspan=latent_sde.tspan, datasize=latent_sde.datasize)
-	prior = NeuralSDEExploration.sample_prior_dataspace(latent_sde,ps,st;seed=abs(rand(rng, Int)),b=priorsamples, tspan=tspan, datasize=datasize)
+	prior = NeuralSDEExploration.sample_prior_dataspace(latent_sde, ps, st; seed=0, b=priorsamples, tspan=tspan |> Lux.gpu, datasize=datasize)
 	return plot(prior, linewidth=.5,color=:black,legend=false,title="projected prior")
 end
 
@@ -483,7 +474,7 @@ function plotmodel()
 	rng_plot = Xoshiro(0)
 	nums = sample(rng_plot, 1:length(timeseries.u), n; replace=false)
 	
-	posterior_latent, posterior_data, logterm_, kl_divergence_, distance_ = latent_sde(select_ts(nums, timeseries), ps, st, seed=seed)
+	posterior_latent, posterior_data, logterm_, kl_divergence_, distance_ = latent_sde(select_ts(nums, timeseries), ps, st, seed=seed) .|> Lux.cpu
 	
 	priorsamples = 25
 	priornums = sample(rng_plot, 1:length(timeseries.u), priorsamples; replace=false)
@@ -530,7 +521,7 @@ end
 
 # ╔═╡ 24110995-82ce-4ba3-8307-6b6a5de88163
 function loss(ps, minibatch, eta, seed)
-	_, _, _, kl_divergence, likelihood = latent_sde(minibatch, ps, st; sense=sense, noise=noise, seed=seed, likelihood_scale=scale, u0_constructor=u0_constructor)
+	_, _, _, kl_divergence, likelihood = latent_sde(minibatch, ps, st; sense=sense, noise=noise, seed=seed, likelihood_scale=scale)
 	return mean(-likelihood .+ (eta * kl_divergence)), mean(kl_divergence), mean(likelihood)
 end
 
@@ -617,7 +608,7 @@ function exportresults(epoch)
 end
 
 # ╔═╡ 124680b8-4140-4b98-9fd7-009cc225992a
-@time loss(ps, select_ts(1:64, timeseries), 1f0, 4)[1]
+loss(ps, select_ts(1:64, timeseries), 1f0, 4)[1]
 
 # ╔═╡ 5123933d-0972-4fe3-9d65-556ecf81cf3c
 ts = select_ts(1:128, timeseries) |> gpu
@@ -626,7 +617,7 @@ ts = select_ts(1:128, timeseries) |> gpu
 if enabletraining
 	println("First Zygote call")
 	@time loss(ps, ts, 1.0, 1)[1]
-	@time dps = Zygote.gradient(ps -> loss(ps, ts, 1.0, 1)[1], ps)[1]
+	@time dps = Zygote.gradient(ps -> loss(ps, ts, 1f0, 1)[1], ps)[1]
 end
 
 # ╔═╡ 67e5ae14-3062-4a93-9492-fc6e9861577f
@@ -668,10 +659,13 @@ end
 # ╔═╡ 763f07e6-dd46-42d6-b57a-8f1994386302
 gifplot()
 
+# ╔═╡ e8b15c95-52f6-4e44-ad67-460d916bedf5
+plot(NeuralSDEExploration.sample_prior(latent_sde, ps, st; b=10, seed=0))
+
 # ╔═╡ 2b876f31-21c3-4782-a8a8-8da89d899719
 if enabletraining  # running as job
 	opt_state_notebook = Optimisers.setup(Optimisers.Adam(), ps)
-	@gif for epoch in 1:100
+	@gif for epoch in 1:2
 		train(lr_sched, opt_state_notebook; kl_sched=kl_sched)
 		gifplot()
 	end
@@ -744,12 +738,12 @@ end
 # ╠═08759cda-2a2a-41ff-af94-5b1000c9e53f
 # ╟─ec41b765-2f73-43a5-a575-c97a5a107c4e
 # ╠═63960546-2157-4a23-8578-ec27f27d5185
-# ╠═f813e728-3bf9-4f05-bcf3-7f14992e1588
 # ╠═001c318e-b7a6-48a5-bfd5-6dd0368873ac
 # ╠═0f6f4520-576f-42d3-9126-2076a51a6e22
 # ╟─1938e122-2c05-46fc-b179-db38322530ff
 # ╠═05568880-f931-4394-b31e-922850203721
 # ╠═b0692162-bdd2-4cb8-b99c-1ebd2177a3fd
+# ╠═e6766502-06db-4045-af8e-9aee65a705da
 # ╟─ee3d4a2e-0960-430e-921a-17d340af497c
 # ╠═3ab9a483-08f2-4767-8bd5-ae1375a62dbe
 # ╠═b5c6d43c-8252-4602-8232-b3d1b0bcee33
@@ -767,4 +761,5 @@ end
 # ╠═78aa72e2-8188-441f-9910-1bc5525fda7a
 # ╠═830f7e7a-71d0-43c8-8e74-d1709b8a6707
 # ╠═763f07e6-dd46-42d6-b57a-8f1994386302
+# ╠═e8b15c95-52f6-4e44-ad67-460d916bedf5
 # ╠═2b876f31-21c3-4782-a8a8-8da89d899719

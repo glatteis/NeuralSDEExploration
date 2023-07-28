@@ -1,5 +1,3 @@
-# energy balance model testcases
-
 fixed_args="/home/linushe/neuralsdeexploration/notebooks/sde_train.jl --batch-size 256 --dt 0.02 --kl-anneal true --backsolve true --scale 0.01 --lr-cycle false  --tspan-start-data 0.0 --tspan-end-data 0.5 --tspan-start-train 0.0 --tspan-end-train 0.5 --tspan-start-model 0.0 --tspan-end-model 0.5 --context-size 8 --kidger true"
 
 variable_args=(
@@ -10,3 +8,4 @@ variable_args=(
 )
 
 /home/linushe/julia-1.9.0/bin/julia --project=/home/linushe/neuralsdeexploration -t2 $fixed_args ${variable_args[$SLURM_ARRAY_TASK_ID]}
+
