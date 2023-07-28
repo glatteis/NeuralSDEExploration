@@ -22,7 +22,7 @@ begin
 end
 
 # ╔═╡ 9f89ad4a-4ffc-4cc8-bd7d-916ff6d6fa10
-using Optimisers, StatsBase, Zygote, ForwardDiff, Enzyme, Lux, DifferentialEquations, Functors, ComponentArrays, Distributions, ParameterSchedulers, Random, Flux
+using Optimisers, StatsBase, Zygote, ForwardDiff, Enzyme, Lux, DifferentialEquations, Functors, ComponentArrays, Distributions, ParameterSchedulers, Random
 
 # ╔═╡ 682a8844-d1a8-4919-8a57-41b942b7da25
 using NeuralSDEExploration, Plots, PlutoUI, ProfileSVG
@@ -65,23 +65,24 @@ begin
         tspan,
 		datasize
     )
-	ps__, st = Lux.setup(rng, latent_sde)
+	ps__, st_ = Lux.setup(rng, latent_sde)
 	println(ps__)
 	ps_ = (initial_prior = (weight = [0.0; 0.0; 0.0; 0.0;;],), initial_posterior = (weight = [0.0; 0.0; 0.0; 0.0;;],), drift_prior = (weight = [0.8 1.0; 1.0 1.0],), drift_posterior = (weight = [1.0 0.5 0.0; 1.0 0.1 0.0],), diffusion = (layer_1 = (weight = [0.5;;], bias = [1.0;;]), layer_2 = (weight = [0.0;;], bias = [1.0;;])), encoder_recurrent = (weight_ih = [1.0;;], weight_hh = [1.0;;], bias = [0.0]), encoder_net = (weight = [1.0;;],), projector = (weight = [1.0 1.0],))
-	ps = ComponentArray{Float32}(ps_)
+	ps = ComponentArray{Float32}(ps_) |> Lux.gpu
+	st = st_ |> Lux.gpu
 end
 
 # ╔═╡ 9d2a583f-e285-41d0-8911-19aa8dff73aa
-initial_prior(reshape([42f0], 1, 1), ps.initial_prior, st.initial_prior) 
+initial_prior(reshape([42f0], 1, 1) |> gpu, ps.initial_prior, st.initial_prior) 
 
 # ╔═╡ ddbf32ad-de72-4d03-88db-4e38f5485a3e
-initial_posterior(reshape([42.0], 1, 1), ps.initial_posterior, st.initial_posterior) 
+initial_posterior(reshape([42.0], 1, 1) |> gpu, ps.initial_posterior, st.initial_posterior) 
 
 # ╔═╡ 15e4ff79-0753-4c38-9967-07f8ffd09326
-drift_prior(reshape([42.0, 11.0], :, 1), ps.drift_prior, st.drift_prior) 
+drift_prior(reshape([42.0, 11.0], :, 1) |> gpu, ps.drift_prior, st.drift_prior) 
 
 # ╔═╡ 17023016-849b-49b9-a592-1224d2c6ebbc
-drift_posterior(reshape([42.0, 11.0, 0.0], :, 1), ps.drift_posterior, st.drift_posterior) 
+drift_posterior(reshape([42.0, 11.0, 0.0], :, 1) |> gpu, ps.drift_posterior, st.drift_posterior) 
 
 # ╔═╡ 23601b08-2d78-426c-9702-53232c0db1bc
 display(ps_)

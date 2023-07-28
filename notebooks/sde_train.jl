@@ -297,7 +297,7 @@ CLI arg: `--gpu`
 if gpu_enabled
 	using CUDA, LuxCUDA
 	println(CUDA.functional())
-	CUDA.allowscalar(true)
+	CUDA.allowscalar(false)
 end
 
 # ╔═╡ 16c12354-5ab6-4c0e-833d-265642119ed2
@@ -611,7 +611,7 @@ end
 loss(ps, select_ts(1:64, timeseries), 1f0, 4)[1]
 
 # ╔═╡ 5123933d-0972-4fe3-9d65-556ecf81cf3c
-ts = select_ts(1:128, timeseries) |> gpu
+ts = select_ts(1:256, timeseries)
 
 # ╔═╡ 7a7e8e9b-ca89-4826-8a5c-fe51d96152ad
 if enabletraining
@@ -619,6 +619,9 @@ if enabletraining
 	@time loss(ps, ts, 1.0, 1)[1]
 	@time dps = Zygote.gradient(ps -> loss(ps, ts, 1f0, 1)[1], ps)[1]
 end
+
+# ╔═╡ 6aedc20e-71a2-4384-86a7-cee616bb49dc
+dps["diffusion"]
 
 # ╔═╡ 67e5ae14-3062-4a93-9492-fc6e9861577f
 kl_sched = if kl_anneal
@@ -663,13 +666,16 @@ gifplot()
 plot(NeuralSDEExploration.sample_prior(latent_sde, ps, st; b=10, seed=0))
 
 # ╔═╡ 2b876f31-21c3-4782-a8a8-8da89d899719
-if enabletraining  # running as job
+# ╠═╡ disabled = true
+#=╠═╡
+if enabletraining
 	opt_state_notebook = Optimisers.setup(Optimisers.Adam(), ps)
 	@gif for epoch in 1:2
 		train(lr_sched, opt_state_notebook; kl_sched=kl_sched)
 		gifplot()
 	end
 end
+  ╠═╡ =#
 
 # ╔═╡ Cell order:
 # ╠═67cb574d-7bd6-40d9-9dc3-d57f4226cc83
@@ -756,6 +762,7 @@ end
 # ╠═124680b8-4140-4b98-9fd7-009cc225992a
 # ╠═5123933d-0972-4fe3-9d65-556ecf81cf3c
 # ╠═7a7e8e9b-ca89-4826-8a5c-fe51d96152ad
+# ╠═6aedc20e-71a2-4384-86a7-cee616bb49dc
 # ╠═67e5ae14-3062-4a93-9492-fc6e9861577f
 # ╠═da2df05a-5d40-4293-98f0-abd20d6dcd2a
 # ╠═78aa72e2-8188-441f-9910-1bc5525fda7a
