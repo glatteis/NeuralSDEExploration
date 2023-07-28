@@ -136,7 +136,8 @@ end
 function get_distributions(model, model_p::ComponentArray{Float32}, st, context::AbstractArray{Float32})
     normsandvars, _ = model(context, model_p, st)
     dim_1 = size(normsandvars)[1]
-    return normsandvars[1:dim_1÷2, :], normsandvars[dim_1÷2+1:dim_1, :]
+    # exp the variance because it should be > 0
+    return normsandvars[1:dim_1÷2, :], exp.(normsandvars[dim_1÷2+1:dim_1, :])
 end
 
 function sample_prior(n::LatentSDE, ps, st; b=1, seed=nothing, noise=(seed) -> nothing, tspan=n.tspan, datasize=n.datasize)
@@ -216,8 +217,13 @@ end
 function augmented_diffusion_batch(n::LatentSDE, latent_dims::Int, batch_size::Int, st::NamedTuple, u_in_vec::AbstractArray{Float32}, info::ComponentVector{Float32}, t::Float32)
     p = info.ps
     u_in = reshape(u_in_vec, latent_dims + 1, batch_size)
-    diffusion = n.diffusion(u_in[1:end-1, :], p.diffusion, st.diffusion)[1]
-    reshape(vcat(diffusion, ChainRulesCore.ignore_derivatives(() -> zeros32(1, size(u_in)[2]) |> Lux.gpu)), (latent_dims + 1) * batch_size)
+    u::AbstractArray{Float32} = u_in[1:end-1, :]
+
+    diffusion = n.diffusion(u, p.diffusion, st.diffusion)[1]
+    
+    cat_this = ChainRulesCore.@ignore_derivatives zeros32((1, batch_size)) |> Lux.gpu
+
+    reshape(vcat(diffusion, cat_this), (latent_dims + 1) * batch_size)
 end
 
 # Reference:
@@ -254,6 +260,7 @@ function (n::LatentSDE)(timeseries::Timeseries, ps::ComponentVector, st;
 )
     latent_dimensions = n.initial_prior.out_dims ÷ 2
     batch_size = length(timeseries.u)
+    time_steps = length(timeseries.t)
 
     # We are using matrices with the following dimensions:
     # 1 = latent space dimension
@@ -329,11 +336,12 @@ function (n::LatentSDE)(timeseries::Timeseries, ps::ComponentVector, st;
         [searchsortedfirst(solution.t, t) for t in timeseries.t]
     end
     
-    #solution_cu_array = solution |> Lux.gpu
-    
     #return nothing, nothing, nothing, 0f0, sum(solution_cu_array)
 
-    sol = reduce(timecat, map(x -> reshape(x, latent_dimensions + 1, batch_size), solution.u))
+    #sol = reduce(timecat, map(x -> reshape(x, latent_dimensions + 1, batch_size), solution.u))
+    
+    solution_cu_array = solution |> Lux.gpu
+    sol = reshape(solution_cu_array, latent_dimensions + 1, batch_size, time_steps)
 
     posterior_latent = sol[1:end-1, :, :]
     kl_divergence_time = sol[end:end, :, :]
@@ -341,7 +349,8 @@ function (n::LatentSDE)(timeseries::Timeseries, ps::ComponentVector, st;
     initialdists_kl = KL(initialdists_posterior_norms, initialdists_posterior_vars, repeat(initialdists_prior_norms, 1, length(timeseries.u)), repeat(initialdists_prior_vars, 1, length(timeseries.u)))
     kl_divergence = (sum(initialdists_kl, dims=1) .+ sol[end, :, end]) .* 0.5f0
 
-    projected_ts = reduce(timecat, map(x -> n.projector(x, ps.projector, st.projector)[1], eachslice(posterior_latent, dims=3)))
+    #projected_ts = reduce(timecat, map(x -> n.projector(x, ps.projector, st.projector)[1], eachslice(posterior_latent, dims=3)))
+    projected_ts = reshape(n.projector(reshape(posterior_latent, latent_dimensions, batch_size * time_steps), ps.projector, st.projector)[1], 1, batch_size, time_steps)
 
     likelihoods = loglike(tsmatrix, ChainRulesCore.ignore_derivatives(() -> fill(likelihood_scale, size(tsmatrix)) |> Lux.gpu), projected_ts[:, :, ts_indices])
 
