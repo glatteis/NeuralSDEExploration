@@ -67,7 +67,7 @@ begin
     )
 	ps__, st_ = Lux.setup(rng, latent_sde)
 	println(ps__)
-	ps_ = (initial_prior = (weight = [0.0; 0.0; 0.0; 0.0;;],), initial_posterior = (weight = [0.0; 0.0; 0.0; 0.0;;],), drift_prior = (weight = [0.8 1.0; 1.0 1.0],), drift_posterior = (weight = [1.0 0.5 0.0; 1.0 0.1 0.0],), diffusion = (layer_1 = (weight = [0.5;;], bias = [1.0;;]), layer_2 = (weight = [0.0;;], bias = [1.0;;])), encoder_recurrent = (weight_ih = [1.0;;], weight_hh = [1.0;;], bias = [0.0]), encoder_net = (weight = [1.0;;],), projector = (weight = [1.0 1.0],))
+	ps_ = (initial_prior = (weight = [1.0; 0.0; 0.0; 0.0;;],), initial_posterior = (weight = [0.0; 0.0; 0.0; 0.0;;],), drift_prior = (weight = [0.8 1.0; 1.0 1.0],), drift_posterior = (weight = [0.0 0.0 0.0; 0.0 0.0 0.0],), diffusion = (layer_1 = (weight = [0.0;;], bias = [0.0001;;]), layer_2 = (weight = [0.0;;], bias = [0.0001;;])), encoder_recurrent = (weight_ih = [1.0;;], weight_hh = [1.0;;], bias = [0.0]), encoder_net = (weight = [1.0;;],), projector = (weight = [1.0 1.0],))
 	ps = ComponentArray{Float32}(ps_) |> Lux.gpu
 	st = st_ |> Lux.gpu
 end
@@ -87,8 +87,8 @@ drift_posterior(reshape([42.0, 11.0, 0.0], :, 1) |> gpu, ps.drift_posterior, st.
 # ╔═╡ 23601b08-2d78-426c-9702-53232c0db1bc
 display(ps_)
 
-# ╔═╡ af673c70-c7bf-4fe6-92c0-b5e09fd99195
-inputs = [(t=range(tspan[1],tspan[end],datasize),u=[f(x) for x in range(tspan[1],tspan[end],datasize)]) for f in [(x)->100+x, (x)->100+x, (x)->-x-100, (x)->100+x]]
+# ╔═╡ 1e1100d2-0452-4754-8ab3-cecba9602909
+inputs = [(t=range(tspan[1],tspan[end],datasize),u=[f(x) for x in range(tspan[1],tspan[end],datasize)]) for f in [(x)->0f0, (x)->100+x, (x)->-x-100, (x)->100+x]]
 
 # ╔═╡ 24d1e95b-08d1-463c-87c5-b71dc6397624
 timeseries = Timeseries(inputs)
@@ -112,7 +112,10 @@ m3 = cat(m1, m2; dims=3)
 plot(timeseries)
 
 # ╔═╡ e8ef1773-8087-4f47-abfe-11e73f28a269
-posterior_latent, posterior_data, logterm_, kl_divergence_, distance_ = latent_sde(timeseries, ps, st, seed=3)
+posterior_latent, posterior_data, logterm_, kl_divergence_, distance_ = latent_sde(timeseries, ps, st)
+
+# ╔═╡ c6e86e18-8499-49b3-bf65-73afa4dfd45a
+plot(Timeseries(collect(range(tspan[1],tspan[end],datasize)), posterior_latent), label="posterior")
 
 # ╔═╡ b4caf08a-6a9a-403d-b537-a80a197d8c31
 kl_divergence_
@@ -125,9 +128,6 @@ plot(sample_prior(latent_sde, ps, st))
 
 # ╔═╡ 7fabae7c-abef-4d2c-a3b5-b9d2f683dc26
 plot(logterm_[1, :, :]', label="KL-Divergence")
-
-# ╔═╡ 937d5963-eddc-4296-9b6e-9532eb57bdf2
-plot(Timeseries(collect(range(tspan[1],tspan[end],datasize)), posterior_latent), label="posterior")
 
 # ╔═╡ 445423ba-5b52-438b-afbf-e6399c133779
 posterior_latent
@@ -198,7 +198,7 @@ end
 # ╠═15e4ff79-0753-4c38-9967-07f8ffd09326
 # ╠═17023016-849b-49b9-a592-1224d2c6ebbc
 # ╠═23601b08-2d78-426c-9702-53232c0db1bc
-# ╠═af673c70-c7bf-4fe6-92c0-b5e09fd99195
+# ╠═1e1100d2-0452-4754-8ab3-cecba9602909
 # ╠═24d1e95b-08d1-463c-87c5-b71dc6397624
 # ╠═0522b60f-3817-424c-bb32-dbc50769a025
 # ╠═7b81e46b-c55a-42e4-af34-9d1101de4b9c
@@ -207,11 +207,11 @@ end
 # ╠═0903e805-2147-42fd-919f-5bf2103df859
 # ╠═ccad1e15-c7d7-4d66-a637-7108fab46841
 # ╠═e8ef1773-8087-4f47-abfe-11e73f28a269
+# ╠═c6e86e18-8499-49b3-bf65-73afa4dfd45a
 # ╠═b4caf08a-6a9a-403d-b537-a80a197d8c31
 # ╠═1d7ea638-dff8-44c6-9ccf-97c898916834
 # ╠═0615efd2-c125-48cc-9600-0e2fb6a25a0d
 # ╠═7fabae7c-abef-4d2c-a3b5-b9d2f683dc26
-# ╠═937d5963-eddc-4296-9b6e-9532eb57bdf2
 # ╠═445423ba-5b52-438b-afbf-e6399c133779
 # ╠═7072a7d4-fd83-40a8-87fe-bd47c5a430eb
 # ╠═0ec36eba-8887-4ec2-9893-7ae5774c9337

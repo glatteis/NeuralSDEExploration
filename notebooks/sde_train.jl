@@ -289,7 +289,7 @@ in_dims = latent_dims
 
 # ╔═╡ 60b5397d-7350-460b-9117-319dc127cc7e
 md"""
-Use GPU: $(@bind gpu_enabled Arg("gpu", CheckBox(true), required=false))
+Use GPU: $(@bind gpu_enabled Arg("gpu", CheckBox(), required=false))
 CLI arg: `--gpu`
 """
 
@@ -611,7 +611,7 @@ end
 loss(ps, select_ts(1:64, timeseries), 1f0, 4)[1]
 
 # ╔═╡ 5123933d-0972-4fe3-9d65-556ecf81cf3c
-ts = select_ts(1:256, timeseries)
+ts = select_ts(1:64, timeseries)
 
 # ╔═╡ 7a7e8e9b-ca89-4826-8a5c-fe51d96152ad
 if enabletraining
@@ -619,9 +619,6 @@ if enabletraining
 	@time loss(ps, ts, 1.0, 1)[1]
 	@time dps = Zygote.gradient(ps -> loss(ps, ts, 1f0, 1)[1], ps)[1]
 end
-
-# ╔═╡ 6aedc20e-71a2-4384-86a7-cee616bb49dc
-dps["diffusion"]
 
 # ╔═╡ 67e5ae14-3062-4a93-9492-fc6e9861577f
 kl_sched = if kl_anneal
@@ -661,9 +658,6 @@ end
 
 # ╔═╡ 763f07e6-dd46-42d6-b57a-8f1994386302
 gifplot()
-
-# ╔═╡ e8b15c95-52f6-4e44-ad67-460d916bedf5
-plot(NeuralSDEExploration.sample_prior(latent_sde, ps, st; b=10, seed=0))
 
 # ╔═╡ 2b876f31-21c3-4782-a8a8-8da89d899719
 # ╠═╡ disabled = true
@@ -762,11 +756,9 @@ end
 # ╠═124680b8-4140-4b98-9fd7-009cc225992a
 # ╠═5123933d-0972-4fe3-9d65-556ecf81cf3c
 # ╠═7a7e8e9b-ca89-4826-8a5c-fe51d96152ad
-# ╠═6aedc20e-71a2-4384-86a7-cee616bb49dc
 # ╠═67e5ae14-3062-4a93-9492-fc6e9861577f
 # ╠═da2df05a-5d40-4293-98f0-abd20d6dcd2a
 # ╠═78aa72e2-8188-441f-9910-1bc5525fda7a
 # ╠═830f7e7a-71d0-43c8-8e74-d1709b8a6707
 # ╠═763f07e6-dd46-42d6-b57a-8f1994386302
-# ╠═e8b15c95-52f6-4e44-ad67-460d916bedf5
 # ╠═2b876f31-21c3-4782-a8a8-8da89d899719
