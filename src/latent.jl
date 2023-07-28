@@ -190,7 +190,7 @@ end
 
 function augmented_drift_batch(n::LatentSDE, times::AbstractArray{Float32}, latent_dims::Int, batch_size::Int, st::NamedTuple, u_in_vec::AbstractArray{Float32}, info::ComponentVector{Float32}, t::Float32)
     u_in = reshape(u_in_vec, latent_dims + 1, batch_size)
-    u::AbstractArray{Float32} = u_in[1:end-1, :]
+    u = @view u_in[1:end-1, :]
 
     # Remove augmented term from input
     p = info.ps
@@ -199,7 +199,7 @@ function augmented_drift_batch(n::LatentSDE, times::AbstractArray{Float32}, late
     # Get the context for the posterior at the current time
     # initial state evolve => get the posterior at future start time
     time_index = max(1, searchsortedlast(times, t))
-    posterior_net_input::AbstractArray{Float32} = vcat(u, context[:, :, time_index])
+    posterior_net_input::AbstractArray{Float32} = vcat(u, @view context[:, :, time_index])
 
     posterior = n.drift_posterior(posterior_net_input, p.drift_posterior, st.drift_posterior)[1]
     prior = n.drift_prior(u, p.drift_prior, st.drift_prior)[1]
@@ -217,7 +217,7 @@ end
 function augmented_diffusion_batch(n::LatentSDE, latent_dims::Int, batch_size::Int, st::NamedTuple, u_in_vec::AbstractArray{Float32}, info::ComponentVector{Float32}, t::Float32)
     p = info.ps
     u_in = reshape(u_in_vec, latent_dims + 1, batch_size)
-    u::AbstractArray{Float32} = u_in[1:end-1, :]
+    u = @view u_in[1:end-1, :]
 
     diffusion = n.diffusion(u, p.diffusion, st.diffusion)[1]
     
@@ -341,18 +341,18 @@ function (n::LatentSDE)(timeseries::Timeseries, ps::ComponentVector, st;
     #sol = reduce(timecat, map(x -> reshape(x, latent_dimensions + 1, batch_size), solution.u))
     
     solution_cu_array = solution |> Lux.gpu
-    sol = reshape(solution_cu_array, latent_dimensions + 1, batch_size, time_steps)
+    sol = reshape(vec(solution_cu_array), latent_dimensions + 1, batch_size, time_steps)
 
-    posterior_latent = sol[1:end-1, :, :]
-    kl_divergence_time = sol[end:end, :, :]
+    posterior_latent = @view sol[1:end-1, :, :]
+    kl_divergence_time = @view sol[end:end, :, :]
 
     initialdists_kl = KL(initialdists_posterior_norms, initialdists_posterior_vars, repeat(initialdists_prior_norms, 1, length(timeseries.u)), repeat(initialdists_prior_vars, 1, length(timeseries.u)))
-    kl_divergence = (sum(initialdists_kl, dims=1) .+ sol[end, :, end]) .* 0.5f0
+    kl_divergence = (sum(initialdists_kl, dims=1) .+ @view sol[end:end, :, end]) .* 0.5f0
 
-    #projected_ts = reduce(timecat, map(x -> n.projector(x, ps.projector, st.projector)[1], eachslice(posterior_latent, dims=3)))
     projected_ts = reshape(n.projector(reshape(posterior_latent, latent_dimensions, batch_size * time_steps), ps.projector, st.projector)[1], 1, batch_size, time_steps)
 
-    likelihoods = loglike(tsmatrix, ChainRulesCore.ignore_derivatives(() -> fill(likelihood_scale, size(tsmatrix)) |> Lux.gpu), projected_ts[:, :, ts_indices])
+    likelihoods_time = loglike(tsmatrix, ChainRulesCore.ignore_derivatives(() -> fill(likelihood_scale, size(tsmatrix)) |> Lux.gpu), projected_ts[:, :, ts_indices])
+    likelihoods = sum(likelihoods_time, dims=3)
 
     return posterior_latent, projected_ts, kl_divergence_time, kl_divergence, likelihoods
 end
