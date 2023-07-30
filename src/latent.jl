@@ -110,7 +110,7 @@ function StandardLatentSDE(solver, tspan, datasize;
                 Lux.Dense(1 => diffusion_size, hidden_activation),
                 Lux.Dense(diffusion_size => diffusion_size, hidden_activation),
                 Lux.Dense(diffusion_size => 1, Lux.sigmoid),
-                Lux.WrappedFunction(Base.Fix1(broadcast, (x) -> x + 1f-5))
+                Lux.WrappedFunction(Base.Fix1(broadcast, (x) -> 10f0 * x + 1f-5))
             ) for i in 1:latent_dims]...)
     )
 

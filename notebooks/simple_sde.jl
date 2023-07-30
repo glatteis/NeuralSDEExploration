@@ -67,7 +67,7 @@ begin
     )
 	ps__, st_ = Lux.setup(rng, latent_sde)
 	println(ps__)
-	ps_ = (initial_prior = (weight = [1.0; 0.0; 0.0; 0.0;;],), initial_posterior = (weight = [0.0; 0.0; 0.0; 0.0;;],), drift_prior = (weight = [0.8 1.0; 1.0 1.0],), drift_posterior = (weight = [0.0 0.0 0.0; 0.0 0.0 0.0],), diffusion = (layer_1 = (weight = [0.0;;], bias = [0.0001;;]), layer_2 = (weight = [0.0;;], bias = [0.0001;;])), encoder_recurrent = (weight_ih = [1.0;;], weight_hh = [1.0;;], bias = [0.0]), encoder_net = (weight = [1.0;;],), projector = (weight = [1.0 1.0],))
+	ps_ = (initial_prior = (weight = [0.0; 0.0; 0.0; 0.0;;],), initial_posterior = (weight = [0.0; 0.0; 0.0; 0.0;;],), drift_prior = (weight = [0.8 1.0; 1.0 1.0],), drift_posterior = (weight = [0.0 0.0 1.0; 0.0 0.0 1.0],), diffusion = (layer_1 = (weight = [0.0;;], bias = [0.0001;;]), layer_2 = (weight = [0.0;;], bias = [0.0001;;])), encoder_recurrent = (weight_ih = [1.0;;], weight_hh = [1.0;;], bias = [0.0]), encoder_net = (weight = [1.0;;],), projector = (weight = [1.0 1.0],))
 	ps = ComponentArray{Float32}(ps_) |> Lux.gpu
 	st = st_ |> Lux.gpu
 end
