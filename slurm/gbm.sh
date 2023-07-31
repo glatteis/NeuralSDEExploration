@@ -4,20 +4,11 @@ fixed_args="/home/linushe/neuralsdeexploration/notebooks/sde_train.jl -m gbm --b
 
 variable_args=(
     # base experiment
-    "--decay 0.999 --eta 0.01 --learning-rate 0.001 --latent-dims 3 --hidden-size 100 --kl-rate 200 --depth 1"
-    "--decay 0.999 --eta 0.1 --learning-rate 0.001 --latent-dims 3 --hidden-size 100 --kl-rate 200 --depth 1"
-    "--decay 0.999 --eta 0.5 --learning-rate 0.001 --latent-dims 3 --hidden-size 100 --kl-rate 200 --depth 1"
-    "--decay 0.999 --eta 1.0 --learning-rate 0.001 --latent-dims 3 --hidden-size 100 --kl-rate 200 --depth 1"
-    "--decay 0.999 --eta 10.0 --learning-rate 0.001 --latent-dims 3 --hidden-size 100 --kl-rate 200 --depth 1"
-
-    # learning rate
-    "--decay 0.999 --eta 0.1 --learning-rate 0.005 --latent-dims 4 --hidden-size 32 --kl-rate 500"
-    "--decay 0.999 --eta 1.0 --learning-rate 0.005 --latent-dims 4 --hidden-size 32 --kl-rate 500"
-
-    # kl rate
-    "--decay 0.995 --eta 0.01 --learning-rate 0.005 --latent-dims 4 --hidden-size 32 --kl-rate 250"
-    "--decay 0.995 --eta 0.01 --learning-rate 0.005 --latent-dims 4 --hidden-size 32 --kl-rate 1000"
-
+    "--decay 0.999 --eta 0.01 --learning-rate 0.005 --latent-dims 4 --hidden-size 100 --kl-rate 400 --depth 1"
+    "--decay 0.999 --eta 0.1 --learning-rate 0.005 --latent-dims 4 --hidden-size 100 --kl-rate 400 --depth 1"
+    "--decay 0.999 --eta 0.5 --learning-rate 0.005 --latent-dims 4 --hidden-size 100 --kl-rate 400 --depth 1"
+    "--decay 0.999 --eta 1.0 --learning-rate 0.005 --latent-dims 4 --hidden-size 100 --kl-rate 400 --depth 1"
+    "--decay 0.999 --eta 10.0 --learning-rate 0.005 --latent-dims 4 --hidden-size 100 --kl-rate 400 --depth 1"
 )
 
 echo $fixed_args ${variable_args[$SLURM_ARRAY_TASK_ID]}
