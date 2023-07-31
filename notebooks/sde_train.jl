@@ -559,6 +559,7 @@ function train(lr_sched, opt_state; kl_sched=Iterators.Stateful(Loop(x -> eta, 1
 		
 		Optimisers.update!(opt_state, ps, dps[1])
 		Optimisers.adjust!(opt_state, lr)
+		println(opt_state)
 	end
 end
 
