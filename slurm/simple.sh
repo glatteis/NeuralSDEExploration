@@ -3,11 +3,18 @@ fixed_args="/home/linushe/neuralsdeexploration/notebooks/sde_train.jl --batch-si
 variable_args=(
     "-m exp --eta 0.1 --learning-rate 0.01 --latent-dims 2 --hidden-size 32 --noise 0.01 --decay 0.999"
     "-m const --eta 0.1 --learning-rate 0.01 --latent-dims 2 --hidden-size 32 --noise 0.01 --decay 0.999"
+    "-m sine --eta 0.1 --learning-rate 0.01 --latent-dims 3 --hidden-size 32 --noise 0.01 --decay 0.999"
     "-m diffusion --eta 0.1 --learning-rate 0.01 --latent-dims 3 --hidden-size 32 --noise 0.01 --decay 0.999"
     "-m diffusion --eta 1.0 --learning-rate 0.01 --latent-dims 3 --hidden-size 32 --noise 0.01 --decay 0.999"
     "-m diffusion --eta 5.0 --learning-rate 0.01 --latent-dims 3 --hidden-size 32 --noise 0.01 --decay 0.999"
     "-m diffusion --eta 10.0 --learning-rate 0.01 --latent-dims 3 --hidden-size 32 --noise 0.01 --decay 0.999"
-    "-m sine --eta 0.1 --learning-rate 0.01 --latent-dims 3 --hidden-size 32 --noise 0.01 --decay 0.999"
+
+    "-m diffusion --eta 1.0 --learning-rate 0.005 --latent-dims 3 --hidden-size 64 --noise 0.01 --decay 0.999"
+    "-m diffusion --eta 10.0 --learning-rate 0.005 --latent-dims 3 --hidden-size 64 --noise 0.01 --decay 0.999"
+    "-m diffusion --eta 25.0 --learning-rate 0.005 --latent-dims 3 --hidden-size 64 --noise 0.01 --decay 0.999"
+    "-m diffusion --eta 50.0 --learning-rate 0.005 --latent-dims 3 --hidden-size 64 --noise 0.01 --decay 0.999"
+    "-m diffusion --eta 100.0 --learning-rate 0.005 --latent-dims 3 --hidden-size 64 --noise 0.01 --decay 0.999"
+    "-m diffusion --eta 1000.0 --learning-rate 0.005 --latent-dims 3 --hidden-size 64 --noise 0.01 --decay 0.999"
 )
 
 /home/linushe/julia-1.9.0/bin/julia --project=/home/linushe/neuralsdeexploration -t2 $fixed_args ${variable_args[$SLURM_ARRAY_TASK_ID]}
