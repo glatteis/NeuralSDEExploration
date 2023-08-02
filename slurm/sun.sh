@@ -4,12 +4,12 @@ fixed_args="/home/linushe/neuralsdeexploration/notebooks/sde_train.jl -m sun --b
 
 variable_args=(
     # eta
-    "--eta 20.0 --learning-rate 0.005 --latent-dims 1 --hidden-size 150 --noise 0.15 --decay 0.999 --kl-rate 500 --depth 1"
-    "--eta 50.0 --learning-rate 0.005 --latent-dims 1 --hidden-size 150 --noise 0.15 --decay 0.999 --kl-rate 500 --depth 1"
-    "--eta 100.0 --learning-rate 0.005 --latent-dims 1 --hidden-size 150 --noise 0.15 --decay 0.999 --kl-rate 500 --depth 1"
-    "--eta 500.0 --learning-rate 0.005 --latent-dims 1 --hidden-size 150 --noise 0.15 --decay 0.999 --kl-rate 500 --depth 1"
-    "--eta 1000.0 --learning-rate 0.005 --latent-dims 1 --hidden-size 150 --noise 0.15 --decay 0.999 --kl-rate 500 --depth 1"
-    "--eta 10000.0 --learning-rate 0.005 --latent-dims 1 --hidden-size 150 --noise 0.15 --decay 0.999 --kl-rate 500 --depth 1"
+    "--eta 20.0 --learning-rate 0.005 --latent-dims 2 --hidden-size 120 --noise 0.15 --decay 0.999 --kl-rate 1000 --depth 1"
+    "--eta 50.0 --learning-rate 0.005 --latent-dims 2 --hidden-size 120 --noise 0.15 --decay 0.999 --kl-rate 1000 --depth 1"
+    "--eta 100.0 --learning-rate 0.005 --latent-dims 2 --hidden-size 120 --noise 0.15 --decay 0.999 --kl-rate 1000 --depth 1"
+    "--eta 500.0 --learning-rate 0.005 --latent-dims 2 --hidden-size 120 --noise 0.15 --decay 0.999 --kl-rate 1000 --depth 1"
+    "--eta 1000.0 --learning-rate 0.005 --latent-dims 2 --hidden-size 120 --noise 0.15 --decay 0.999 --kl-rate 1000 --depth 1"
+    "--eta 10000.0 --learning-rate 0.005 --latent-dims 2 --hidden-size 120 --noise 0.15 --decay 0.999 --kl-rate 1000 --depth 1"
 )
 
-/home/linushe/julia-1.9.0/bin/julia --project=/home/linushe/neuralsdeexploration -t1 $fixed_args ${variable_args[$SLURM_ARRAY_TASK_ID]}
+stdbuf -i0 -o0 -e0 /home/linushe/julia-1.9.0/bin/julia --project=/home/linushe/neuralsdeexploration -t1 $fixed_args ${variable_args[$SLURM_ARRAY_TASK_ID]}
