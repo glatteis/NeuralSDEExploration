@@ -34,3 +34,6 @@ end
 
 println(loss(ps_))
 println(Zygote.gradient(ps -> loss(ps), ps_))
+@time Zygote.gradient(ps -> loss(ps), ps_)
+@time Zygote.gradient(ps -> loss(ps), ps_)
+@time Zygote.gradient(ps -> loss(ps), ps_)

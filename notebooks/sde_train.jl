@@ -219,8 +219,8 @@ Let's normalize our data for training:
 
 # ╔═╡ aff1c9d9-b29b-4b2c-b3f1-1f06a9370f64
 begin
-    datamax = max([max(x...) for x in solution.u]...) |> only
-    datamin = min([min(x...) for x in solution.u]...) |> only
+    datamax = max([max(x[1]...) for x in solution.u]...) |> only
+    datamin = min([min(x[1]...) for x in solution.u]...) |> only
 
     function normalize(x)
         return 2f0 * (Float32((x - datamin) / (datamax - datamin)) - 0.5f0)
