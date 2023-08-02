@@ -2,8 +2,8 @@ using Lux, Zygote, DifferentialEquations, ComponentArrays, Random, CUDA, SciMLSe
 
 rng = Xoshiro()
 
-drift_net = Dense(1 => 1)
-diffusion_net = Dense(1 => 1)
+drift_net = Dense(2 => 2)
+diffusion_net = Dense(2 => 2)
 
 ps_drift_, st_drift = Lux.setup(rng, drift_net)
 
@@ -18,7 +18,7 @@ function diffusion(u, ps, t)
     diffusion_net(u, ps.ps_diffusion, st_diffusion)[1]
 end
 
-u0 = [1f0] |> Lux.gpu
+u0 = [1f0, 1f0] |> Lux.gpu
 
 tspan = (0f0, 1f0)
 datasize = 10
