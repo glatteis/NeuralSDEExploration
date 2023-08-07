@@ -65,6 +65,15 @@ timeseries = Timeseries(dict["timeseries"])
 # ╔═╡ 3bce0e1c-fdcf-42ef-abfc-ae2b62199c5b
 initial_condition = dict["initial_condition"]
 
+# ╔═╡ 21cd9447-3291-4236-8648-f1b1e5003d76
+begin
+	datamax = dict["datamax"]
+	datamin = dict["datamin"]
+	function normalize(x)
+        return 2f0 * (Float32((x - datamin) / (datamax - datamin)) - 0.5f0)
+    end
+end
+
 # ╔═╡ af3619b0-f9be-40f2-8027-77e435f8e4e5
 md"""
 Select timeseries to do some simulations on: $(@bind ti RangeSlider(1:100; default=1:4))
@@ -158,8 +167,17 @@ plot(NeuralSDEExploration.sample_prior(latent_sde,ps,st;b=40,tspan=(0e0,10e0),da
 # ╔═╡ ae0c9dae-e490-4965-9353-c820a3ce3645
 plot(NeuralSDEExploration.sample_prior_dataspace(latent_sde,ps,st;b=1,tspan=(0e0,10e0),datasize=5000,seed=1), title="Neural SDE")
 
+# ╔═╡ bae14d84-7bc2-4e49-ab2b-b82afaf9923d
+longer_timespan_tspan = (0f0, 10f0)
+
+# ╔═╡ c17cba81-aefd-4bfe-b452-6c63b3ffe789
+longer_timespan_datasize = 500
+
+# ╔═╡ 30c31ac1-0d88-428a-87de-b2feb0806410
+longer_timespan = NeuralSDEExploration.series(model, initial_condition[1:100], longer_timespan_tspan, longer_timespan_datasize, seed=1)
+
 # ╔═╡ 63e3e80c-6d03-4e42-a718-5bf30ad7182f
-plot(filter_dims(1:1, NeuralSDEExploration.series(model, initial_condition[1:10], (0e0, 10e0), 5000,seed=1)), title="longer timespan of model")
+plot(filter_dims(1:1, longer_timespan), title="longer timespan of model")
 
 # ╔═╡ 9f8c49a0-2098-411b-976a-2b43cbb20a44
 plot(NeuralSDEExploration.series(model, [[0e0, 0e0]], (0e0, 10e0), 5000))
@@ -189,11 +207,28 @@ latent_sample = NeuralSDEExploration.sample_prior(latent_sde,ps_new,st;b=2, tspa
 plot(latent_sample)
 
 # ╔═╡ 5f3db28c-b3bb-4461-b457-e7af3e273674
-plot(NeuralSDEExploration.sample_prior(latent_sde,ps_new,st;b=3,tspan=(0e0,10e0),datasize=5000)
-)
+plot(filter_dims(1:2, NeuralSDEExploration.sample_prior(latent_sde,ps_new,st;b=100,tspan=(0f0,2f0),datasize=100, seed=0)))
+
+# ╔═╡ 104d7f34-2280-4b35-b1a0-59db09286675
+plot(filter_dims(1:1, NeuralSDEExploration.sample_prior_dataspace(latent_sde,ps_new,st;b=100,tspan=(0f0,2f0),datasize=100, seed=0)))
 
 # ╔═╡ b8422a5a-d5a9-4f58-8fc7-3cf58a9bc335
+# ╠═╡ disabled = true
+#=╠═╡
 first_ts = select_ts(1:1, timeseries)
+  ╠═╡ =#
+
+# ╔═╡ edd3acfc-3f91-4e5f-b5a0-4f0be7adafe9
+longer_timespan_norm = map_dims(x -> map(normalize, x), longer_timespan)
+
+# ╔═╡ 85af2b0c-359f-4d25-b7ef-eb3d513e9f31
+plot(select_ts(38:38, longer_timespan_norm))
+
+# ╔═╡ 52932871-e0ae-405e-a63e-ad8875d84d19
+first_ts = select_ts(38:38, longer_timespan_norm)
+
+# ╔═╡ d62e6f39-e45f-4708-be50-b9158c2a7f16
+longer_timespan_prior = sample_prior_dataspace(latent_sde,ps,st;seed=1,b=100, tspan=longer_timespan_tspan, datasize=longer_timespan_datasize)
 
 # ╔═╡ b75050c4-ce60-420c-b8ec-c8df76faa8ca
 repeat_ts = Timeseries(first_ts.t, repeat(first_ts.u, 40))
@@ -204,8 +239,13 @@ first_posterior = Timeseries(first_ts.t, latent_sde(repeat_ts, ps, st)[2])
 # ╔═╡ 3d9e86cc-c2a1-4d22-a1d5-cc822cee0696
 first_mean_var = NeuralSDEExploration.mean_and_var(first_posterior)
 
-# ╔═╡ 2abb2284-f71b-4e38-87c0-334d79ee9f2a
-posterior_plot = plot(select_ts(1:10, first_posterior), color=:black)#, axis=([], false), ticks=false, grid=false, background=RGBA{Float64}(1.0,1.0,1.0,0.0))
+# ╔═╡ 0de1e033-dec4-4130-a681-733da97ec2ec
+begin
+	posterior_plot = plot(longer_timespan_prior, color=:grey, linewidth=0.5, alpha=0.5, xlabel="Time", ylabel="Temperature (normalized)")
+	plot!(posterior_plot, select_ts(1:10, first_posterior), color=:black)#, axis=([], false), ticks=false, grid=false, background=RGBA{Float64}(1.0,1.0,1.0,0.0))
+	plot!(posterior_plot, select_ts(1:1, first_mean_var), ribbon=2*map(only, first_mean_var.u[2]), color=:green)
+	plot!(posterior_plot, first_ts, color=:orange, linewidth=2)
+end
 
 # ╔═╡ 3dc42e02-1d6f-4c9c-8572-fcbe006b70a0
 data_plot = plot(first_ts, color=:black)#, axis=([], false), ticks=false, grid=false, background=RGBA{Float64}(1.0,1.0,1.0,0.0))
@@ -213,15 +253,8 @@ data_plot = plot(first_ts, color=:black)#, axis=([], false), ticks=false, grid=f
 # ╔═╡ 82b3ee10-a447-4007-8178-dcf469afa3e8
 savefig(data_plot, "~/Downloads/flowchart_data.tikz")
 
-# ╔═╡ 858f2092-5a21-458f-9c47-fc93486b9b9d
-plot!(posterior_plot, select_ts(1:1, first_mean_var), ribbon=2*map(only, first_mean_var.u[2]))
-
-
-# ╔═╡ 3fc7f82c-4384-4d6c-97c6-de23b9b5e6b9
-plot!(posterior_plot, first_ts, color=:red, axis=([], false), ticks=false, grid=false, background=RGBA{Float64}(1.0,1.0,1.0,0.0))
-
 # ╔═╡ 97bc8a9b-a1da-45ee-915e-d342adc44e50
-savefig(posterior_plot, "~/Downloads/flowchart_posterior.tikz")
+savefig(posterior_plot, "~/Downloads/posterior_twodim_3.tikz")
 
 # ╔═╡ dd55cc42-8b6c-4e8f-a888-5427ac724ace
 prior_plot = plot(NeuralSDEExploration.sample_prior_dataspace(latent_sde,ps,st;b=10, tspan=latent_sde.tspan, datasize=latent_sde.datasize), color=:black, axis=([], false), ticks=false, grid=false, background=RGBA{Float64}(1.0,1.0,1.0,0.0))
@@ -245,6 +278,7 @@ pgfplotsx(size=(700, 500))
 # ╠═cf297ea2-09b6-433b-b849-44a33334a3ff
 # ╠═fabc1578-ba35-4c4e-9129-02da3bf43f56
 # ╠═3bce0e1c-fdcf-42ef-abfc-ae2b62199c5b
+# ╠═21cd9447-3291-4236-8648-f1b1e5003d76
 # ╟─af3619b0-f9be-40f2-8027-77e435f8e4e5
 # ╠═69459a5f-75b7-4c33-a489-bf4d4411c1ec
 # ╠═e0afda9e-0b17-4e7e-9d1e-d0e05df6fa4e
@@ -272,19 +306,25 @@ pgfplotsx(size=(700, 500))
 # ╠═fe1ae4b3-2f1f-4b6c-a076-0d215f222e6c
 # ╠═72045fd0-2769-4868-9b67-e7a41e3f1d7d
 # ╟─ae0c9dae-e490-4965-9353-c820a3ce3645
+# ╠═bae14d84-7bc2-4e49-ab2b-b82afaf9923d
+# ╠═c17cba81-aefd-4bfe-b452-6c63b3ffe789
+# ╠═30c31ac1-0d88-428a-87de-b2feb0806410
 # ╠═63e3e80c-6d03-4e42-a718-5bf30ad7182f
 # ╠═9f8c49a0-2098-411b-976a-2b43cbb20a44
 # ╠═91a99de2-84b3-4ed7-b8de-97652c59137f
 # ╠═5f3db28c-b3bb-4461-b457-e7af3e273674
+# ╠═104d7f34-2280-4b35-b1a0-59db09286675
 # ╠═b8422a5a-d5a9-4f58-8fc7-3cf58a9bc335
+# ╠═edd3acfc-3f91-4e5f-b5a0-4f0be7adafe9
+# ╠═85af2b0c-359f-4d25-b7ef-eb3d513e9f31
+# ╠═52932871-e0ae-405e-a63e-ad8875d84d19
+# ╠═d62e6f39-e45f-4708-be50-b9158c2a7f16
 # ╠═b75050c4-ce60-420c-b8ec-c8df76faa8ca
 # ╠═8c972500-9eb6-4767-8ac0-d24357fb8b8c
 # ╠═3d9e86cc-c2a1-4d22-a1d5-cc822cee0696
-# ╠═2abb2284-f71b-4e38-87c0-334d79ee9f2a
+# ╠═0de1e033-dec4-4130-a681-733da97ec2ec
 # ╠═3dc42e02-1d6f-4c9c-8572-fcbe006b70a0
 # ╠═82b3ee10-a447-4007-8178-dcf469afa3e8
-# ╠═858f2092-5a21-458f-9c47-fc93486b9b9d
-# ╠═3fc7f82c-4384-4d6c-97c6-de23b9b5e6b9
 # ╠═97bc8a9b-a1da-45ee-915e-d342adc44e50
 # ╠═dd55cc42-8b6c-4e8f-a888-5427ac724ace
 # ╠═c8d890f6-b816-4711-aaba-27052b8365ab

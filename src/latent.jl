@@ -261,6 +261,9 @@ function (n::LatentSDE)(timeseries::Timeseries, ps::ComponentVector, st;
     latent_dimensions = n.initial_prior.out_dims ÷ 2
     batch_size = length(timeseries.u)
     time_steps = length(timeseries.t)
+    tspan = (timeseries.t[1], timeseries.t[end])
+    # regularily sample the latent sde
+    dt = (timeseries.t[end] - timeseries.t[1]) / time_steps
 
     # We are using matrices with the following dimensions:
     # 1 = latent space dimension
@@ -325,12 +328,12 @@ function (n::LatentSDE)(timeseries::Timeseries, ps::ComponentVector, st;
         (u, p, t) -> augmented_drift_batch(n, timeseries.t, latent_dimensions, batch_size, st, u, p, t),
         (u, p, t) -> augmented_diffusion_batch(n, latent_dimensions, batch_size, st, u, p, t),
         u0,
-        n.tspan,
+        tspan,
         info,
         seed=seed,
         noise=noise_instance
     )
-    solution = solve(sde_problem, n.solver; sensealg=sense, saveat=collect(range(n.tspan[1], n.tspan[end], n.datasize)), dt=(n.tspan[end] / n.datasize), n.kwargs...)
+    solution = solve(sde_problem, n.solver; sensealg=sense, saveat=collect(range(tspan[1], tspan[end], time_steps)), dt=dt, n.kwargs...)
 
     ts_indices = ChainRulesCore.ignore_derivatives() do
         [searchsortedfirst(solution.t, t) for t in timeseries.t]
