@@ -17,6 +17,7 @@ echo "------------------------------------------------------------"
 # Some initial setup
 export I_MPI_PMI_LIBRARY=/p/system/slurm/lib/libpmi.so
 module purge
+module load julia
 
 # run specified script with cpus and task id
 ./$1

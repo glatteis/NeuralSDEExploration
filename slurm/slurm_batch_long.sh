@@ -4,9 +4,9 @@
 #SBATCH --account=tipes
 #SBATCH --partition=standard
 #SBATCH --qos=medium
-#SBATCH --cpus-per-task=16
-#SBATCH --mem=80G
-#SBATCH --time=48:00:00
+#SBATCH --cpus-per-task=4
+#SBATCH --mem=50G
+#SBATCH --time=100:00:00
 #SBATCH --output=/home/linushe/outputs/%x.%A_%4a.out
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=linus.heck@rwth-aachen.de
@@ -19,6 +19,7 @@ echo "------------------------------------------------------------"
 # Some initial setup
 export I_MPI_PMI_LIBRARY=/p/system/slurm/lib/libpmi.so
 module purge
+module load julia
 
 # run specified script with cpus and task id
 ./$1
