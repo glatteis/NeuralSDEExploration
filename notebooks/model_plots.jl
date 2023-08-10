@@ -24,7 +24,7 @@ begin
 end
 
 # ╔═╡ 47fc2b1b-08c4-44fa-a919-9f5083e06929
-using NeuralSDEExploration, Plots, PlutoUI, PlutoArgs, PGFPlotsX, Random, Random123, SciMLSensitivity, DiffEqNoiseProcess
+using NeuralSDEExploration, Plots, PlutoUI, PlutoArgs, PGFPlotsX, Random, Random123, SciMLSensitivity, DiffEqNoiseProcess, Random, DiffEqNoiseProcess
 
 # ╔═╡ 16246076-d2a8-4b7e-96e8-359a6e092993
 begin
@@ -41,7 +41,7 @@ pgfplotsx(size=(500, 250))
 
 # ╔═╡ 204b6855-f793-4d0a-a269-f486b5cf859b
 md"""
-Used model: $(@bind model_name Arg("model", Select(["sun", "sunode", "fhn", "ou"]), short_name="m")), CLI arg: `--model`, `-m` (required!)
+Used model: $(@bind model_name Arg("model", Select(["sun", "sunode", "fhn", "ou", "ou2", "noise"]), short_name="m")), CLI arg: `--model`, `-m` (required!)
 """
 
 # ╔═╡ af84a5af-604f-4eaa-a5d5-5d5d18c649bc
@@ -53,7 +53,7 @@ Timestep size: $(@bind dt Arg("dt", NumberField(0.0:1.0, 0.05), required=false))
 tspan_data = (0e0, 5e0)
 
 # ╔═╡ 3f39c872-5e04-4e61-9c53-9f3fd2824760
-n = 100
+n = 10
 
 # ╔═╡ 41cfa896-7e03-4ea7-9ed7-3c16b3c2ebe1
 seed = 40
@@ -95,6 +95,16 @@ elseif model_name == "ou"
 		[0e0 for i in 1:n],
 		NeuralSDEExploration.OrnsteinUhlenbeck(2.0, 1.0, 1.0)
 	)
+elseif model_name == "ou2"
+	(
+		range(-5, 5, n),
+		NeuralSDEExploration.OrnsteinUhlenbeck(0.0, 1.0, 1.0)
+	)
+elseif model_name == "noise"
+	(
+		[0e0 for i in 1:n],
+		NeuralSDEExploration.OrnsteinUhlenbeck(0.0, 0.0, 1.0)
+	)
 else
 	@error "Invalid model name!"
 	nothing
@@ -124,7 +134,7 @@ exp = plot(select_ts(1:50, select_tspan((tspan_data[2] / 2, tspan_data[2]), solu
 savefig(exp, "~/Downloads/flowchart_data.tikz")
 
 # ╔═╡ 12e33fad-6664-493b-9514-e12257b9197d
-plot(solution_1, legend=false)
+p = plot(solution_1, legend=false, xlabel="Time", ylabel="Value")
 
 # ╔═╡ f1613986-b7af-433b-8df9-afd2350f3a2e
 plot(solution_2, legend=false)
@@ -132,14 +142,11 @@ plot(solution_2, legend=false)
 # ╔═╡ 68b29d7a-5ef1-4272-ae42-5a6052493c1c
 # ╠═╡ disabled = true
 #=╠═╡
-savefig(p, "~/Downloads/p.pdf")
+savefig(p, "~/Downloads/.pdf")
   ╠═╡ =#
 
 # ╔═╡ 49b6f9a8-9934-4fc3-b253-7b72c8a586b2
-# ╠═╡ disabled = true
-#=╠═╡
-savefig(p, "~/Downloads/plot.tikz")
-  ╠═╡ =#
+savefig(p, "~/Downloads/ornstein_uhlenbeck.tikz")
 
 # ╔═╡ 8bdd7b6c-c545-47ee-9172-43677a0d6b4b
 # ╠═╡ disabled = true
@@ -147,12 +154,22 @@ savefig(p, "~/Downloads/plot.tikz")
 PGFPlotsX.DEFAULT_PREAMBLE
   ╠═╡ =#
 
+# ╔═╡ e4cd7beb-7773-44dc-8f55-f25ff9b29dcb
+begin
+	time = 0.0:dt:tspan_data[end]
+	no = [randn() for t in time]
+	pnoise = plot(time, no, seriestype=:sticks, legend=false, xlabel="Time", ylabel="Value")
+end
+
+# ╔═╡ 62e87dc3-8711-4949-830f-5d8d10374c6d
+savefig(pnoise, "~/Downloads/white_noise.tikz")
+
 # ╔═╡ Cell order:
 # ╠═b0febea6-fa47-11ed-18db-513dc85d0e01
 # ╠═16246076-d2a8-4b7e-96e8-359a6e092993
 # ╠═47fc2b1b-08c4-44fa-a919-9f5083e06929
 # ╠═0a3db747-8d05-44e7-bfdd-c5d2fccb389b
-# ╟─204b6855-f793-4d0a-a269-f486b5cf859b
+# ╠═204b6855-f793-4d0a-a269-f486b5cf859b
 # ╟─af84a5af-604f-4eaa-a5d5-5d5d18c649bc
 # ╠═36dc1a29-ee0a-4e69-8a08-8cff818d6688
 # ╠═3f39c872-5e04-4e61-9c53-9f3fd2824760
@@ -172,3 +189,5 @@ PGFPlotsX.DEFAULT_PREAMBLE
 # ╠═68b29d7a-5ef1-4272-ae42-5a6052493c1c
 # ╠═49b6f9a8-9934-4fc3-b253-7b72c8a586b2
 # ╠═8bdd7b6c-c545-47ee-9172-43677a0d6b4b
+# ╠═e4cd7beb-7773-44dc-8f55-f25ff9b29dcb
+# ╠═62e87dc3-8711-4949-830f-5d8d10374c6d
