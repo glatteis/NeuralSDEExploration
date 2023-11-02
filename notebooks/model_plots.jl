@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.19.25
+# v0.19.27
 
 using Markdown
 using InteractiveUtils
@@ -24,7 +24,7 @@ begin
 end
 
 # ╔═╡ 47fc2b1b-08c4-44fa-a919-9f5083e06929
-using NeuralSDEExploration, Plots, PlutoUI, PlutoArgs, PGFPlotsX, Random, Random123, SciMLSensitivity, DiffEqNoiseProcess, Random, DiffEqNoiseProcess
+using NeuralSDEExploration, Plots, PlutoUI, PlutoArgs, PGFPlotsX, Random, Random123, SciMLSensitivity, DiffEqNoiseProcess, Random, DiffEqNoiseProcess, CSV
 
 # ╔═╡ 16246076-d2a8-4b7e-96e8-359a6e092993
 begin
@@ -164,6 +164,15 @@ end
 # ╔═╡ 62e87dc3-8711-4949-830f-5d8d10374c6d
 savefig(pnoise, "~/Downloads/white_noise.tikz")
 
+# ╔═╡ d397fded-801c-455c-896a-dca926107f91
+ngrip = CSV.File("ngrip.csv")
+
+# ╔═╡ c271a444-5905-41cb-aeeb-3e730dd35944
+ngrip_plot = plot(ngrip["yearsBP2000"]/1000, ngrip["permille"], xlabel="Age (kyr BP)", ylabel="d18O", legend=false)
+
+# ╔═╡ 179c648d-07fc-4176-922a-eaa2ef6c0d7a
+savefig(ngrip_plot, "~/Downloads/ngrip.tikz")
+
 # ╔═╡ Cell order:
 # ╠═b0febea6-fa47-11ed-18db-513dc85d0e01
 # ╠═16246076-d2a8-4b7e-96e8-359a6e092993
@@ -191,3 +200,6 @@ savefig(pnoise, "~/Downloads/white_noise.tikz")
 # ╠═8bdd7b6c-c545-47ee-9172-43677a0d6b4b
 # ╠═e4cd7beb-7773-44dc-8f55-f25ff9b29dcb
 # ╠═62e87dc3-8711-4949-830f-5d8d10374c6d
+# ╠═d397fded-801c-455c-896a-dca926107f91
+# ╠═c271a444-5905-41cb-aeeb-3e730dd35944
+# ╠═179c648d-07fc-4176-922a-eaa2ef6c0d7a
